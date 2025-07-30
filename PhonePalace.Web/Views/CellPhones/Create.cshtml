@@ -1,0 +1,127 @@
+﻿
+@model PhonePalace.Web.ViewModels.CellPhoneViewModel
+
+@{
+    ViewData["Title"] = "Registrar Nuevo Celular";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<h4>Nuevo Celular</h4>
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">Nombre</label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="SKU" class="form-label">SKU</label>
+                        <input asp-for="SKU" class="form-control" />
+                        <span asp-validation-for="SKU" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Descripción</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="ModelID" class="form-label">Modelo</label>
+                        <select asp-for="ModelID" class="form-select" asp-items="ViewBag.ModelID"><option value="">-- Seleccione un Modelo --</option></select>
+                        <span asp-validation-for="ModelID" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="CategoryID" class="form-label">Categoría</label>
+                        <select asp-for="CategoryID" class="form-select" asp-items="ViewBag.CategoryID"><option value="">-- Seleccione una Categoría --</option></select>
+                        <span asp-validation-for="CategoryID" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="Price" class="form-label">Precio</label>
+                        <input asp-for="Price" class="form-control" />
+                        <span asp-validation-for="Price" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
+                        <label asp-for="Cost" class="form-label">Costo</label>
+                        <input asp-for="Cost" class="form-control" />
+                        <span asp-validation-for="Cost" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="Color" class="form-label">Color</label>
+                        <input asp-for="Color" class="form-control" />
+                        <span asp-validation-for="Color" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="StorageGB" class="form-label">Almacenamiento (GB)</label>
+                        <input asp-for="StorageGB" class="form-control" />
+                        <span asp-validation-for="StorageGB" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="RamGB" class="form-label">RAM (GB)</label>
+                        <input asp-for="RamGB" class="form-control" />
+                        <span asp-validation-for="RamGB" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label asp-for="NewImageFile" class="form-label">Imagen del Producto</label>
+                <input asp-for="NewImageFile" id="imageUpload" class="form-control" type="file" accept="image/*" />
+                <span asp-validation-for="NewImageFile" class="text-danger"></span>
+                <img id="imagePreview" src="#" alt="Vista previa de la imagen" class="mt-2" style="display: none; max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 0.25rem;" />
+            </div>
+
+            <div class="mb-3">
+                <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.getElementById('imageUpload').addEventListener('change', function(event) {
+            const imagePreview = document.getElementById('imagePreview');
+            if (event.target.files && event.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(event.target.files[0]);
+            } else {
+                imagePreview.style.display = 'none';
+            }
+        });
+    </script>
+}

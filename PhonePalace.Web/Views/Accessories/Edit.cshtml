@@ -1,0 +1,125 @@
+﻿@model PhonePalace.Web.ViewModels.AccessoryViewModel
+
+@{
+    ViewData["Title"] = "Editar Accesorio";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<h4>@Model.Name</h4>
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Edit" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ProductID" />
+            <input type="hidden" asp-for="IsActive" />
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="SKU" class="form-label"></label>
+                    <input asp-for="SKU" class="form-control" />
+                    <span asp-validation-for="SKU" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CategoryID" class="form-label">Categoría</label>
+                    <select asp-for="CategoryID" class="form-select" asp-items="ViewBag.CategoryID"></select>
+                    <span asp-validation-for="CategoryID" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="BrandID" class="form-label">Marca (Opcional)</label>
+                    <select asp-for="BrandID" class="form-select" asp-items="ViewBag.BrandID">
+                        <option value="">-- Sin Marca --</option>
+                    </select>
+                    <span asp-validation-for="BrandID" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Price" class="form-label">Precio Venta</label>
+                    <input asp-for="Price" class="form-control" />
+                    <span asp-validation-for="Price" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Cost" class="form-label"></label>
+                    <input asp-for="Cost" class="form-control" />
+                    <span asp-validation-for="Cost" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Color" class="form-label"></label>
+                    <input asp-for="Color" class="form-control" />
+                    <span asp-validation-for="Color" class="text-danger"></span>
+                </div>
+            </div>
+
+            <hr />
+            <h5>Imágenes del Producto</h5>
+
+            <div class="mb-3">
+                <label asp-for="NewImageFile" class="form-label"></label>
+                <input asp-for="NewImageFile" class="form-control" type="file" accept="image/*" />
+                <span asp-validation-for="NewImageFile" class="text-danger"></span>
+            </div>
+
+            @if (Model.Images.Any())
+            {
+                <div class="row">
+                    @foreach (var image in Model.Images)
+                    {
+                        <div class="col-md-3 mb-3 text-center">
+                            <img src="@image.ImageUrl" class="img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;" alt="Imagen del producto" />
+                            <div class="mt-2">
+                                @if (!image.IsPrimary)
+                                {
+                                    <form asp-action="SetPrimaryImage" method="post" style="display: inline;">
+                                        <input type="hidden" name="imageId" value="@image.ProductImageID" />
+                                        <input type="hidden" name="productId" value="@Model.ProductID" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Marcar como principal">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                    </form>
+                                }
+                                <form asp-action="DeleteImage" method="post" style="display: inline;">
+                                    <input type="hidden" name="imageId" value="@image.ProductImageID" />
+                                    <input type="hidden" name="productId" value="@Model.ProductID" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar imagen" onclick="return confirm('¿Está seguro de que desea eliminar esta imagen?');">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="mb-3">
+                <input type="submit" value="Guardar" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

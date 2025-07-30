@@ -1,0 +1,55 @@
+@model IEnumerable<PhonePalace.Domain.Entities.Quote>
+
+@{
+    ViewData["Title"] = "Cotizaciones";
+}
+
+<h1>Listado de Cotizaciones</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Crear Nueva Cotización</a>
+</p>
+
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th># Cotización</th>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Vencimiento</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.QuoteID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Client.DisplayName)
+            </td>
+            <td>
+                @item.QuoteDate.ToShortDateString()
+            </td>
+            <td>
+                @item.ExpirationDate.ToShortDateString()
+            </td>
+            <td>
+                @item.Total.ToString("C")
+            </td>
+            <td>
+                <span class="badge bg-info">@Html.DisplayFor(modelItem => item.Status)</span>
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.QuoteID" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil-square"></i></a>
+                <a asp-action="Details" asp-route-id="@item.QuoteID" class="btn btn-sm btn-outline-secondary" title="Detalles"><i class="bi bi-info-circle"></i></a>
+                <a asp-action="GeneratePdf" asp-route-id="@item.QuoteID" class="btn btn-sm btn-outline-success" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                <a asp-action="Delete" asp-route-id="@item.QuoteID" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

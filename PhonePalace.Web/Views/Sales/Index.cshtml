@@ -1,0 +1,48 @@
+@model IEnumerable<PhonePalace.Domain.Entities.Invoice>
+
+@{
+    ViewData["Title"] = "Ventas";
+}
+
+<h1>Listado de Ventas</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Registrar Nueva Venta</a>
+</p>
+
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th># Factura</th>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>@item.InvoiceID.ToString("D5")</td>
+            <td>@Html.DisplayFor(modelItem => item.Client.DisplayName)</td>
+            <td>@item.SaleDate.ToShortDateString()</td>
+            <td>@item.Total.ToString("C")</td>
+            <td>
+                @if (item.Status == PhonePalace.Domain.Enums.InvoiceStatus.Cancelled)
+                {
+                    <span class="badge bg-danger">@Html.DisplayFor(modelItem => item.Status)</span>
+                }
+                else
+                {
+                    <span class="badge bg-success">@Html.DisplayFor(modelItem => item.Status)</span>
+                }
+            </td>
+            <td>
+                <a asp-action="Details" asp-route-id="@item.InvoiceID" class="btn btn-sm btn-outline-secondary" title="Detalles"><i class="bi bi-info-circle"></i></a>
+                <a asp-action="GenerateInvoicePdf" asp-route-id="@item.InvoiceID" class="btn btn-sm btn-outline-success" title="Descargar PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

@@ -1,0 +1,106 @@
+@model PhonePalace.Web.ViewModels.LegalEntityEditViewModel
+
+@{
+    ViewData["Title"] = "Editar Cliente: Persona Jurídica";
+}
+
+<h1>@ViewData["Title"]</h1>
+<h4>@Model.DisplayName</h4>
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="EditLegalEntity" asp-route-id="@Model.ClientID">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ClientID" />
+            <input type="hidden" asp-for="IsActive" />
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="CompanyName" class="form-label">Razón Social</label>
+                    <input asp-for="CompanyName" class="form-control" />
+                    <span asp-validation-for="CompanyName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="NIT" class="form-label">NIT</label>
+                    <input asp-for="NIT" class="form-control" />
+                    <span asp-validation-for="NIT" class="text-danger"></span>
+                </div>
+            </div>
+
+            <h5>Información de Contacto y Dirección</h5>
+            <hr />
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Email" class="form-label">Correo Electrónico</label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PhoneNumber" class="form-label">Teléfono</label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="DepartmentID" class="form-label">Departamento</label>
+                    <select asp-for="DepartmentID" id="DepartmentID" class="form-select" asp-items="ViewBag.DepartmentID">
+                        <option value="">-- Seleccione Departamento --</option>
+                    </select>
+                    <span asp-validation-for="DepartmentID" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="MunicipalityID" class="form-label">Municipio</label>
+                    <select asp-for="MunicipalityID" id="MunicipalityID" class="form-select" asp-items="ViewBag.MunicipalityID">
+                        <option value="">-- Seleccione un departamento primero --</option>
+                    </select>
+                    <span asp-validation-for="MunicipalityID" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="StreetAddress" class="form-label">Dirección</label>
+                <input asp-for="StreetAddress" class="form-control" />
+                <span asp-validation-for="StreetAddress" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <input type="submit" value="Guardar Cambios" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const departmentDropdown = document.getElementById('DepartmentID');
+            const municipalityDropdown = document.getElementById('MunicipalityID');
+
+            departmentDropdown.addEventListener('change', function () {
+                const departmentId = this.value;
+                municipalityDropdown.innerHTML = '<option value="">Cargando...</option>';
+
+                if (departmentId) {
+                    fetch(`@Url.Action("GetMunicipalities", "Clients")?departmentId=${departmentId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            municipalityDropdown.innerHTML = '<option value="">-- Seleccione Municipio --</option>';
+                            data.forEach(item => {
+                                municipalityDropdown.add(new Option(item.text, item.value));
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar municipios:', error);
+                            municipalityDropdown.innerHTML = '<option value="">Error al cargar</option>';
+                        });
+                } else {
+                    municipalityDropdown.innerHTML = '<option value="">-- Seleccione un departamento --</option>';
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,352 @@
+﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using PhonePalace.Domain.Entities;
+using PhonePalace.Domain.Interfaces;
+using PhonePalace.Infrastructure.Data;
+using PhonePalace.Web.ViewModels;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace PhonePalace.Web.Controllers
+{
+    [Authorize(Roles = "Admin")]
+    public class CellPhonesController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly IAuditService _auditService;
+        private readonly IFileStorageService _fileStorageService;
+        private readonly string _containerName = "products";
+
+        public CellPhonesController(ApplicationDbContext context, IAuditService auditService, IFileStorageService fileStorageService)
+        {
+            _context = context;
+            _auditService = auditService;
+            _fileStorageService = fileStorageService;
+        }
+
+        // GET: CellPhones
+        public async Task<IActionResult> Index()
+        {
+            var cellPhones = _context.CellPhones
+                .Where(c => c.IsActive)
+                .Include(c => c.Images)
+                .Include(c => c.Category)
+                .Include(c => c.Model)
+                .ThenInclude(m => m.Brand)
+                .AsNoTracking();
+            return View(await cellPhones.ToListAsync());
+        }
+
+        // GET: CellPhones/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var cellPhone = await _context.CellPhones
+                .Include(c => c.Category)
+                .Include(c => c.Images)
+                .Include(c => c.Model)
+                .ThenInclude(m => m.Brand)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.ProductID == id);
+            if (cellPhone == null)
+            {
+                return NotFound();
+            }
+
+            return View(cellPhone);
+        }
+
+        // GET: CellPhones/Create
+        public async Task<IActionResult> Create()
+        {
+            await PopulateDropdowns();
+            return View(new CellPhoneViewModel());
+        }
+
+        // POST: CellPhones/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(CellPhoneViewModel viewModel)
+        {
+            if (ModelState.IsValid)
+            {
+                var cellPhone = new CellPhone
+                {
+                    Name = viewModel.Name,
+                    Description = viewModel.Description,
+                    Price = viewModel.Price,
+                    Cost = viewModel.Cost,
+                    SKU = viewModel.SKU,
+                    CategoryID = viewModel.CategoryID,
+                    ModelID = viewModel.ModelID,
+                    Color = viewModel.Color,
+                    StorageGB = viewModel.StorageGB.GetValueOrDefault(),
+                    RamGB = viewModel.RamGB.GetValueOrDefault(),
+                    IsActive = viewModel.IsActive
+                };
+
+                if (viewModel.NewImageFile != null)
+                {
+                    var imageUrl = await _fileStorageService.SaveFileAsync(viewModel.NewImageFile, _containerName);
+                    cellPhone.Images.Add(new ProductImage
+                    {
+                        ImageUrl = imageUrl,
+                        IsPrimary = true
+                    });
+                }
+
+                _context.Add(cellPhone);
+                await _context.SaveChangesAsync();
+                await _auditService.LogAsync("CellPhones", $"Creó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+                return RedirectToAction(nameof(Index));
+            }
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            return View(viewModel);
+        }
+
+        // GET: CellPhones/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var cellPhone = await _context.CellPhones
+                .Include(c => c.Images)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.ProductID == id);
+
+            if (cellPhone == null)
+            {
+                return NotFound();
+            }
+
+            var viewModel = new CellPhoneViewModel
+            {
+                ProductID = cellPhone.ProductID,
+                Name = cellPhone.Name,
+                Description = cellPhone.Description,
+                Price = cellPhone.Price,
+                Cost = cellPhone.Cost,
+                SKU = cellPhone.SKU,
+                CategoryID = cellPhone.CategoryID,
+                ModelID = cellPhone.ModelID,
+                Color = cellPhone.Color,
+                StorageGB = cellPhone.StorageGB,
+                RamGB = cellPhone.RamGB,
+                IsActive = cellPhone.IsActive,
+                Images = cellPhone.Images.Select(i => new ProductImageViewModel
+                {
+                    ProductImageID = i.ProductImageID,
+                    ImageUrl = i.ImageUrl,
+                    IsPrimary = i.IsPrimary
+                }).ToList()
+            };
+
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            return View(viewModel);
+        }
+
+        // POST: CellPhones/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, CellPhoneViewModel viewModel)
+        {
+            if (id != viewModel.ProductID)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var cellPhone = await _context.CellPhones
+                        .Include(c => c.Images)
+                        .FirstOrDefaultAsync(c => c.ProductID == id);
+
+                    if (cellPhone == null) return NotFound();
+
+                    // Mapear propiedades
+                    cellPhone.Name = viewModel.Name;
+                    cellPhone.Description = viewModel.Description;
+                    cellPhone.Price = viewModel.Price;
+                    cellPhone.Cost = viewModel.Cost;
+                    cellPhone.SKU = viewModel.SKU;
+                    cellPhone.CategoryID = viewModel.CategoryID;
+                    cellPhone.ModelID = viewModel.ModelID;
+                    cellPhone.Color = viewModel.Color!;
+                    cellPhone.StorageGB = viewModel.StorageGB.GetValueOrDefault();
+                    cellPhone.RamGB = viewModel.RamGB.GetValueOrDefault();
+                    cellPhone.IsActive = viewModel.IsActive;
+
+                    // Manejar nueva imagen
+                    if (viewModel.NewImageFile != null)
+                    {
+                        var imageUrl = await _fileStorageService.SaveFileAsync(viewModel.NewImageFile, _containerName);
+                        cellPhone.Images.Add(new ProductImage
+                        {
+                            ImageUrl = imageUrl,
+                            // Si no hay imágenes, la nueva es la principal
+                            IsPrimary = !cellPhone.Images.Any()
+                        });
+                    }
+
+                    _context.Update(cellPhone);
+                    await _context.SaveChangesAsync();
+                    await _auditService.LogAsync("CellPhones", $"Editó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!CellPhoneExists(viewModel.ProductID))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            return View(viewModel);
+        }
+
+        // GET: CellPhones/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var cellPhone = await _context.CellPhones
+                .Include(c => c.Category)
+                .Include(c => c.Images)
+                .Include(c => c.Model)
+                .ThenInclude(m => m.Brand)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.ProductID == id);
+            if (cellPhone == null)
+            {
+                return NotFound();
+            }
+
+            return View(cellPhone);
+        }
+
+        // POST: CellPhones/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var cellPhone = await _context.CellPhones.Include(p => p.Images).FirstOrDefaultAsync(p => p.ProductID == id);
+            if (cellPhone != null)
+            {
+                cellPhone.IsActive = false; 
+                _context.Update(cellPhone);
+                
+                await _context.SaveChangesAsync();
+                await _auditService.LogAsync("CellPhones", $"Eliminó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+            }
+            
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteImage(int imageId, int productId)
+        {
+            var image = await _context.ProductImages.FindAsync(imageId);
+            if (image == null) return NotFound();
+
+            await _fileStorageService.DeleteFileAsync(image.ImageUrl);
+            _context.ProductImages.Remove(image);
+
+            if (image.IsPrimary)
+            {
+                var nextImage = await _context.ProductImages
+                    .Where(i => i.ProductID == productId && i.ProductImageID != imageId)
+                    .FirstOrDefaultAsync();
+                if (nextImage != null)
+                {
+                    nextImage.IsPrimary = true;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await _auditService.LogAsync("CellPhones", $"Eliminó una imagen del producto con ID {productId}.");
+
+            return RedirectToAction(nameof(Edit), new { id = productId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetPrimaryImage(int imageId, int productId)
+        {
+            var images = await _context.ProductImages.Where(i => i.ProductID == productId).ToListAsync();
+            if (!images.Any(i => i.ProductImageID == imageId))
+            {
+                return Json(new { success = false, message = "Imagen no encontrada para este producto." });
+            }
+
+            foreach (var img in images)
+            {
+                img.IsPrimary = (img.ProductImageID == imageId);
+            }
+            await _context.SaveChangesAsync();
+            await _auditService.LogAsync("CellPhones", $"Estableció una nueva imagen principal para el producto con ID {productId}.");
+
+            var updatedImages = await GetImagesForProduct(productId);
+            ViewData["ProductID"] = productId;
+            return PartialView("_ImageGalleryPartial", updatedImages);
+        }
+
+        private bool CellPhoneExists(int id)
+        {
+            return _context.CellPhones.Any(e => e.ProductID == id);
+        }
+
+        private async Task PopulateDropdowns(int? categoryId = null, int? modelId = null)
+        {
+            var activeCategories = await _context.Categories
+                                              .Where(c => c.IsActive)
+                                              .AsNoTracking()
+                                              .OrderBy(c => c.Name)
+                                              .ToListAsync();
+            var activeModels = await _context.Models
+                                              .Where(m => m.IsActive)
+                                              .AsNoTracking()
+                                              .Include(m => m.Brand)
+                                              .OrderBy(m => m.Brand.Name).ThenBy(m => m.Name)
+                                              .Select(m => new { m.ModelID, Name = $"{m.Brand.Name} {m.Name}" })
+                                              .ToListAsync();
+
+            ViewData["CategoryID"] = new SelectList(activeCategories, "CategoryID", "Name", categoryId);
+            ViewData["ModelID"] = new SelectList(activeModels, "ModelID", "Name", modelId);
+        }
+
+        private async Task<List<ProductImageViewModel>> GetImagesForProduct(int productId)
+        {
+            return await _context.ProductImages
+                .Where(i => i.ProductID == productId)
+                .AsNoTracking()
+                .Select(i => new ProductImageViewModel
+                {
+                    ProductImageID = i.ProductImageID,
+                    ImageUrl = i.ImageUrl,
+                    IsPrimary = i.IsPrimary
+                }).ToListAsync();
+        }
+    }
+}

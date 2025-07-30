@@ -1,0 +1,159 @@
+@model ClientCreateViewModel
+@using PhonePalace.Domain.Enums
+
+@{
+    ViewData["Title"] = "Crear Nuevo Cliente";
+}
+
+<h1>@ViewData["Title"]</h1>
+<hr />
+
+<form asp-action="Create">
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label asp-for="ClientType" class="form-label"></label>
+                <select asp-for="ClientType" asp-items="Html.GetEnumSelectList<ClientTypeSelection>()" class="form-select" id="clientTypeSelector">
+                    <option value="">Seleccione un tipo</option>
+                </select>
+                <span asp-validation-for="ClientType" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campos para Persona Natural -->
+    <div id="naturalPersonFields" style="@(Model.ClientType == ClientTypeSelection.NaturalPerson ? "display: block;" : "display: none;")">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="FirstName" class="form-label"></label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="LastName" class="form-label"></label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="DocumentType" class="form-label"></label>
+                <select asp-for="DocumentType" asp-items="Html.GetEnumSelectList<DocumentType>()" class="form-select">
+                     <option value="">Seleccione un tipo</option>
+                </select>
+                <span asp-validation-for="DocumentType" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="DocumentNumber" class="form-label"></label>
+                <input asp-for="DocumentNumber" class="form-control" />
+                <span asp-validation-for="DocumentNumber" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campos para Persona Jurídica -->
+    <div id="legalEntityFields" style="@(Model.ClientType == ClientTypeSelection.LegalEntity ? "display: block;" : "display: none;")">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="CompanyName" class="form-label"></label>
+                <input asp-for="CompanyName" class="form-control" />
+                <span asp-validation-for="CompanyName" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="NIT" class="form-label"></label>
+                <input asp-for="NIT" class="form-control" />
+                <span asp-validation-for="NIT" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campos Comunes -->
+    <div id="commonFields" style="@(Model.ClientType == ClientTypeSelection.NaturalPerson || Model.ClientType == ClientTypeSelection.LegalEntity ? "display: block;" : "display: none;")">
+        <h5>Información de Contacto y Dirección</h5>
+        <hr/>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="PhoneNumber" class="form-label"></label>
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label asp-for="DepartmentID" class="form-label"></label>
+                <select asp-for="DepartmentID" id="DepartmentID" class="form-select" asp-items="ViewBag.DepartmentID">
+                    <option value="">-- Seleccione Departamento --</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label asp-for="MunicipalityID" class="form-label"></label>
+                <select asp-for="MunicipalityID" id="MunicipalityID" class="form-select" asp-items="ViewBag.MunicipalityID">
+                    <option value="">-- Seleccione Municipio --</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="StreetAddress" class="form-label"></label>
+            <textarea asp-for="StreetAddress" class="form-control" rows="2"></textarea>
+            <span asp-validation-for="StreetAddress" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <input type="submit" value="Crear Cliente" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const clientTypeSelector = document.getElementById('clientTypeSelector');
+            const naturalPersonFields = document.getElementById('naturalPersonFields');
+            const legalEntityFields = document.getElementById('legalEntityFields');
+            const commonFields = document.getElementById('commonFields');
+            const departmentDropdown = document.getElementById('DepartmentID');
+            const municipalityDropdown = document.getElementById('MunicipalityID');
+
+            function toggleClientFields() {
+                const selection = clientTypeSelector.value;
+                naturalPersonFields.style.display = selection === 'NaturalPerson' ? 'block' : 'none';
+                legalEntityFields.style.display = selection === 'LegalEntity' ? 'block' : 'none';
+                commonFields.style.display = (selection === 'NaturalPerson' || selection === 'LegalEntity') ? 'block' : 'none';
+            }
+
+            clientTypeSelector.addEventListener('change', toggleClientFields);
+            // La llamada inicial se elimina. El estado inicial ahora es manejado puramente por Razor en el servidor.
+
+            departmentDropdown.addEventListener('change', function () {
+                const departmentId = this.value;
+                municipalityDropdown.innerHTML = '<option value="">Cargando...</option>';
+
+                if (departmentId) {
+                    fetch(`@Url.Action("GetMunicipalities", "Clients")?departmentId=${departmentId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            municipalityDropdown.innerHTML = '<option value="">-- Seleccione Municipio --</option>';
+                            data.forEach(item => {
+                                municipalityDropdown.add(new Option(item.text, item.value));
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar municipios:', error);
+                            municipalityDropdown.innerHTML = '<option value="">Error al cargar</option>';
+                        });
+                } else {
+                    municipalityDropdown.innerHTML = '<option value="">-- Seleccione un departamento --</option>';
+                }
+            });
+        });
+    </script>
+}

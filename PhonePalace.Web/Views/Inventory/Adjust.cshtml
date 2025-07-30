@@ -1,0 +1,45 @@
+@model PhonePalace.Web.ViewModels.InventoryAdjustViewModel
+
+@{
+    ViewData["Title"] = "Ajustar Stock";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<h4>@Model.ProductName</h4>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Adjust">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ProductID" />
+            <input type="hidden" asp-for="ProductName" />
+
+            <div class="mb-3">
+                <label asp-for="CurrentStock" class="form-label"></label>
+                <input asp-for="CurrentStock" class="form-control" readonly />
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="NewStock" class="form-label"></label>
+                <input asp-for="NewStock" class="form-control" />
+                <span asp-validation-for="NewStock" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Reason" class="form-label"></label>
+                <textarea asp-for="Reason" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Reason" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <input type="submit" value="Ajustar" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

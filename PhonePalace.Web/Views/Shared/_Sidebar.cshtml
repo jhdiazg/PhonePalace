@@ -1,0 +1,140 @@
+﻿﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@using PhonePalace.Web.Helpers
+
+@{
+    // Define qué controladores pertenecen al menú desplegable "Configuración"
+    var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models");
+    var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
+}
+
+<div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
+    <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
+        <img src="~/images/logo.png" alt="PhonePalace Logo" width="40" height="40" class="me-2 rounded-circle">
+        <span class="fs-4">PhonePalace</span>
+    </a>
+    <hr>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a asp-controller="Home" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Home")">
+                <i class="bi bi-speedometer2 me-2"></i>
+                Dashboard
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Compras" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Compras")">
+                <i class="bi bi-cart-plus-fill me-2"></i>
+                Compras
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Ventas" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
+                <i class="bi bi-cash-coin me-2"></i>
+                Ventas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#" class="nav-link text-white"> <!-- Este enlace aún no tiene controlador -->
+                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                RMA
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Reportes" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reportes")">
+                <i class="bi bi-bar-chart-line-fill me-2"></i>
+                Reportes
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Local" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Local")">
+                <i class="bi bi-shop me-2"></i>
+                Local
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Clients" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Clients")">
+                <i class="bi bi-people-fill me-2"></i>
+                Clientes
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Quotes" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Quotes")">
+                <i class="bi bi-file-earmark-text me-2"></i>
+                Cotizaciones
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="#inventory-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isInventoryActive ? "" : "collapsed")" aria-expanded="@isInventoryActive.ToString().ToLower()">
+                <i class="bi bi-box-seam-fill me-2"></i>
+                Inventario
+            </a>
+            <div class="collapse @(isInventoryActive ? "show" : "")" id="inventory-submenu">
+                <ul class="nav flex-column ms-4">
+                    <li class="nav-item">
+                        <a asp-controller="Products" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Products")">
+                            <i class="bi bi-collection-fill me-2"></i>
+                            Todos los Productos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="CellPhones" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "CellPhones")">
+                            <i class="bi bi-phone me-2"></i>
+                            Celulares
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Accessories" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Accessories")">
+                            <i class="bi bi-plug-fill me-2"></i>
+                            Accesorios
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Inventory" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Inventory")">
+                            <i class="bi bi-clipboard-data-fill me-2"></i>
+                            Reporte de Inventario
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a href="#config-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isConfigActive ? "" : "collapsed")" aria-expanded="@isConfigActive.ToString().ToLower()">
+                <i class="bi bi-gear-fill me-2"></i>
+                Configuración
+            </a>
+            <div class="collapse @(isConfigActive ? "show" : "")" id="config-submenu">
+                <ul class="nav flex-column ms-4">
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="nav-item">
+                            <a asp-controller="Categories" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Categories")">
+                                <i class="bi bi-tags-fill me-2"></i>
+                                Categorías
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="AuditLogs" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AuditLogs")">
+                                <i class="bi bi-journal-text me-2"></i>
+                                Auditoría
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="Brands" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Brands")">
+                                <i class="bi bi-bookmark-star-fill me-2"></i>
+                                Marcas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="Models" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Models")">
+                                <i class="bi bi-phone-vibrate-fill me-2"></i>
+                                Modelos
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </li>
+    </ul>
+    <hr>
+    <partial name="_LoginPartial" />
+</div>

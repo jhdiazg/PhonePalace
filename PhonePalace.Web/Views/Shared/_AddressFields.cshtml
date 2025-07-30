@@ -1,0 +1,23 @@
+@model PhonePalace.Web.ViewModels.IAddressViewModel
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label asp-for="DepartmentID" class="form-label"></label>
+        <select asp-for="DepartmentID" id="DepartmentID" class="form-select" asp-items="ViewBag.Departments">
+            <option value="">-- Seleccione Departamento --</option>
+        </select>
+        <span asp-validation-for="DepartmentID" class="text-danger"></span>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label asp-for="MunicipalityID" class="form-label"></label>
+        <select asp-for="MunicipalityID" id="MunicipalityID" class="form-select">
+            <option value="">-- Seleccione un departamento primero --</option>
+        </select>
+        <span asp-validation-for="MunicipalityID" class="text-danger"></span>
+    </div>
+</div>
+<div class="mb-3">
+    <label asp-for="StreetAddress" class="form-label"></label>
+    <input asp-for="StreetAddress" class="form-control" />
+    <span asp-validation-for="StreetAddress" class="text-danger"></span>
+</div>

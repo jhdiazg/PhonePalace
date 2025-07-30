@@ -1,0 +1,93 @@
+@model PhonePalace.Domain.Entities.Quote
+
+@{
+    ViewData["Title"] = "Detalles de la Cotización #" + Model.QuoteID;
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h4>Información General</h4>
+            <div>
+                <a asp-action="Edit" asp-route-id="@Model.QuoteID" class="btn btn-warning">
+                    <i class="bi bi-pencil-square"></i> Editar
+                </a>
+                <a asp-action="GeneratePdf" asp-route-id="@Model.QuoteID" class="btn btn-danger" target="_blank">
+                    <i class="bi bi-file-earmark-pdf"></i> Generar PDF
+                </a>
+                <form asp-action="SendQuoteByEmail" asp-route-id="@Model.QuoteID" method="post" class="d-inline">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-envelope"></i> Enviar por Correo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Cliente</h5>
+                <p>
+                    <strong>@Model.Client.DisplayName</strong><br>
+                    @Model.Client.Email<br>
+                    @Model.Client.StreetAddress
+                </p>
+            </div>
+            <div class="col-md-6">
+                <h5>Detalles de la Cotización</h5>
+                <dl class="row">
+                    <dt class="col-sm-5">Fecha de Cotización:</dt>
+                    <dd class="col-sm-7">@Model.QuoteDate.ToShortDateString()</dd>
+
+                    <dt class="col-sm-5">Fecha de Vencimiento:</dt>
+                    <dd class="col-sm-7">@Model.ExpirationDate.ToShortDateString()</dd>
+
+                    <dt class="col-sm-5">Estado:</dt>
+                    <dd class="col-sm-7"><span class="badge bg-primary">@Model.Status</span></dd>
+                </dl>
+            </div>
+        </div>
+
+        <h5 class="mt-4">Productos Cotizados</h5>
+        <table class="table table-bordered mt-3">
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th>
+                    <th class="text-end">Cantidad</th>
+                    <th class="text-end">Precio Unitario</th>
+                    <th class="text-end">Total Línea</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Details)
+                {
+                    <tr>
+                        <td>@item.Product.Name</td>
+                        <td class="text-end">@item.Quantity</td>
+                        <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                        <td class="text-end">@item.LineTotal.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-end fw-bold">Subtotal:</td>
+                    <td class="text-end fw-bold">@Model.Subtotal.ToString("C")</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end fw-bold">Impuestos (15%):</td>
+                    <td class="text-end fw-bold">@Model.Tax.ToString("C")</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end fw-bold fs-5">Total:</td>
+                    <td class="text-end fw-bold fs-5">@Model.Total.ToString("C")</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="card-footer">
+        <a asp-action="Index" class="btn btn-secondary">Volver al Listado</a>
+    </div>
+</div>

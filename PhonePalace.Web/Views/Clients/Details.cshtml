@@ -1,0 +1,58 @@
+@model Client
+
+@{
+    ViewData["Title"] = "Detalles del Cliente";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div>
+    <h4>@Model.DisplayName</h4>
+    <hr />
+    <dl class="row">
+        @if (Model is NaturalPerson naturalPerson)
+        {
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => naturalPerson.FirstName)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => naturalPerson.FirstName)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => naturalPerson.LastName)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => naturalPerson.LastName)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => naturalPerson.DocumentType)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => naturalPerson.DocumentType)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => naturalPerson.DocumentNumber)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => naturalPerson.DocumentNumber)</dd>
+        }
+        else if (Model is LegalEntity legalEntity)
+        {
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => legalEntity.CompanyName)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => legalEntity.CompanyName)</dd>
+
+            <dt class="col-sm-3">@Html.DisplayNameFor(model => legalEntity.NIT)</dt>
+            <dd class="col-sm-9">@Html.DisplayFor(model => legalEntity.NIT)</dd>
+        }
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Email)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.Email)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.PhoneNumber)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.PhoneNumber)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Department)</dt>
+        <dd class="col-sm-9">@Model.Department?.Name</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Municipality)</dt>
+        <dd class="col-sm-9">@Model.Municipality?.Name</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.StreetAddress)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.StreetAddress)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.IsActive)</dt>
+        <dd class="col-sm-9">@(Model.IsActive ? "Sí" : "No")</dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.ClientID" class="btn btn-primary">Editar</a>
+    <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+</div>

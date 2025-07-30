@@ -1,0 +1,78 @@
+﻿@model PhonePalace.Domain.Entities.CellPhone
+
+@{
+    ViewData["Title"] = "Detalles del Celular";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div>
+    <h4>@Model.Name</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Description)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Description)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Price)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Price)
+        </dd>
+        <dt class = "col-sm-3">
+            Costo
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Cost)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.SKU)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.SKU)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Category)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Category.Name)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Model)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Model.Brand.Name) @Html.DisplayFor(model => model.Model.Name)
+        </dd>
+        <dt class = "col-sm-3">
+            @Html.DisplayNameFor(model => model.Color)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.Color)
+        </dd>
+        <dt class = "col-sm-3">
+            Almacenamiento (GB)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.StorageGB)
+        </dd>
+        <dt class = "col-sm-3">
+            RAM (GB)
+        </dt>
+        <dd class = "col-sm-9">
+            @Html.DisplayFor(model => model.RamGB)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.ProductID" class="btn btn-primary">Editar</a> |
+    <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+</div>

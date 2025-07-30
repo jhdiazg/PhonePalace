@@ -1,0 +1,32 @@
+@model Client
+
+@{
+    ViewData["Title"] = "Eliminar Cliente";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<h3>¿Está seguro de que desea eliminar este cliente?</h3>
+<div>
+    <h4>@Model.DisplayName</h4>
+    <hr />
+    <p class="text-danger">Esta acción no se puede deshacer. El cliente se marcará como inactivo y no aparecerá en las listas principales.</p>
+    <dl class="row">
+        @if (Model is NaturalPerson naturalPerson)
+        {
+            <dt class="col-sm-4">Documento</dt>
+            <dd class="col-sm-8">@naturalPerson.DocumentNumber</dd>
+        }
+        else if (Model is LegalEntity legalEntity)
+        {
+            <dt class="col-sm-4">NIT</dt>
+            <dd class="col-sm-8">@legalEntity.NIT</dd>
+        }
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="ClientID" />
+        <input type="submit" value="Eliminar" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+    </form>
+</div>
