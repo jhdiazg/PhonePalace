@@ -1,0 +1,11 @@
+D:\PhonePalace\PhonePalaceApplication\bin\Debug\net9.0\PhonePalaceApplication.deps.json
+D:\PhonePalace\PhonePalaceApplication\bin\Debug\net9.0\PhonePalaceApplication.dll
+D:\PhonePalace\PhonePalaceApplication\bin\Debug\net9.0\PhonePalaceApplication.pdb
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.GeneratedMSBuildEditorConfig.editorconfig
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.AssemblyInfoInputs.cache
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.AssemblyInfo.cs
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.csproj.CoreCompileInputs.cache
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.dll
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\refint\PhonePalaceApplication.dll
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\PhonePalaceApplication.pdb
+D:\PhonePalace\PhonePalaceApplication\obj\Debug\net9.0\ref\PhonePalaceApplication.dll

@@ -1,0 +1,12 @@
+
+namespace PhonePalace.Domain.Enums
+{
+    public enum ProductCondition
+    {
+        Nuevo,
+        Seminuevo,
+        Reacondicionado,
+        Usado,
+        ParaPiezas
+    }
+}
