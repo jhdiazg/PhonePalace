@@ -334,6 +334,7 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.MvcApplicationPa
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.MvcApplicationPartsAssemblyInfo.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.RazorAssemblyInfo.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.RazorAssemblyInfo.cs
+D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.sourcelink.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\rjimswa.dswa.cache.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
@@ -476,4 +477,3 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

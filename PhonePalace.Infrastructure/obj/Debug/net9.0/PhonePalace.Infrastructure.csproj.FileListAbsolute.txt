@@ -18,6 +18,7 @@ D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\LatoFont\Lato-Thin.tt
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\LatoFont\Lato-ThinItalic.ttf
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\LatoFont\OFL.txt
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\PhonePalace.Infrastructure.deps.json
+D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\PhonePalace.Infrastructure.runtimeconfig.json
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\PhonePalace.Infrastructure.dll
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\PhonePalace.Infrastructure.pdb
 D:\PhonePalace\PhonePalace.Infrastructure\bin\Debug\net9.0\PhonePalace.Domain.dll
@@ -27,8 +28,10 @@ D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastru
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.AssemblyInfoInputs.cache
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.AssemblyInfo.cs
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.csproj.CoreCompileInputs.cache
+D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.sourcelink.json
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePal.C308C9DE.Up2Date
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.dll
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\refint\PhonePalace.Infrastructure.dll
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.pdb
+D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\PhonePalace.Infrastructure.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Infrastructure\obj\Debug\net9.0\ref\PhonePalace.Infrastructure.dll

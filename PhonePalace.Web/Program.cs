@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Localization;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
+using System.Globalization;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,6 +38,23 @@ builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddTransient<EmailService>();
 
 var app = builder.Build();
+
+// --- INICIO: Configuración de Cultura para Colombia ---
+// Se clona la cultura 'es-CO' para poder modificarla.
+var cultureInfo = new CultureInfo("es-CO");
+// Se establece el punto '.' como separador decimal para la validación y el model binding.
+// Esto es crucial para que los formularios que envían números desde JavaScript (que usan '.') funcionen correctamente,
+// sin afectar el formato de moneda (que seguirá usando los símbolos y separadores de miles de 'es-CO').
+cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
+
+var supportedCultures = new[] { cultureInfo };
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(cultureInfo),
+    SupportedCultures = supportedCultures,
+    SupportedUICultures = supportedCultures
+});
+// --- FIN: Configuración de Cultura ---
 
 // --- Ejecutar Seeders ---
 using (var scope = app.Services.CreateScope())

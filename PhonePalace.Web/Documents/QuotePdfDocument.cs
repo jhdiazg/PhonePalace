@@ -18,7 +18,7 @@ namespace PhonePalace.Web.Documents
 
             // Asegurarse de que la cultura para el formato de moneda sea la correcta
             // Esto es importante para que los formatos de moneda y fecha se muestren correctamente
-            // Por ejemplo, para la Republica Dominicana, se usa "es-DO" que es el español
+            // Por ejemplo, para Colombia, se usa "es-CO" que es el español
             CultureInfo.CurrentCulture = new CultureInfo("es-CO");
         }
 
@@ -91,7 +91,7 @@ namespace PhonePalace.Web.Documents
                         companyColumn.Item().Text("De").SemiBold().AlignRight();
                         companyColumn.Item().Text("Phone Palace").AlignRight();
                         companyColumn.Item().Text("info@phonepalace.com").AlignRight();
-                        companyColumn.Item().Text("+1 (809) 555-1234").AlignRight();
+                        companyColumn.Item().Text("+57 300 123 4567").AlignRight();
                     });
                 });
 
@@ -101,8 +101,8 @@ namespace PhonePalace.Web.Documents
                 column.Item().AlignRight().Column(totalsCol =>
                 {
                     totalsCol.Spacing(2);
-                    totalsCol.Item().Text($"Subtotal: {_quote.Subtotal:C}").FontSize(12);
-                    totalsCol.Item().Text($"Impuestos (15%): {_quote.Tax:C}").FontSize(12);
+                    totalsCol.Item().AlignRight().Text($"Subtotal: {_quote.Subtotal:C}").FontSize(12);
+                    totalsCol.Item().AlignRight().Text($"IVA (19%): {_quote.Tax:C}").FontSize(12);
                     totalsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
                     totalsCol.Item().Text($"Total: {_quote.Total:C}").FontSize(14).Bold();
                 });

@@ -398,6 +398,15 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvoiceID"));
 
+                    b.Property<DateTime?>("CancellationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CancelledByUserId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ClientID")
                         .HasColumnType("int");
 
@@ -520,6 +529,10 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("PaymentID");
 

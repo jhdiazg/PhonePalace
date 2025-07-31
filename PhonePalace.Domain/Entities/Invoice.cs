@@ -18,7 +18,7 @@ namespace PhonePalace.Domain.Entities
         public DateTime SaleDate { get; set; }
 
         [Required]
-        public string UserId { get; set; } // Para saber quién realizó la venta
+        public string UserId { get; set; }
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Subtotal { get; set; }

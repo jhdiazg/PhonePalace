@@ -158,10 +158,12 @@ public class QuotesController : Controller
                     Product = product,
                     Quote = quote
                 };
-                quote.Subtotal += detail.Quantity * detail.UnitPrice;
+                subtotal += detail.Quantity * detail.UnitPrice;
                 _context.QuoteDetails.Add(detail);
             }
 
+            quote.Subtotal = subtotal;
+            quote.Tax = subtotal * 0.19m; // 19% IVA
             quote.Total = quote.Subtotal + quote.Tax;
 
             _context.Quotes.Add(quote);
@@ -272,7 +274,7 @@ public class QuotesController : Controller
                 }
 
                 quoteToUpdate.Subtotal = subtotal;
-                quoteToUpdate.Tax = quoteToUpdate.Subtotal * 0.15m;
+                quoteToUpdate.Tax = quoteToUpdate.Subtotal * 0.19m; // Corregido a 19% IVA
                 quoteToUpdate.Total = quoteToUpdate.Subtotal + quoteToUpdate.Tax;
 
                 _context.Update(quoteToUpdate);

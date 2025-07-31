@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
@@ -81,6 +81,23 @@ namespace PhonePalace.Web.Controllers
             var paginatedProducts = await PaginatedList<ProductIndexViewModel>.CreateAsync(productsQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
 
             return View(paginatedProducts);
+        }
+
+        [HttpGet("api/products/{id}")]
+        public async Task<IActionResult> GetProduct(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            var stock = await _context.Inventories
+                                      .Where(i => i.ProductID == id)
+                                      .SumAsync(i => i.Stock);
+
+            return Ok(new { price = product.Price, stock });
         }
     }
 }
