@@ -10,6 +10,7 @@
 <hr />
 
 <form asp-action="Create" id="saleForm">
+    <input type="hidden" name="HasProducts" value="true" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
     <div class="row">
@@ -99,7 +100,7 @@
         </div>
         <div class="col-md-2">
             <label class="form-label">Precio Unit.</label>
-            <input type="number" name="Details[INDEX].UnitPrice" class="form-control price-input" readonly step="0.01" />
+            <input type="text" inputmode="decimal" name="Details[INDEX].UnitPrice" class="form-control price-input text-end" readonly />
         </div>
         <div class="col-md-2">
             <label class="form-label">Subtotal</label>
@@ -119,7 +120,7 @@
         </div>
         <div class="col-md-3">
             <label class="form-label">Monto</label>
-            <input type="number" name="Payments[INDEX].Amount" class="form-control amount-input" step="0.01" min="0.01" />
+            <input type="text" inputmode="decimal" name="Payments[INDEX].Amount" class="form-control amount-input text-end" />
         </div>
         <div class="col-md-4 reference-container" style="display: none;">
             <label class="form-label">Referencia</label>
@@ -138,35 +139,37 @@
         $(document).ready(function () {
             let productIndex = 0;
             let paymentIndex = 0;
-            const taxRate = @taxRate;
+            // Se pasa taxRate usando InvariantCulture para asegurar que el separador decimal sea '.'
+            const taxRate = @taxRate.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
+            // --- Funciones para agregar y quitar filas ---
             function addProductRow() {
                 const template = document.getElementById('product-row-template').innerHTML;
-                const newRow = template.replace(/\[INDEX\]/g, productIndex);
+                const newRow = template.replace(/INDEX/g, productIndex);
                 $('#product-details-container').append(newRow);
                 productIndex++;
+                updateTotals();
             }
 
             function addPaymentRow() {
                 const template = document.getElementById('payment-row-template').innerHTML;
-                const newRow = template.replace(/\[INDEX\]/g, paymentIndex);
+                const newRow = template.replace(/INDEX/g, paymentIndex);
                 $('#payment-details-container').append(newRow);
                 paymentIndex++;
+                updateTotals();
             }
 
-            $('#add-product-row').click(addProductRow);
-            $('#add-payment-row').click(addPaymentRow);
-
-            // Eliminar fila
-            $('body').on('click', '.remove-row', function () {
+            function handleRemoveRow() {
                 $(this).closest('.row.product-row, .row.payment-row').remove();
+                reindexRows();
+                updateTotals();
+            }
 
+            function reindexRows() {
                 // Re-indexar las filas de productos para que los índices sean consecutivos
                 $('#product-details-container .product-row').each(function (index) {
                     $(this).find('input, select').each(function () {
-                        if (this.name) {
-                            this.name = this.name.replace(/Details\[\d+\]/, `Details[${index}]`);
-                        }
+                        this.name = this.name.replace(/Details\[\d+\]/, `Details[${index}]`);
                     });
                 });
                 productIndex = $('#product-details-container .product-row').length;
@@ -174,86 +177,84 @@
                 // Re-indexar las filas de pagos
                 $('#payment-details-container .payment-row').each(function (index) {
                     $(this).find('input, select').each(function () {
-                        if (this.name) {
-                            this.name = this.name.replace(/Payments\[\d+\]/, `Payments[${index}]`);
-                        }
+                        this.name = this.name.replace(/Payments\[\d+\]/, `Payments[${index}]`);
                     });
                 });
                 paymentIndex = $('#payment-details-container .payment-row').length;
+            }
 
-                updateTotals();
-            });
+            // --- Manejadores de Eventos ---
+            $('#add-product-row').click(addProductRow);
+            $('#add-payment-row').click(addPaymentRow);
+            $('body').on('click', '.remove-row', handleRemoveRow);
 
-            // Actualizar precio al seleccionar producto
-            $('body').on('change', '.product-select', function () {
+            $('body').on('change', '.product-select', function (e) {
                 const row = $(this).closest('.row');
                 const productId = $(this).val();
                 if (!productId) {
                     row.find('.price-input').val('');
+                    row.find('.quantity-input').val('1');
                     updateTotals();
                     return;
                 }
 
                 fetch(`/api/products/${productId}`)
                     .then(response => {
-                        if (!response.ok) throw new Error('Producto no encontrado');
+                        if (!response.ok) throw new Error(`Producto no encontrado (ID: ${productId})`);
                         return response.json();
                     })
                     .then(data => {
-                        row.find('.price-input').val(data.price);
+                        const price = parseFloat(data.price) || 0;
+                        row.find('.price-input').val(price.toFixed(2));
                         row.find('.quantity-input').attr('max', data.stock);
                         updateTotals();
                     })
                     .catch(error => {
-                        console.error('Error:', error);
-                        alert('No se pudo obtener la información del producto.');
+                        console.error('Error al obtener producto:', error);
+                        alert(`Error: No se pudo obtener la información del producto. ${error.message}`);
                         $(this).val('');
                     });
             });
 
-            // Actualizar totales al cambiar cantidad o monto
             $('body').on('input', '.quantity-input, .amount-input', updateTotals);
 
-            // Mostrar/ocultar campo de referencia
             $('body').on('change', '.payment-method-select', function () {
                 const selectedMethod = $(this).val();
                 const refContainer = $(this).closest('.row').find('.reference-container');
-                if (selectedMethod === '@PaymentMethod.CreditCard.ToString()' ||
-                    selectedMethod === '@PaymentMethod.DebitCard.ToString()' ||
-                    selectedMethod === '@PaymentMethod.Transfer.ToString()') {
+                const needsReference = ['CreditCard', 'DebitCard', 'Transfer'].includes(selectedMethod);
+                if (needsReference) {
                     refContainer.show();
                 } else {
                     refContainer.hide().find('input').val('');
                 }
             });
 
+            // --- Lógica de Cálculo y Formato ---
             function updateTotals() {
                 let subtotal = 0;
+                const currencyFormatter = new Intl.NumberFormat('es-CO', {
+                    style: 'currency',
+                    currency: 'COP'
+                });
 
-                // Calcular subtotal de productos
                 $('.product-row').each(function () {
                     const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
                     const price = parseFloat($(this).find('.price-input').val()) || 0;
                     const lineTotal = quantity * price;
-                    $(this).find('.subtotal-line').val(lineTotal.toFixed(2));
+                    $(this).find('.subtotal-line').val(currencyFormatter.format(lineTotal));
                     subtotal += lineTotal;
                 });
 
                 const tax = subtotal * taxRate;
                 const total = subtotal + tax;
-
                 let paidAmount = 0;
                 $('.payment-row').each(function () {
-                    paidAmount += parseFloat($(this).find('.amount-input').val()) || 0;
+                    // Reemplazar coma por punto para un parseo robusto
+                    const amountValue = $(this).find('.amount-input').val().replace(',', '.');
+                    paidAmount += parseFloat(amountValue) || 0;
                 });
 
                 const balance = total - paidAmount;
-
-                // Formateador de moneda para COP (Peso Colombiano)
-                const currencyFormatter = new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP'
-                });
 
                 $('#subtotal-display').text(currencyFormatter.format(subtotal));
                 $('#tax-display').text(currencyFormatter.format(tax));
@@ -261,24 +262,50 @@
                 $('#paid-display').text(currencyFormatter.format(paidAmount));
                 $('#balance-display').text(currencyFormatter.format(balance));
 
-                // Cambiar color del balance
                 const balanceDisplay = $('#balance-display');
                 balanceDisplay.removeClass('text-danger text-success');
-
-                // Usamos una pequeña tolerancia para evitar problemas con punto flotante
                 if (balance < -0.001) {
-                    balanceDisplay.addClass('text-success'); // Devuelta
+                    balanceDisplay.addClass('text-success');
                 } else if (balance > 0.001) {
-                    balanceDisplay.addClass('text-danger'); // Pendiente
+                    balanceDisplay.addClass('text-danger');
                 } else {
-                    balanceDisplay.addClass('text-success'); // Saldado
+                    balanceDisplay.addClass('text-success');
                 }
             }
 
-            // Iniciar con una fila de cada uno para una mejor experiencia de usuario
+            // --- Validación y Preparación para el Envío ---
+            $('#saleForm').on('submit', function (e) {
+                // 1. Validar que haya productos
+                if ($('#product-details-container .product-row').length === 0) {
+                    alert('Error: Debe agregar al menos un producto a la venta.');
+                    e.preventDefault();
+                    return;
+                }
+
+                // 2. Normalizar todos los valores numéricos ANTES de enviar
+                // Esto asegura que el servidor reciba "10000.00" y no "10.000,00" o "10000"
+                $('.amount-input, .price-input').each(function () {
+                    let value = $(this).val().replace(',', '.');
+                    let parsedValue = parseFloat(value) || 0;
+                    $(this).val(parsedValue.toFixed(2));
+                });
+
+                // 3. Validar que el pago cubra el total (opcional, pero buena UX)
+                const balanceText = $('#balance-display').text();
+                const balance = parseFloat(balanceText.replace(/[^0-9,-]+/g, "").replace(',', '.'));
+                if (balance > 0.001) {
+                    if (!confirm('La venta tiene un balance pendiente por $' + balance.toFixed(2) + '. ¿Desea continuar de todas formas?')) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+
+                // Si todo está bien, el formulario se envía.
+            });
+
+            // --- Inicialización de la página ---
             addProductRow();
             addPaymentRow();
-            updateTotals();
         });
     </script>
 }

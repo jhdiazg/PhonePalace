@@ -5,6 +5,7 @@ using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
 using System.Globalization;
+using PhonePalace.Web.Areas.Identity.Data;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,9 +16,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = false) // Facilitar login en desarrollo
-    .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false) // Facilitar login en desarrollo
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
 
 // --- INICIO: Configuración de Sesión ---
 // Es necesario para que servicios como AuditService puedan acceder a datos de la sesión del usuario.
@@ -30,23 +31,40 @@ builder.Services.AddSession(options =>
 });
 // --- FIN: Configuración de Sesión ---
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddSessionStateTempDataProvider(); // Configura TempData para que use el estado de sesión en lugar de cookies.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 builder.Services.AddTransient<EmailService>();
+builder.Services.AddRazorPages();
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/Identity/Account/Login";
+    options.LogoutPath = "/Identity/Account/Logout";
+    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+});
 
 var app = builder.Build();
 
 // --- INICIO: Configuración de Cultura para Colombia ---
-// Se clona la cultura 'es-CO' para poder modificarla.
 var cultureInfo = new CultureInfo("es-CO");
-// Se establece el punto '.' como separador decimal para la validación y el model binding.
-// Esto es crucial para que los formularios que envían números desde JavaScript (que usan '.') funcionen correctamente,
-// sin afectar el formato de moneda (que seguirá usando los símbolos y separadores de miles de 'es-CO').
-cultureInfo.NumberFormat.NumberDecimalSeparator = ".";
 
+// Clonamos el formato de número para poder modificarlo. La cultura original 'es-CO' usa ',' para decimales.
+var numberFormat = (NumberFormatInfo)cultureInfo.NumberFormat.Clone();
+
+// ESTA ES LA LÍNEA CLAVE: Cambiamos el separador decimal a '.' para el PARSEO de números.
+// Esto es fundamental para que el Model Binding de ASP.NET Core pueda entender los valores
+// que envían los formularios web y JavaScript, que usan '.' por estándar internacional.
+numberFormat.NumberDecimalSeparator = ".";
+
+// Asignamos el formato modificado a nuestra cultura personalizada.
+cultureInfo.NumberFormat = numberFormat;
+
+// La UI (fechas, formato de moneda con ToString("C")) seguirá usando las reglas de 'es-CO',
+// pero el backend ahora entenderá los números de los formularios.
 var supportedCultures = new[] { cultureInfo };
 app.UseRequestLocalization(new RequestLocalizationOptions
 {
@@ -54,7 +72,7 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedCultures = supportedCultures,
     SupportedUICultures = supportedCultures
 });
-// --- FIN: Configuración de Cultura ---
+// --- FIN: Configuración de Cultura para Colombia ---
 
 // --- Ejecutar Seeders ---
 using (var scope = app.Services.CreateScope())

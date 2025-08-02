@@ -67,7 +67,7 @@ public class SalesController : Controller
 
         // 1. Limpieza y validaciones iniciales del modelo.
         model.Details.RemoveAll(d => d.ProductID == 0);
-        if (!model.Details.Any())
+        if (model.Details.Count == 0 && !Request.Form.ContainsKey("HasProducts"))
         {
             ModelState.AddModelError("", "Debe agregar al menos un producto a la venta.");
         }
@@ -88,6 +88,7 @@ public class SalesController : Controller
 
             // 2. Validaciones de lógica de negocio (ej. Stock).
             // Se realizan todas las validaciones ANTES de modificar la base de datos.
+            var productsFromDb = new Dictionary<int, Product>();
             foreach (var detailVm in model.Details)
             {
                 var product = await _context.Products
@@ -99,6 +100,7 @@ public class SalesController : Controller
                     ModelState.AddModelError("", $"El producto con ID {detailVm.ProductID} no fue encontrado.");
                     continue; // Continúa validando los demás productos.
                 }
+                productsFromDb[product.ProductID] = product;
 
                 var inventory = product.InventoryLevels.FirstOrDefault();
                 if (inventory == null || inventory.Stock < detailVm.Quantity)
@@ -109,7 +111,7 @@ public class SalesController : Controller
 
             // Calcular totales para validar el pago.
             var taxRate = 0.19m; // 19% de IVA.
-            subtotal = model.Details.Sum(d => d.Quantity * d.UnitPrice);
+            subtotal = model.Details.Sum(d => d.Quantity * (productsFromDb.ContainsKey(d.ProductID) ? productsFromDb[d.ProductID].Price : 0));
             var tax = subtotal * taxRate;
             var total = subtotal + tax;
 
@@ -128,37 +130,27 @@ public class SalesController : Controller
             }
 
             // 3. Procesar la venta si todo es válido.
-            // Ahora sí se modifica la base de datos.
-            foreach (var detailVm in model.Details)
-            {
-                var product = await _context.Products
-                    .Include(p => p.InventoryLevels)
-                    .FirstAsync(p => p.ProductID == detailVm.ProductID);
-
-                var inventory = product.InventoryLevels.First();
-                inventory.Stock -= detailVm.Quantity;
-                inventory.LastUpdated = DateTime.UtcNow;
-
-                invoiceDetails.Add(new InvoiceDetail
-                {
-                    ProductID = detailVm.ProductID,
-                    Quantity = detailVm.Quantity,
-                    UnitPrice = product.Price // Usar el precio de la BD para seguridad.
-                });
-            }
-
             var invoice = new Invoice
             {
                 ClientID = model.ClientID,
                 SaleDate = model.SaleDate,
                 UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System",
-                Subtotal = invoiceDetails.Sum(d => d.LineTotal), // Recalcular con datos seguros
-                Tax = invoiceDetails.Sum(d => d.LineTotal) * taxRate,
-                Total = invoiceDetails.Sum(d => d.LineTotal) * (1 + taxRate),
-                Status = InvoiceStatus.Completed,
-                Details = invoiceDetails
+                Status = InvoiceStatus.Completed
             };
 
+            // Asignar detalles y recalcular totales
+            invoice.Details = model.Details.Select(d => new InvoiceDetail
+            {
+                ProductID = d.ProductID,
+                Quantity = d.Quantity,
+                UnitPrice = productsFromDb[d.ProductID].Price
+            }).ToList();
+
+            invoice.Subtotal = invoice.Details.Sum(d => d.LineTotal);
+            invoice.Tax = invoice.Subtotal * taxRate;
+            invoice.Total = invoice.Subtotal + invoice.Tax;
+
+            // Asignar pagos
             if (model.Payments != null)
             {
                 invoice.Payments = model.Payments.Select(p => new Payment
@@ -167,6 +159,15 @@ public class SalesController : Controller
                     Amount = p.Amount,
                     ReferenceNumber = p.ReferenceNumber
                 }).ToList();
+            }
+
+            // Actualizar el stock
+            foreach (var detail in invoice.Details)
+            {
+                var product = productsFromDb[detail.ProductID];
+                var inventory = product.InventoryLevels.First();
+                inventory.Stock -= detail.Quantity;
+                inventory.LastUpdated = DateTime.UtcNow;
             }
 
             _context.Invoices.Add(invoice);
@@ -184,6 +185,25 @@ public class SalesController : Controller
             await PopulateViewModelDropdowns();
             return View(model);
         }
+    }
+
+    [Route("Ventas/Detalles/{id}")]
+    public async Task<IActionResult> Details(int id)
+    {
+        var invoice = await _context.Invoices
+            .Include(i => i.Client)
+            .Include(i => i.Details)
+                .ThenInclude(d => d.Product)
+            .Include(i => i.Payments)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.InvoiceID == id);
+
+        if (invoice == null)
+        {
+            return NotFound();
+        }
+
+        return View(invoice);
     }
 
     [Route("Ventas/FacturaPdf/{id}")]
@@ -209,5 +229,67 @@ public class SalesController : Controller
         var pdfBytes = document.GeneratePdf();
 
         return File(pdfBytes, "application/pdf", $"Factura-{invoice.InvoiceID:D5}.pdf");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Route("Ventas/Anular/{id}")]
+    public async Task<IActionResult> Cancel(int id)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var invoice = await _context.Invoices
+                .Include(i => i.Details)
+                    .ThenInclude(d => d.Product)
+                        .ThenInclude(p => p.InventoryLevels)
+                .FirstOrDefaultAsync(i => i.InvoiceID == id);
+
+            if (invoice == null)
+            {
+                return NotFound();
+            }
+
+            if (invoice.Status == InvoiceStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Esta venta ya ha sido anulada.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Revertir el stock para cada producto en la factura
+            foreach (var detail in invoice.Details)
+            {
+                if (detail.Product != null)
+                {
+                    var inventory = detail.Product.InventoryLevels.FirstOrDefault();
+                    if (inventory != null)
+                    {
+                        inventory.Stock += detail.Quantity;
+                        inventory.LastUpdated = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para revertir el stock.", detail.ProductID, invoice.InvoiceID);
+                    }
+                }
+            }
+
+            // Cambiar el estado de la factura
+            invoice.Status = InvoiceStatus.Cancelled;
+            invoice.CancellationDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["SuccessMessage"] = $"La venta #{invoice.InvoiceID} ha sido anulada exitosamente y el stock ha sido revertido.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error al anular la venta con ID {InvoiceID}", id);
+            TempData["ErrorMessage"] = "Ocurrió un error inesperado al anular la venta.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
     }
 }

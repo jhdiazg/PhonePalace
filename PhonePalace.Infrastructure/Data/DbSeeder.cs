@@ -1,8 +1,8 @@
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace PhonePalace.Infrastructure.Data
@@ -14,6 +14,9 @@ namespace PhonePalace.Infrastructure.Data
             // --- Obtener los servicios necesarios ---
             var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            // No se puede usar ILogger<DbSeeder> porque DbSeeder es una clase estática.
+            // En su lugar, usamos ILoggerFactory para crear un logger con un nombre de categoría específico.
+            var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
             // --- Crear Roles ---
             string[] roleNames = { "Admin", "Vendedor", "Almacenista", "Cajero" };
@@ -23,7 +26,15 @@ namespace PhonePalace.Infrastructure.Data
                 if (!roleExist)
                 {
                     // Crea el rol si no existe
-                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                    var roleResult = await roleManager.CreateAsync(new IdentityRole(roleName));
+                    if (roleResult.Succeeded)
+                    {
+                        logger.LogInformation("Rol '{RoleName}' creado exitosamente.", roleName);
+                    }
+                    else
+                    {
+                        logger.LogError("Error creando el rol '{RoleName}'.", roleName);
+                    }
                 }
             }
 
@@ -40,12 +51,31 @@ namespace PhonePalace.Infrastructure.Data
 
                 // ¡IMPORTANTE! Usa una contraseña segura y gestiónala con User Secrets en desarrollo.
                 // Esto es solo un ejemplo.
-                var result = await userManager.CreateAsync(newAdminUser, "AdminPass123!");
+                var createResult = await userManager.CreateAsync(newAdminUser, "AdminPass123!");
 
-                if (result.Succeeded)
+                if (createResult.Succeeded)
                 {
+                    logger.LogInformation("Usuario administrador creado exitosamente.");
                     // Asigna el rol "Admin" al nuevo usuario
-                    await userManager.AddToRoleAsync(newAdminUser, "Admin");
+                    var addToRoleResult = await userManager.AddToRoleAsync(newAdminUser, "Admin");
+                    if (addToRoleResult.Succeeded)
+                    {
+                        logger.LogInformation("Rol 'Admin' asignado al usuario administrador.");
+                    }
+                    else
+                    {
+                        foreach (var error in addToRoleResult.Errors)
+                        {
+                            logger.LogError("Error asignando rol 'Admin': {Code} - {Description}", error.Code, error.Description);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var error in createResult.Errors)
+                    {
+                        logger.LogError("Error creando usuario administrador: {Code} - {Description}", error.Code, error.Description);
+                    }
                 }
             }
         }
