@@ -83,7 +83,8 @@ public class QuotesController : Controller
 
         // 2. Enviar el correo
         var subject = $"Cotización de PhonePalace #{quote.QuoteID}";
-        var body = $"<p>Hola {(quote.Client != null ? quote.Client.DisplayName : "Cliente")},</p><p>Adjunto encontrarás la cotización solicitada.</p><p>Gracias,<br/>El equipo de PhonePalace</p>";
+        var clientDisplayName = quote.Client!.DisplayName;
+        var body = $"<p>Hola {clientDisplayName},</p><p>Adjunto encontrarás la cotización solicitada.</p><p>Gracias,<br/>El equipo de PhonePalace</p>";
 
         if (quote.Client != null && !string.IsNullOrEmpty(quote.Client.Email))
         {
@@ -198,7 +199,7 @@ public class QuotesController : Controller
             ClientID = quote.ClientID,
             QuoteDate = quote.QuoteDate,
             ExpirationDate = quote.ExpirationDate,
-            Status = quote.Status,
+            Status = quote.Status!,
             Details = quote.Details.Select(d => new QuoteDetailViewModel
             {
                 ProductID = d.ProductID,

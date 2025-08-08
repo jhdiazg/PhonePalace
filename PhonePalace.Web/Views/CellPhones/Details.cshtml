@@ -1,4 +1,6 @@
 ﻿@model PhonePalace.Domain.Entities.CellPhone
+@using PhonePalace.Web.Helpers
+@using PhonePalace.Domain.Enums
 
 @{
     ViewData["Title"] = "Detalles del Celular";
@@ -9,70 +11,117 @@
 <div>
     <h4>@Model.Name</h4>
     <hr />
-    <dl class="row">
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Name)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Description)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Description)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Price)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Price)
-        </dd>
-        <dt class = "col-sm-3">
-            Costo
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Cost)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.SKU)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.SKU)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Category)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Category.Name)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Model)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Model.Brand.Name) @Html.DisplayFor(model => model.Model.Name)
-        </dd>
-        <dt class = "col-sm-3">
-            @Html.DisplayNameFor(model => model.Color)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.Color)
-        </dd>
-        <dt class = "col-sm-3">
-            Almacenamiento (GB)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.StorageGB)
-        </dd>
-        <dt class = "col-sm-3">
-            RAM (GB)
-        </dt>
-        <dd class = "col-sm-9">
-            @Html.DisplayFor(model => model.RamGB)
-        </dd>
-    </dl>
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <img src="@ImageHelper.GetImageUrl(Model.Images)" alt="Imagen de @Model.Name" class="img-fluid rounded shadow-sm" />
+        </div>
+        <div class="col-md-8">
+            <dl class="row">
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.SKU)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.SKU)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Description)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.Description)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Price)</dt>
+                <dd class="col-sm-8">@Model.Price.ToString("C")</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Cost)</dt>
+                <dd class="col-sm-8">@Model.Cost.ToString("C")</dd>
+
+                <dt class="col-sm-4">Marca</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.Model.Brand.Name)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Model)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.Model.Name)</dd>
+
+                <dt class="col-sm-4">Almacenamiento (GB)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.StorageGB)</dd>
+
+                <dt class="col-sm-4">RAM (GB)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.RamGB)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Color)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.Color)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.ProductCondition)</dt>
+                <dd class="col-sm-8">@Html.DisplayFor(model => model.ProductCondition)</dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.IsActive)</dt>
+                <dd class="col-sm-8">
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge bg-success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger">Inactivo</span>
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
+
+    <h5 class="mt-4">Proyección de Costo</h5>
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Porcentaje de Incremento</th>
+                <th>Costo Proyectado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var percentages = new List<double> { 0.20, 0.35, 0.60, 0.70, 0.80, 1.00, 1.50 };
+                foreach (var p in percentages)
+                {
+                    var projectedCost = Model.Cost * (1m + (decimal)p);
+                    <tr>
+                        <td>@(p * 100)%</td>
+                        <td>@projectedCost.ToString("C")</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <div class="form-group mt-4">
+        <label for="customCost">Calcular Porcentaje de Incremento para un Costo Personalizado:</label>
+        <div class="input-group col-md-3">
+            <div class="input-group col-md-3">
+            <input type="number" id="customCost" class="form-control" style="max-width: 100px;" step="0.01" min="0" value="@Model.Cost.ToString("0.00")" />
+            <div class="input-group-append">
+                <span class="input-group-text">% de Incremento:&nbsp;&nbsp;<span id="calculatedPercentage">0.00</span>%</span>
+            </div>
+        </div>
+        </div>
+    </div>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.ProductID" class="btn btn-primary">Editar</a> |
-    <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+
+<div class="mt-3">
+    <a asp-action="Edit" asp-route-id="@Model.ProductID" class="btn btn-secondary">Editar</a> 
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const baseCost = @Model.Cost;
+            const customCostInput = document.getElementById('customCost');
+            const calculatedPercentageSpan = document.getElementById('calculatedPercentage');
+
+            function calculatePercentage() {
+                const customCost = parseFloat(customCostInput.value);
+                if (!isNaN(customCost) && baseCost > 0) {
+                    const percentage = ((customCost - baseCost) / baseCost) * 100;
+                    calculatedPercentageSpan.textContent = percentage.toFixed(2);
+                } else {
+                    calculatedPercentageSpan.textContent = 'N/A';
+                }
+            }
+
+            customCostInput.addEventListener('input', calculatePercentage);
+            calculatePercentage(); // Initial calculation on page load
+        });
+    </script>
+}

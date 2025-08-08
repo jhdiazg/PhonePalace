@@ -9,9 +9,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
+using PhonePalace.Web.Helpers;
 using System.IO;
-using X.PagedList;
-using X.PagedList.Mvc.Core;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -65,7 +64,7 @@ namespace PhonePalace.Web.Controllers
 
             var viewModel = new AuditLogIndexViewModel
             {
-                AuditLogs = new StaticPagedList<AuditLog>((System.Collections.Generic.IEnumerable<PhonePalace.Domain.Entities.AuditLog>)await query.OrderByDescending(log => log.Timestamp).Skip((pageNumber - 1) * pageSize).Take(pageSize).ToListAsync(), pageNumber, pageSize, _context.AuditLogs.Count()),
+                AuditLogs = await PaginatedList<AuditLog>.CreateAsync(query.OrderByDescending(log => log.Timestamp), pageNumber, pageSize),
                 ModuleList = moduleList,
                 SelectedModule = selectedModule,
                 SearchUser = searchUser,

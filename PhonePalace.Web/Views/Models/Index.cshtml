@@ -1,4 +1,4 @@
-﻿@model IEnumerable<PhonePalace.Domain.Entities.Model>
+﻿@model IEnumerable<PhonePalace.Web.ViewModels.ModelViewModel>
 
 @{
     ViewData["Title"] = "Modelos de Teléfono";
@@ -19,7 +19,7 @@
                             @Html.DisplayNameFor(model => model.Name)
                         </th>
                         <th>
-                            @Html.DisplayNameFor(model => model.Brand)
+                            @Html.DisplayNameFor(model => model.BrandName)
                         </th>
                         <th></th>
                     </tr>
@@ -31,7 +31,7 @@
                             @Html.DisplayFor(modelItem => item.Name)
                         </td>
                         <td>
-                            @Html.DisplayFor(modelItem => item.Brand.Name)
+                            @Html.DisplayFor(modelItem => item.BrandName)
                         </td>
                         <td class="text-end">
                             <a asp-action="Edit" asp-route-id="@item.ModelID" class="btn btn-sm btn-outline-secondary">Editar</a>

@@ -14,7 +14,19 @@
             <a href="@Url.Action("GenerateInvoicePdf", new { id = Model.InvoiceID })" class="btn btn-primary" target="_blank">
                 <i class="fas fa-file-pdf"></i> Descargar PDF
             </a>
-            @if (Model.Status != InvoiceStatus.Cancelled)
+            @if (Model.Status == InvoiceStatus.Pending)
+            {
+                <form asp-action="CompleteSale" asp-route-id="@Model.InvoiceID" method="post" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea completar esta venta? Esto actualizará el inventario y procesará los pagos.');">
+                        <i class="fas fa-check-circle"></i> Completar Venta
+                    </button>
+                </form>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelSaleModal">
+                    <i class="fas fa-ban"></i> Anular Venta
+                </button>
+            }
+            else if (Model.Status == InvoiceStatus.Completed)
             {
                 <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelSaleModal">
                     <i class="fas fa-ban"></i> Anular Venta
@@ -53,7 +65,11 @@
                 </div>
                 <div class="col-md-6">
                     <p><strong>Fecha de Venta:</strong> @Model.SaleDate.ToString("dd/MM/yyyy")</p>
-                    <p><strong>Estado:</strong> <span class="badge bg-@(Model.Status == InvoiceStatus.Completed ? "success" : "danger")">@Model.Status.ToString()</span></p>
+                    <p><strong>Estado:</strong> <span class="badge bg-@(Model.Status == InvoiceStatus.Completed ? "success" : (Model.Status == InvoiceStatus.Pending ? "warning" : "danger"))">@Html.DisplayFor(model => model.Status)</span></p>
+                    @if (Model.CompletionDate.HasValue)
+                    {
+                        <p><strong>Fecha de Completado:</strong> @Model.CompletionDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
+                    }
                     @if (Model.CancellationDate.HasValue)
                     {
                         <p><strong>Fecha de Anulación:</strong> @Model.CancellationDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
@@ -124,12 +140,21 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var payment in Model.Payments)
+                        @if (Model.Payments != null && Model.Payments.Any())
+                        {
+                            @foreach (var payment in Model.Payments)
+                            {
+                                <tr>
+                                    <td>@Html.DisplayFor(modelItem => payment.PaymentMethod)</td>
+                                    <td>@payment.ReferenceNumber</td>
+                                    <td class="text-end">@payment.Amount.ToString("C")</td>
+                                </tr>
+                            }
+                        }
+                        else
                         {
                             <tr>
-                                <td>@payment.PaymentMethod.ToString()</td>
-                                <td>@payment.ReferenceNumber</td>
-                                <td class="text-end">@payment.Amount.ToString("C")</td>
+                                <td colspan="3" class="text-center">No hay pagos registrados para esta venta. Los pagos se registran al completar la venta.</td>
                             </tr>
                         }
                     </tbody>

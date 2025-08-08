@@ -25,7 +25,8 @@ namespace PhonePalace.Web.ViewModels
 
         [Required]
         [Display(Name = "Estado")]
-        public required string Status { get; set; }
+        public required string Status { get; set; } = string.Empty;
+
 
         public List<QuoteDetailViewModel> Details { get; set; } = new List<QuoteDetailViewModel>();
 

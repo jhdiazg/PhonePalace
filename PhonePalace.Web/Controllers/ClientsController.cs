@@ -1,3 +1,4 @@
+using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -23,9 +24,9 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Clients
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? pageNumber)
         {
-            var clients = await _context.Clients
+            var clientsQuery = _context.Clients
                 .Where(c => c.IsActive)
                 .AsNoTracking()
                 .Select(c => new ClientIndexViewModel
@@ -36,10 +37,10 @@ namespace PhonePalace.Web.Controllers
                     Document = c is NaturalPerson ? ((NaturalPerson)c).DocumentNumber : ((LegalEntity)c).NIT,
                     Email = c.Email,
                     PhoneNumber = c.PhoneNumber
-                })
-                .ToListAsync();
+                });
 
-            return View(clients);
+            int pageSize = 10;
+            return View(await PaginatedList<ClientIndexViewModel>.CreateAsync(clientsQuery, pageNumber ?? 1, pageSize));
         }
 
         // GET: Clients/Details/5

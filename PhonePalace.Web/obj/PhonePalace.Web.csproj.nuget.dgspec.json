@@ -1,7 +1,7 @@
 {
   "format": 1,
   "restore": {
-    "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj": {}
+    "D:\\PhonePalace\\phonePalace.web\\PhonePalace.Web.csproj": {}
   },
   "projects": {
     "D:\\PhonePalace\\PhonePalace.Domain\\PhonePalace.Domain.csproj": {
@@ -84,7 +84,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
@@ -180,18 +180,18 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj": {
+    "D:\\PhonePalace\\phonePalace.web\\PhonePalace.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
+        "projectUniqueName": "D:\\PhonePalace\\phonePalace.web\\PhonePalace.Web.csproj",
         "projectName": "PhonePalace.Web",
-        "projectPath": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
+        "projectPath": "D:\\PhonePalace\\phonePalace.web\\PhonePalace.Web.csproj",
         "packagesPath": "C:\\Users\\DELL\\.nuget\\packages\\",
-        "outputPath": "D:\\PhonePalace\\PhonePalace.Web\\obj\\",
+        "outputPath": "D:\\PhonePalace\\phonePalace.web\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -307,7 +307,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

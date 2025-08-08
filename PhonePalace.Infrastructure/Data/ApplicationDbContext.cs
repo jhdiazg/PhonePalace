@@ -35,8 +35,14 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<NaturalPersonSupplier> NaturalPersonSuppliers { get; set; }
+        public DbSet<LegalEntitySupplier> LegalEntitySuppliers { get; set; }
+        public DbSet<Purchase> Purchases { get; set; }
+        public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
+        public DbSet<AccountPayable> AccountPayables { get; set; }
 
-        
+
 
         // ... (otros DbSets)
         // ...
@@ -82,11 +88,9 @@ namespace PhonePalace.Infrastructure.Data
                 .OnDelete(DeleteBehavior.Cascade); // Borra las imágenes si se borra el producto
 
             // --- Filtro de Consulta Global para Borrado Lógico (Soft Delete) ---
-            // El filtro se aplica a la entidad raíz 'Product' y se hereda a 'CellPhone' y 'Accessory'.
-            modelBuilder.Entity<Product>().HasQueryFilter(p => p.IsActive);
-
             // El filtro se aplica a la entidad raíz 'Client' y se hereda a 'NaturalPerson' y 'LegalEntity'.
             modelBuilder.Entity<Client>().HasQueryFilter(c => c.IsActive);
+            modelBuilder.Entity<Purchase>().HasQueryFilter(p => !p.IsDeleted);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿@model PhonePalace.Web.ViewModels.CellPhoneViewModel
+﻿@using PhonePalace.Domain.Enums
+@model PhonePalace.Web.ViewModels.CellPhoneViewModel
 
 @{
     ViewData["Title"] = "Editar Celular";
@@ -41,6 +42,12 @@
             <div class="row">
                 <div class="col-md-3">
                     <div class="mb-3">
+                        <label for="BrandID" class="form-label">Marca</label>
+                        <select id="BrandID" name="BrandID" class="form-select" asp-items="ViewBag.BrandID"><option value="">-- Seleccione una Marca --</option></select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mb-3">
                         <label asp-for="ModelID" class="form-label">Modelo</label>
                         <select asp-for="ModelID" class="form-select" asp-items="ViewBag.ModelID"></select>
                         <span asp-validation-for="ModelID" class="text-danger"></span>
@@ -79,15 +86,22 @@
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
+                        <label asp-for="ProductCondition" class="form-label"></label>
+                        <select asp-for="ProductCondition" class="form-select" asp-items="@(new SelectList(Enum.GetValues(typeof(ProductCondition))))"><option value="">-- Seleccione una Condición --</option></select>
+                        <span asp-validation-for="ProductCondition" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
                         <label asp-for="StorageGB" class="form-label">Almacenamiento (GB)</label>
-                        <input asp-for="StorageGB" class="form-control" />
+                        <select asp-for="StorageGB" class="form-select" asp-items="Html.GetEnumSelectList<StorageGB>()"><option value="">-- Seleccione una Opción --</option></select>
                         <span asp-validation-for="StorageGB" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="mb-3">
                         <label asp-for="RamGB" class="form-label">RAM (GB)</label>
-                        <input asp-for="RamGB" class="form-control" />
+                        <select asp-for="RamGB" class="form-select" asp-items="Html.GetEnumSelectList<RamGB>()"><option value="">-- Seleccione una Opción --</option></select>
                         <span asp-validation-for="RamGB" class="text-danger"></span>
                     </div>
                 </div>
@@ -124,6 +138,23 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            $('#BrandID').change(function () {
+                var brandId = $(this).val();
+                var modelSelect = $('#ModelID');
+                modelSelect.empty();
+                modelSelect.append($('<option/>', { value: '', text: '-- Seleccione un Modelo --' }));
+                if (brandId) {
+                    $.getJSON('@Url.Action("GetModelsByBrand")?brandId=' + brandId, function (models) {
+                        $.each(models, function (index, model) {
+                            modelSelect.append($('<option/>', { value: model.value, text: model.text }));
+                        });
+                    });
+                }
+            });
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const galleryContainer = document.getElementById('image-gallery-container');

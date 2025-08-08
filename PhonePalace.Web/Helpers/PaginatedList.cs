@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace PhonePalace.Web.Helpers
 {
@@ -15,10 +15,12 @@ namespace PhonePalace.Web.Helpers
         {
             PageIndex = pageIndex;
             TotalPages = (int)Math.Ceiling(count / (double)pageSize);
+
             this.AddRange(items);
         }
 
         public bool HasPreviousPage => PageIndex > 1;
+
         public bool HasNextPage => PageIndex < TotalPages;
 
         public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int pageIndex, int pageSize)

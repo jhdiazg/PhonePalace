@@ -28,6 +28,12 @@
             </a>
         </li>
         <li class="nav-item">
+            <a asp-controller="AccountPayables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountPayables")">
+                <i class="bi bi-cash-stack me-2"></i>
+                Cuentas por Pagar
+            </a>
+        </li>
+        <li class="nav-item">
             <a asp-controller="Ventas" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
                 <i class="bi bi-cash-coin me-2"></i>
                 Ventas
@@ -55,6 +61,12 @@
             <a asp-controller="Clients" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Clients")">
                 <i class="bi bi-people-fill me-2"></i>
                 Clientes
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="Suppliers" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Suppliers")">
+                <i class="bi bi-truck-flatbed me-2"></i>
+                Proveedores
             </a>
         </li>
         <li class="nav-item">

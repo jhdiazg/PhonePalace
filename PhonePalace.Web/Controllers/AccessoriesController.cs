@@ -1,4 +1,5 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
+﻿using PhonePalace.Web.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -10,6 +11,7 @@ using PhonePalace.Web.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -29,15 +31,16 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Accessories
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? pageNumber)
         {
             var accessoriesQuery = _context.Accessories
-                .Where(a => a.IsActive)
                 .Include(a => a.Images)
                 .Include(a => a.Category)
                 .Include(a => a.Brand)
                 .AsNoTracking();
-            return View(await accessoriesQuery.ToListAsync());
+
+            int pageSize = 10;
+            return View(await PaginatedList<Accessory>.CreateAsync(accessoriesQuery, pageNumber ?? 1, pageSize));
         }
 
         // GET: Accessories/Details/5
@@ -86,7 +89,8 @@ namespace PhonePalace.Web.Controllers
                     CategoryID = viewModel.CategoryID,
                     BrandID = viewModel.BrandID,
                     Color = viewModel.Color,
-                    IsActive = viewModel.IsActive
+                    IsActive = viewModel.IsActive,
+                    ProductCondition = viewModel.ProductCondition
                 };
 
                 if (viewModel.NewImageFile != null)
@@ -104,7 +108,7 @@ namespace PhonePalace.Web.Controllers
                 await _auditService.LogAsync("Accessories", $"Creó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
                 return RedirectToAction(nameof(Index));
             }
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID);
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID, viewModel.ProductCondition);
             return View(viewModel);
         }
 
@@ -119,7 +123,7 @@ namespace PhonePalace.Web.Controllers
             var accessory = await _context.Accessories
                 .Include(a => a.Images)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.ProductID == id);
+                .FirstOrDefaultAsync(m => m.ProductID == id);
 
             if (accessory == null)
             {
@@ -130,23 +134,19 @@ namespace PhonePalace.Web.Controllers
             {
                 ProductID = accessory.ProductID,
                 Name = accessory.Name,
-                Description = accessory.Description,
+                Description = accessory.Description ?? string.Empty,
                 Price = accessory.Price,
                 Cost = accessory.Cost,
                 SKU = accessory.SKU,
                 CategoryID = accessory.CategoryID,
                 BrandID = accessory.BrandID,
-                Color = accessory.Color,
+                Color = accessory.Color ?? string.Empty,
                 IsActive = accessory.IsActive,
-                Images = accessory.Images.Select(i => new ProductImageViewModel
-                {
-                    ProductImageID = i.ProductImageID,
-                    ImageUrl = i.ImageUrl,
-                    IsPrimary = i.IsPrimary
-                }).ToList()
+                ProductCondition = accessory.ProductCondition,
+                Images = new List<ProductImage>(accessory.Images)
             };
 
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID);
+            await PopulateDropdowns(accessory.CategoryID, accessory.BrandID, accessory.ProductCondition);
             return View(viewModel);
         }
 
@@ -159,7 +159,7 @@ namespace PhonePalace.Web.Controllers
             {
                 return NotFound();
             }
-            
+
             if (ModelState.IsValid)
             {
                 try
@@ -179,6 +179,9 @@ namespace PhonePalace.Web.Controllers
                     accessory.BrandID = viewModel.BrandID;
                     accessory.Color = viewModel.Color;
                     accessory.IsActive = viewModel.IsActive;
+                    accessory.ProductCondition = viewModel.ProductCondition;
+                    accessory.Material = viewModel.Material;
+                    accessory.Compatibility = viewModel.Compatibility;
 
                     if (viewModel.NewImageFile != null)
                     {
@@ -207,7 +210,7 @@ namespace PhonePalace.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID);
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID, viewModel.ProductCondition);
             return View(viewModel);
         }
 
@@ -246,7 +249,7 @@ namespace PhonePalace.Web.Controllers
                 await _context.SaveChangesAsync();
                 await _auditService.LogAsync("Accessories", $"Eliminó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
             }
-            
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -296,13 +299,14 @@ namespace PhonePalace.Web.Controllers
             return _context.Accessories.Any(e => e.ProductID == id);
         }
 
-        private async Task PopulateDropdowns(int? categoryId = null, int? brandId = null)
+        private async Task PopulateDropdowns(int? categoryId = null, int? brandId = null, ProductCondition? condition = null)
         {
             var activeCategories = await _context.Categories.Where(c => c.IsActive).AsNoTracking().OrderBy(c => c.Name).ToListAsync();
             var activeBrands = await _context.Brands.Where(b => b.IsActive).AsNoTracking().OrderBy(b => b.Name).ToListAsync();
 
             ViewData["CategoryID"] = new SelectList(activeCategories, "CategoryID", "Name", categoryId);
             ViewData["BrandID"] = new SelectList(activeBrands, "BrandID", "Name", brandId);
+            ViewData["ProductCondition"] = new SelectList(Enum.GetValues(typeof(ProductCondition)), condition);
         }
     }
 }

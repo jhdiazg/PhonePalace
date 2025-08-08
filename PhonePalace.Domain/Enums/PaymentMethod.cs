@@ -6,11 +6,13 @@ namespace PhonePalace.Domain.Enums
     {
         [Display(Name = "Efectivo")]
         Cash,
-        [Display(Name = "Tarjeta de Crédito")]
+        [Display(Name = "Tarjeta Crédito")]
         CreditCard,
-        [Display(Name = "Tarjeta de Débito")]
+        [Display(Name = "Tarjeta Débito")]
         DebitCard,
         [Display(Name = "Transferencia")]
-        Transfer
+        Transfer,
+        [Display(Name = "Crédito")]
+        Credit
     }
 }

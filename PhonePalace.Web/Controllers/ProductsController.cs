@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
@@ -18,7 +18,7 @@ namespace PhonePalace.Web.Controllers
             _context = context;
         }
 
-        // GET: /Products
+        // GET: /Products (MVC View)
         public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? pageNumber)
         {
             ViewData["CurrentSort"] = sortOrder;
@@ -39,52 +39,92 @@ namespace PhonePalace.Web.Controllers
             ViewData["CurrentFilter"] = searchString;
 
             var productsQuery = _context.Products
-                .Include(c => c.Category)
-                .Include(c => c.Images)
-                .Include(p => ((CellPhone)p).Model.Brand) // Incluimos propiedades de navegación de tipos derivados
-                .Include(p => ((Accessory)p).Brand)
-                .Select(p => new ProductIndexViewModel
+                .AsQueryable(); // Start with IQueryable
+
+            var cellPhonesQuery = productsQuery.OfType<CellPhone>()
+                .Include(cp => cp.Model)
+                    .ThenInclude(m => m.Brand)
+                .Select(cp => new ProductIndexViewModel
                 {
-                    ProductID = p.ProductID,
-                    SKU = p.SKU,
-                    Name = p.Name,
-                    ProductType = EF.Property<string>(p, "ProductType") == "CellPhone" ? "Celular" : "Accesorio",
-                    CategoryName = p.Category != null ? p.Category.Name : "N/A",
-                    BrandName = (p is CellPhone) ? ((CellPhone)p).Model.Brand.Name : ((p is Accessory) ? (((Accessory)p).Brand != null ? ((Accessory)p).Brand.Name : "N/A") : "N/A"),
-                    ModelName = (p is CellPhone) ? ((CellPhone)p).Model.Name : null,
-                    Price = p.Price,
-                    Cost = p.Cost,
-                    PrimaryImageUrl = p.Images.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
+                    ProductID = cp.ProductID,
+                    SKU = cp.SKU,
+                    Name = cp.Name,
+                    ProductType = "Celular", // Directly assign for CellPhone
+                    CategoryName = cp.Category != null ? cp.Category.Name : "N/A",
+                    BrandName = cp.Model != null && cp.Model.Brand != null ? cp.Model.Brand.Name : "N/A",
+                    ModelName = cp.Model != null ? cp.Model.Name : null,
+                    Price = cp.Price,
+                    Cost = cp.Cost,
+                    PrimaryImageUrl = cp.Images.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
                 });
 
+            var accessoriesQuery = productsQuery.OfType<Accessory>()
+                .Include(a => a.Brand)
+                .Select(a => new ProductIndexViewModel
+                {
+                    ProductID = a.ProductID,
+                    SKU = a.SKU,
+                    Name = a.Name,
+                    ProductType = "Accesorio", // Directly assign for Accessory
+                    CategoryName = a.Category != null ? a.Category.Name : "N/A",
+                    BrandName = a.Brand != null ? a.Brand.Name : "N/A",
+                    ModelName = null, // Accessories don't have models
+                    Price = a.Price,
+                    Cost = a.Cost,
+                    PrimaryImageUrl = a.Images.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
+                });
+
+            // Union the two queries
+            var combinedQuery = cellPhonesQuery.Union(accessoriesQuery);
+
+            // Apply search filter
             if (!string.IsNullOrEmpty(searchString))
             {
-                productsQuery = productsQuery.Where(p => p.Name.Contains(searchString)
+                combinedQuery = combinedQuery.Where(p => p.Name.Contains(searchString)
                                        || (p.SKU != null && p.SKU.Contains(searchString))
-                                                                                || (!string.IsNullOrEmpty(p.BrandName) && p.BrandName.Contains(searchString))
-                                                                                || (p.ModelName != null && p.ModelName.Contains(searchString)));
+                                       || (!string.IsNullOrEmpty(p.BrandName) && p.BrandName.Contains(searchString))
+                                       || (p.ModelName != null && p.ModelName.Contains(searchString)));
             }
 
-            productsQuery = sortOrder switch
+            // Apply sorting
+            combinedQuery = sortOrder switch
             {
-                "name_desc" => productsQuery.OrderByDescending(p => p.Name),
-                "Price" => productsQuery.OrderBy(p => p.Price),
-                "price_desc" => productsQuery.OrderByDescending(p => p.Price),
-                "Type" => productsQuery.OrderBy(p => p.ProductType),
-                "type_desc" => productsQuery.OrderByDescending(p => p.ProductType),
-                "Brand" => productsQuery.OrderBy(p => p.BrandName),
-                "brand_desc" => productsQuery.OrderByDescending(p => p.BrandName),
-                _ => productsQuery.OrderBy(p => p.Name),
+                "name_desc" => combinedQuery.OrderByDescending(p => p.Name),
+                "Price" => combinedQuery.OrderBy(p => p.Price),
+                "price_desc" => combinedQuery.OrderByDescending(p => p.Price),
+                "Type" => combinedQuery.OrderBy(p => p.ProductType),
+                "type_desc" => combinedQuery.OrderByDescending(p => p.ProductType),
+                "Brand" => combinedQuery.OrderBy(p => p.BrandName),
+                "brand_desc" => combinedQuery.OrderByDescending(p => p.BrandName),
+                _ => combinedQuery.OrderBy(p => p.Name),
             };
 
             int pageSize = 10;
-            var paginatedProducts = await PaginatedList<ProductIndexViewModel>.CreateAsync(productsQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
+            var paginatedProducts = await PaginatedList<ProductIndexViewModel>.CreateAsync(combinedQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
 
             return View(paginatedProducts);
         }
 
+        // API Endpoint for product search (used by Purchase Create view)
+        [HttpGet("api/products")]
+        public async Task<IActionResult> SearchProductsApi([FromQuery] string term)
+        {
+            if (string.IsNullOrWhiteSpace(term) || term.Length < 1)
+            {
+                return Ok(new object[] { });
+            }
+
+            var products = await _context.Products
+                .Where(p => p.IsActive && p.Name.Contains(term))
+                .Select(p => new { p.ProductID, p.Name, p.Price })
+                .ToListAsync();
+
+            return Ok(products);
+        }
+
+        // API Endpoint for getting a single product (used by some other parts of the app)
         [HttpGet("api/products/{id}")]
-        public async Task<IActionResult> GetProduct(int id)
+        public async Task<IActionResult> GetProductApi(int id)
         {
             var product = await _context.Products.FindAsync(id);
 
@@ -101,3 +141,5 @@ namespace PhonePalace.Web.Controllers
         }
     }
 }
+
+            

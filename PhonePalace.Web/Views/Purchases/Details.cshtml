@@ -1,0 +1,111 @@
+@model PhonePalace.Domain.Entities.Purchase
+
+@{ 
+    ViewData["Title"] = "Detalles de la Compra";
+}
+
+<h1>Detalles de la Compra</h1>
+
+<div>
+    <h4>Compra</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Supplier)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Supplier.DisplayName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PurchaseDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PurchaseDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.TotalAmount)
+        </dt>
+        <dd class="col-sm-10">
+            @Model.TotalAmount.ToString("C")
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Status)
+        </dd>
+    </dl>
+</div>
+
+<h3>Detalles</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.PurchaseDetails)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Product.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Quantity)
+                </td>
+                <td>
+                    @item.UnitPrice.ToString("C")
+                </td>
+                <td>
+                    @item.TotalPrice.ToString("C")
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div>
+    @if (Model.Status == PhonePalace.Domain.Enums.PurchaseStatus.Draft)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+        <form asp-action="ConfirmOrder" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea confirmar esta orden?');">Confirmar Orden</button>
+        </form>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea anular esta compra?');">Anular Compra</button>
+        </form>
+    }
+    else if (Model.Status == PhonePalace.Domain.Enums.PurchaseStatus.Ordered)
+    {
+        <form asp-action="Receive" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea recibir esta compra? Esto actualizará el inventario.');">Recibir Compra</button>
+        </form>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea anular esta compra?');">Anular Compra</button>
+        </form>
+    }
+    else if (Model.Status == PhonePalace.Domain.Enums.PurchaseStatus.Received)
+    {
+        <form asp-action="MarkAsBilled" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-info" onclick="return confirm('¿Está seguro de que desea marcar esta compra como facturada?');">Marcar como Facturada</button>
+        </form>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea anular esta compra? Esto revertirá el inventario.');">Anular Compra</button>
+        </form>
+    }
+    else if (Model.Status == PhonePalace.Domain.Enums.PurchaseStatus.Billed)
+    {
+        <form asp-action="MarkAsPaid" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea marcar esta compra como pagada?');">Marcar como Pagada</button>
+        </form>
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea anular esta compra? Esto revertirá el inventario.');">Anular Compra</button>
+        </form>
+    }
+    <a asp-action="GeneratePurchaseOrderPdf" asp-route-id="@Model.Id" class="btn btn-info">Generar PDF</a>
+    <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
+</div>

@@ -1,4 +1,5 @@
-@model IEnumerable<PhonePalace.Web.ViewModels.InventoryIndexViewModel>
+@model PaginatedList<PhonePalace.Web.ViewModels.InventoryReportItemViewModel>
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Reporte de Inventario";
@@ -6,51 +7,61 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<div class="row mb-3">
-    <div class="col-md-12">
-        <form asp-action="Index" method="get">
-            <div class="input-group">
-                <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Buscar por nombre o SKU...">
-                <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i> Buscar</button>
-                <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>@Html.DisplayNameFor(model => model.SKU)</th>
-                        <th>@Html.DisplayNameFor(model => model.ProductName)</th>
-                        <th>@Html.DisplayNameFor(model => model.Cost)</th>
-                        <th>@Html.DisplayNameFor(model => model.Price)</th>
-                        <th>@Html.DisplayNameFor(model => model.Stock)</th>
-                        <th>@Html.DisplayNameFor(model => model.InventoryValue)</th>
-                        <th>@Html.DisplayNameFor(model => model.LastUpdated)</th>
-                        <th></th>
+                        <th>Producto</th>
+                        <th>SKU</th>
+                        <th>Stock Actual</th>
+                        <th>Compras</th>
+                        <th>Ventas</th>
+                        <th>Última Actualización (UTC)</th>
                     </tr>
                 </thead>
                 <tbody>
-            @foreach (var item in Model) {
-                    <tr>
-                        <td>@Html.DisplayFor(modelItem => item.SKU)</td>
-                        <td>@Html.DisplayFor(modelItem => item.ProductName)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Cost)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Price)</td>
-                        <td class="fw-bold">@Html.DisplayFor(modelItem => item.Stock)</td>
-                        <td>@Html.DisplayFor(modelItem => item.InventoryValue)</td>
-                        <td>@Html.DisplayFor(modelItem => item.LastUpdated)</td>
-                        <td class="text-end">
-                            <a asp-action="Adjust" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-warning">Ajustar Stock</a>
-                        </td>
-                    </tr>
-            }
+                    @if (Model.Any())
+                    {
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@Html.DisplayFor(modelItem => item.ProductName)</td>
+                                <td>@Html.DisplayFor(modelItem => item.ProductSKU)</td>
+                                <td>@Html.DisplayFor(modelItem => item.CurrentStock)</td>
+                                <td>@Html.DisplayFor(modelItem => item.TotalPurchases)</td>
+                                <td>@Html.DisplayFor(modelItem => item.TotalSales)</td>
+                                <td>@item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center">No hay productos en el inventario.</td>
+                        </tr>
+                    }
                 </tbody>
             </table>
         </div>
     </div>
+</div>
+
+<div class="d-flex justify-content-center align-items-center mt-3">
+    @{
+        var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+        var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+    }
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex - 1)"
+       class="btn btn-outline-secondary @prevDisabled">
+        Anterior
+    </a>
+    <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex + 1)"
+       class="btn btn-outline-secondary @nextDisabled">
+        Siguiente
+    </a>
 </div>

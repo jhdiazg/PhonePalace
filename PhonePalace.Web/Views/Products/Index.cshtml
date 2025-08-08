@@ -58,7 +58,7 @@
                                 <td>@Html.DisplayFor(modelItem => item.ProductType)</td>
                                 <td>@Html.DisplayFor(modelItem => item.BrandName)</td>
                                 <td>@Html.DisplayFor(modelItem => item.ModelName)</td>
-                                <td>@Html.DisplayFor(modelItem => item.Price)</td>
+                                <td>@item.Price.ToString("C")</td>
                                 <td>@Html.DisplayFor(modelItem => item.SKU)</td>
                                 <td class="text-end">
                                     <a asp-controller="@controllerName" asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-secondary">Editar</a>

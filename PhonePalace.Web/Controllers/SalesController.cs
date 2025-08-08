@@ -31,13 +31,17 @@ public class SalesController : Controller
     }
 
     [Route("Ventas")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int? pageNumber)
     {
-        var invoices = await _context.Invoices
+        var invoicesQuery = _context.Invoices
             .Include(i => i.Client)
             .OrderByDescending(i => i.SaleDate)
-            .ToListAsync();
-        return View(invoices);
+            .AsNoTracking();
+
+        int pageSize = 10;
+        var paginatedInvoices = await PaginatedList<Invoice>.CreateAsync(invoicesQuery, pageNumber ?? 1, pageSize);
+
+        return View(paginatedInvoices);
     }
 
     [Route("Ventas/Crear")]
@@ -135,7 +139,8 @@ public class SalesController : Controller
                 ClientID = model.ClientID,
                 SaleDate = model.SaleDate,
                 UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System",
-                Status = InvoiceStatus.Completed
+                Status = InvoiceStatus.Completed, // Set initial status to Completed
+                CompletionDate = DateTime.UtcNow
             };
 
             // Asignar detalles y recalcular totales
@@ -150,32 +155,54 @@ public class SalesController : Controller
             invoice.Tax = invoice.Subtotal * taxRate;
             invoice.Total = invoice.Subtotal + invoice.Tax;
 
-            // Asignar pagos
-            if (model.Payments != null)
+            // Asignar detalles y recalcular totales
+            invoice.Details = model.Details.Select(d => new InvoiceDetail
+            {
+                ProductID = d.ProductID,
+                Quantity = d.Quantity,
+                UnitPrice = productsFromDb[d.ProductID].Price
+            }).ToList();
+
+            invoice.Subtotal = invoice.Details.Sum(d => d.LineTotal);
+            invoice.Tax = invoice.Subtotal * taxRate;
+            invoice.Total = invoice.Subtotal + invoice.Tax;
+
+            // Update stock
+            foreach (var detail in invoice.Details)
+            {
+                if (productsFromDb.TryGetValue(detail.ProductID, out var product))
+                {
+                    var inventory = product.InventoryLevels.FirstOrDefault();
+                    if (inventory != null)
+                    {
+                        inventory.Stock -= detail.Quantity;
+                        inventory.LastUpdated = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para deducir el stock.", detail.ProductID, invoice.InvoiceID);
+                    }
+                }
+            }
+
+            // Add payments to the invoice
+            if (model.Payments != null && model.Payments.Any())
             {
                 invoice.Payments = model.Payments.Select(p => new Payment
                 {
                     PaymentMethod = p.PaymentMethod,
                     Amount = p.Amount,
+                    PaymentDate = DateTime.UtcNow,
                     ReferenceNumber = p.ReferenceNumber
                 }).ToList();
-            }
-
-            // Actualizar el stock
-            foreach (var detail in invoice.Details)
-            {
-                var product = productsFromDb[detail.ProductID];
-                var inventory = product.InventoryLevels.First();
-                inventory.Stock -= detail.Quantity;
-                inventory.LastUpdated = DateTime.UtcNow;
             }
 
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            TempData["SuccessMessage"] = $"Venta #{invoice.InvoiceID} completada exitosamente.";
-            return RedirectToAction(nameof(Index));
+            TempData["SuccessMessage"] = $"Venta #{invoice.InvoiceID} creada y completada exitosamente.";
+            return RedirectToAction(nameof(Details), new { id = invoice.InvoiceID });
         }
         catch (Exception ex)
         {
@@ -233,6 +260,77 @@ public class SalesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Route("Ventas/Completar/{id}")]
+    public async Task<IActionResult> CompleteSale(int id)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var invoice = await _context.Invoices
+                .Include(i => i.Details)
+                    .ThenInclude(d => d.Product)
+                        .ThenInclude(p => p.InventoryLevels)
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.InvoiceID == id);
+
+            if (invoice == null)
+            {
+                return NotFound();
+            }
+
+            if (invoice.Status != InvoiceStatus.Pending)
+            {
+                TempData["ErrorMessage"] = "Solo se pueden completar ventas en estado Pendiente.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Validar que el monto pagado sea igual al total de la factura
+            var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0;
+            if (totalPaid < invoice.Total)
+            {
+                TempData["ErrorMessage"] = $"El monto pagado ({totalPaid:C}) es menor al total de la factura ({invoice.Total:C}). No se puede completar la venta.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Actualizar el stock
+            foreach (var detail in invoice.Details)
+            {
+                if (detail.Product != null)
+                {
+                    var inventory = detail.Product?.InventoryLevels?.FirstOrDefault();
+                    if (inventory != null)
+                    {
+                        inventory.Stock -= detail.Quantity;
+                        inventory.LastUpdated = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para deducir el stock.", detail.ProductID, invoice.InvoiceID);
+                    }
+                }
+            }
+
+            // Cambiar el estado de la factura a Completado
+            invoice.Status = InvoiceStatus.Completed;
+            invoice.CompletionDate = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData["SuccessMessage"] = $"La venta #{invoice.InvoiceID} ha sido completada exitosamente y el inventario actualizado.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error al completar la venta con ID {InvoiceID}", id);
+            TempData["ErrorMessage"] = "Ocurrió un error inesperado al completar la venta.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     [Route("Ventas/Anular/{id}")]
     public async Task<IActionResult> Cancel(int id)
     {
@@ -257,19 +355,23 @@ public class SalesController : Controller
             }
 
             // Revertir el stock para cada producto en la factura
-            foreach (var detail in invoice.Details)
+            // Solo revertir si la venta estaba en estado Completed (stock ya deducido)
+            if (invoice.Status == InvoiceStatus.Completed)
             {
-                if (detail.Product != null)
+                foreach (var detail in invoice.Details)
                 {
-                    var inventory = detail.Product.InventoryLevels.FirstOrDefault();
-                    if (inventory != null)
+                    if (detail.Product != null)
                     {
-                        inventory.Stock += detail.Quantity;
-                        inventory.LastUpdated = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para revertir el stock.", detail.ProductID, invoice.InvoiceID);
+                        var inventory = detail.Product.InventoryLevels.FirstOrDefault();
+                        if (inventory != null)
+                        {
+                            inventory.Stock += detail.Quantity;
+                            inventory.LastUpdated = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para revertir el stock.", detail.ProductID, invoice.InvoiceID);
+                        }
                     }
                 }
             }

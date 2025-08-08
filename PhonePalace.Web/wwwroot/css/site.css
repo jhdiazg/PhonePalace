@@ -58,3 +58,7 @@ body {
     object-fit: cover;
     border-radius: 0.25rem; /* Opcional: para redondear las esquinas */
 }
+
+.cancelled-order td {
+    color: red;
+}

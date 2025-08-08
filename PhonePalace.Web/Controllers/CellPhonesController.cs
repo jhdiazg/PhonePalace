@@ -1,4 +1,5 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
+﻿﻿using PhonePalace.Web.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -10,6 +11,7 @@ using PhonePalace.Web.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -29,16 +31,17 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: CellPhones
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? pageNumber)
         {
             var cellPhones = _context.CellPhones
-                .Where(c => c.IsActive)
                 .Include(c => c.Images)
                 .Include(c => c.Category)
                 .Include(c => c.Model)
                 .ThenInclude(m => m.Brand)
                 .AsNoTracking();
-            return View(await cellPhones.ToListAsync());
+
+            int pageSize = 10;
+            return View(await PaginatedList<CellPhone>.CreateAsync(cellPhones, pageNumber ?? 1, pageSize));
         }
 
         // GET: CellPhones/Details/5
@@ -88,8 +91,8 @@ namespace PhonePalace.Web.Controllers
                     CategoryID = viewModel.CategoryID,
                     ModelID = viewModel.ModelID,
                     Color = viewModel.Color,
-                    StorageGB = viewModel.StorageGB.GetValueOrDefault(),
-                    RamGB = viewModel.RamGB.GetValueOrDefault(),
+                    StorageGB = viewModel.StorageGB,
+                    RamGB = viewModel.RamGB,
                     IsActive = viewModel.IsActive
                 };
 
@@ -108,7 +111,7 @@ namespace PhonePalace.Web.Controllers
                 await _auditService.LogAsync("CellPhones", $"Creó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
                 return RedirectToAction(nameof(Index));
             }
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID, null, (ProductCondition?)viewModel.ProductCondition);
             return View(viewModel);
         }
 
@@ -144,6 +147,7 @@ namespace PhonePalace.Web.Controllers
                 StorageGB = cellPhone.StorageGB,
                 RamGB = cellPhone.RamGB,
                 IsActive = cellPhone.IsActive,
+                ProductCondition = (ProductCondition)cellPhone.ProductCondition,
                 Images = cellPhone.Images.Select(i => new ProductImageViewModel
                 {
                     ProductImageID = i.ProductImageID,
@@ -152,7 +156,8 @@ namespace PhonePalace.Web.Controllers
                 }).ToList()
             };
 
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            var model = await _context.Models.FindAsync(viewModel.ModelID);
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID, model?.BrandID, viewModel.ProductCondition);
             return View(viewModel);
         }
 
@@ -185,9 +190,10 @@ namespace PhonePalace.Web.Controllers
                     cellPhone.CategoryID = viewModel.CategoryID;
                     cellPhone.ModelID = viewModel.ModelID;
                     cellPhone.Color = viewModel.Color!;
-                    cellPhone.StorageGB = viewModel.StorageGB.GetValueOrDefault();
-                    cellPhone.RamGB = viewModel.RamGB.GetValueOrDefault();
+                    cellPhone.StorageGB = viewModel.StorageGB;
+                    cellPhone.RamGB = viewModel.RamGB;
                     cellPhone.IsActive = viewModel.IsActive;
+                    cellPhone.ProductCondition = viewModel.ProductCondition;
 
                     // Manejar nueva imagen
                     if (viewModel.NewImageFile != null)
@@ -218,7 +224,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID);
+            var model = await _context.Models.FindAsync(viewModel.ModelID);
+            await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID, model?.BrandID, viewModel.ProductCondition);
             return View(viewModel);
         }
 
@@ -317,23 +324,28 @@ namespace PhonePalace.Web.Controllers
             return _context.CellPhones.Any(e => e.ProductID == id);
         }
 
-        private async Task PopulateDropdowns(int? categoryId = null, int? modelId = null)
+        private async Task PopulateDropdowns(int? categoryId = null, int? modelId = null, int? brandId = null, ProductCondition? condition = null)
         {
-            var activeCategories = await _context.Categories
-                                              .Where(c => c.IsActive)
-                                              .AsNoTracking()
-                                              .OrderBy(c => c.Name)
-                                              .ToListAsync();
-            var activeModels = await _context.Models
-                                              .Where(m => m.IsActive)
-                                              .AsNoTracking()
-                                              .Include(m => m.Brand)
-                                              .OrderBy(m => m.Brand.Name).ThenBy(m => m.Name)
-                                              .Select(m => new { m.ModelID, Name = $"{m.Brand.Name} {m.Name}" })
-                                              .ToListAsync();
+            ViewData["CategoryID"] = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).AsNoTracking().ToListAsync(), "CategoryID", "Name", categoryId);
+            ViewData["BrandID"] = new SelectList(await _context.Brands.Where(b => b.IsActive).OrderBy(b => b.Name).AsNoTracking().ToListAsync(), "BrandID", "Name", brandId);
 
-            ViewData["CategoryID"] = new SelectList(activeCategories, "CategoryID", "Name", categoryId);
-            ViewData["ModelID"] = new SelectList(activeModels, "ModelID", "Name", modelId);
+            var modelsQuery = _context.Models.Where(m => m.IsActive).OrderBy(m => m.Name).AsNoTracking();
+            if (brandId.HasValue)
+            {
+                modelsQuery = modelsQuery.Where(m => m.BrandID == brandId.Value);
+            }
+            ViewData["ModelID"] = new SelectList(await modelsQuery.ToListAsync(), "ModelID", "Name", modelId);
+            ViewData["ProductCondition"] = new SelectList(Enum.GetValues(typeof(ProductCondition)), condition);
+        }
+
+        public async Task<JsonResult> GetModelsByBrand(int brandId)
+        {
+            var models = await _context.Models
+                .Where(m => m.BrandID == brandId && m.IsActive)
+                .OrderBy(m => m.Name)
+                .Select(m => new { value = m.ModelID, text = m.Name })
+                .ToListAsync();
+            return Json(models);
         }
 
         private async Task<List<ProductImageViewModel>> GetImagesForProduct(int productId)

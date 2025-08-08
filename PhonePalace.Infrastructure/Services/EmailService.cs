@@ -26,7 +26,11 @@ public class EmailService
         email.Body = builder.ToMessageBody();
 
         using var smtp = new SmtpClient();
-        await smtp.ConnectAsync(settings["Server"], int.Parse(settings["Port"]), SecureSocketOptions.StartTls);
+        if (!int.TryParse(settings["Port"], out var port))
+        {
+            port = 587; // Default SMTP port
+        }
+        await smtp.ConnectAsync(settings["Server"], port, SecureSocketOptions.StartTls);
         await smtp.AuthenticateAsync(settings["Username"], settings["Password"]);
         await smtp.SendAsync(email);
         await smtp.DisconnectAsync(true);

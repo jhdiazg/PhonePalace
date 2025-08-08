@@ -6,6 +6,8 @@ using PhonePalace.Web.ViewModels;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -46,12 +48,18 @@ namespace PhonePalace.Web.Controllers
                 })
                 .ToListAsync();
 
+            var currentMonthSales = await _context.Invoices
+                .Where(i => i.SaleDate.Month == DateTime.Now.Month &&
+                            i.SaleDate.Year == DateTime.Now.Year &&
+                            i.Status == InvoiceStatus.Completed)
+                .SumAsync(i => i.Total);
+
             var viewModel = new DashboardViewModel
             {
                 TotalClients = await _context.Clients.CountAsync(c => c.IsActive),
                 TotalProducts = await _context.Products.CountAsync(p => p.IsActive),
                 TotalInventoryValue = totalInventoryValue,
-                CurrentMonthSales = 0, // Placeholder: Se calculará cuando exista el módulo de Ventas
+                CurrentMonthSales = currentMonthSales,
                 LowStockProducts = lowStockProducts
             };
 

@@ -1,0 +1,89 @@
+@model PhonePalace.Web.ViewModels.PurchaseEditViewModel
+
+@{ 
+    ViewData["Title"] = "Editar Compra";
+}
+
+<h1>Editar Compra</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="SupplierId" class="control-label"></label>
+                <select asp-for="SupplierId" class="form-control" asp-items="Model.Suppliers"></select>
+            </div>
+
+            <h3>Productos</h3>
+            <table class="table" id="purchase-details">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Details.Count; i++)
+                    {
+                        <tr>
+                            <td>
+                                <select asp-for="Details[i].ProductId" class="form-control" asp-items="Model.Products"></select>
+                            </td>
+                            <td>
+                                <input type="number" asp-for="Details[i].Quantity" class="form-control" />
+                            </td>
+                            <td>
+                                <input type="number" asp-for="Details[i].UnitPrice" class="form-control" />
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" id="add-detail" class="btn btn-secondary">Agregar Producto</button>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Guardar" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            let detailIndex = @Model.Details.Count;
+
+            $("#add-detail").click(function () {
+                let newRow = `
+                    <tr>
+                        <td>
+                            <select name="Details[${detailIndex}].ProductId" class="form-control" asp-items="Model.Products"></select>
+                        </td>
+                        <td>
+                            <input type="number" name="Details[${detailIndex}].Quantity" class="form-control" />
+                        </td>
+                        <td>
+                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control" />
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
+                        </td>
+                    </tr>`;
+                $("#purchase-details tbody").append(newRow);
+                detailIndex++;
+            });
+
+            $(document).on("click", ".remove-detail", function () {
+                $(this).closest("tr").remove();
+            });
+        });
+    </script>
+}

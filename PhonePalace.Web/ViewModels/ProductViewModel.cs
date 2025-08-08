@@ -17,13 +17,15 @@ namespace PhonePalace.Web.ViewModels
         public string? Description { get; set; }
 
         [Required(ErrorMessage = "El precio es obligatorio.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "El precio debe ser mayor que cero.")]
+        [Range(100.00, double.MaxValue, ErrorMessage = "El precio debe ser mayor que cero.")]
         [Display(Name = "Precio de Venta")]
+        [DisplayFormat(DataFormatString = "{0:c}", ApplyFormatInEditMode = true)]
         public decimal Price { get; set; }
 
         [Required(ErrorMessage = "El costo es obligatorio.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "El costo debe ser mayor que cero.")]
+        [Range(100.00, double.MaxValue, ErrorMessage = "El costo debe ser mayor que cero.")]
         [Display(Name = "Costo")]
+        [DisplayFormat(DataFormatString = "{0:c}", ApplyFormatInEditMode = true)]
         public decimal Cost { get; set; }
 
         [Required(ErrorMessage = "El SKU es obligatorio.")]

@@ -105,7 +105,7 @@ namespace PhonePalace.Web.Documents
                         }
                         else
                         {
-                            paymentsCol.Item().Text("N/A").Italic();
+                            paymentsCol.Item().Text("No hay pagos registrados para esta venta.").Italic();
                         }
                         paymentsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
                         paymentsCol.Item().Text($"Total Pagado: {_invoice.Payments.Sum(p => p.Amount):C}").SemiBold();

@@ -403,7 +403,7 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\a3ygkwa5zy-2z0ns9nrw6
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\nezrqnk58p-muycvpuwrr.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v0zgfp0y55-87fc7y1x7t.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\yfc7ypekbg-mlv21k5csn.gz
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\ehqllttd8w-upqtekl20g.gz
+D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\ehqllttd8w-4knqxte7i7.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\qx8pmhpcv4-61n19gt1b8.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\lwuom06tng-xtxxf3hu2r.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\jyqqgmce2p-bqjiyaj88i.gz
@@ -477,4 +477,3 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

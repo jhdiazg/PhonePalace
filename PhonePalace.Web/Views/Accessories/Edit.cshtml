@@ -1,4 +1,5 @@
-﻿@model PhonePalace.Web.ViewModels.AccessoryViewModel
+﻿@using PhonePalace.Domain.Enums
+@model PhonePalace.Web.ViewModels.AccessoryViewModel
 
 @{
     ViewData["Title"] = "Editar Accesorio";
@@ -13,7 +14,10 @@
         <form asp-action="Edit" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="ProductID" />
-            <input type="hidden" asp-for="IsActive" />
+            <div class="mb-3 form-check">
+                <input class="form-check-input" asp-for="IsActive" />
+                <label class="form-check-label" asp-for="IsActive"></label>
+            </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
@@ -56,7 +60,7 @@
                     <span asp-validation-for="Price" class="text-danger"></span>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label asp-for="Cost" class="form-label"></label>
+                    <label asp-for="Cost" class="form-label">Costo</label>
                     <input asp-for="Cost" class="form-control" />
                     <span asp-validation-for="Cost" class="text-danger"></span>
                 </div>
@@ -67,6 +71,25 @@
                     <label asp-for="Color" class="form-label"></label>
                     <input asp-for="Color" class="form-control" />
                     <span asp-validation-for="Color" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="ProductCondition" class="form-label">Condición del Producto</label>
+                    <select asp-for="ProductCondition" class="form-select" asp-items="@(new SelectList(Enum.GetValues(typeof(ProductCondition))))"><option value="">-- Seleccione una Condición --</option></select>
+                    <span asp-validation-for="ProductCondition" class="text-danger"></span>
+                </div>
+                 <div class="col-md-4">
+                    <div class="mb-3">
+                        <label asp-for="Material" class="form-label"></label>
+                        <input asp-for="Material" class="form-control" />
+                        <span asp-validation-for="Material" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="mb-3">
+                        <label asp-for="Compatibility" class="form-label">Compatibilidad</label>
+                        <textarea asp-for="Compatibility" class="form-control" rows="5"></textarea>
+                        <span asp-validation-for="Compatibility" class="text-danger"></span>
+                    </div>
                 </div>
             </div>
 
@@ -89,21 +112,13 @@
                             <div class="mt-2">
                                 @if (!image.IsPrimary)
                                 {
-                                    <form asp-action="SetPrimaryImage" method="post" style="display: inline;">
-                                        <input type="hidden" name="imageId" value="@image.ProductImageID" />
-                                        <input type="hidden" name="productId" value="@Model.ProductID" />
-                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Marcar como principal">
-                                            <i class="fas fa-star"></i>
-                                        </button>
-                                    </form>
-                                }
-                                <form asp-action="DeleteImage" method="post" style="display: inline;">
-                                    <input type="hidden" name="imageId" value="@image.ProductImageID" />
-                                    <input type="hidden" name="productId" value="@Model.ProductID" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar imagen" onclick="return confirm('¿Está seguro de que desea eliminar esta imagen?');">
-                                        <i class="fas fa-trash"></i>
+                                    <button type="submit" class="btn btn-sm btn-outline-success image-action-button" formaction="@Url.Action("SetPrimaryImage")" data-image-id="@image.ProductImageID" data-product-id="@Model.ProductID" title="Marcar como principal">
+                                        <i class="fas fa-star"></i>
                                     </button>
-                                </form>
+                                }
+                                <button type="submit" class="btn btn-sm btn-outline-danger image-action-button" formaction="@Url.Action("DeleteImage")" data-image-id="@image.ProductImageID" data-product-id="@Model.ProductID" title="Eliminar imagen" onclick="return confirm('¿Está seguro de que desea eliminar esta imagen?');">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
                     }
@@ -119,7 +134,35 @@
 </div>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const imageGallery = document.querySelector('.row'); // Contenedor de la galería
+            imageGallery.addEventListener('click', function (event) {
+                const button = event.target.closest('.image-action-button');
+                if (button) {
+                    event.preventDefault();
+                    const form = button.closest('form');
+                    const formData = new FormData(form);
+                    formData.append('imageId', button.dataset.imageId);
+                    formData.append('productId', button.dataset.productId);
+
+                    fetch(button.formAction, {
+                        method: 'POST',
+                        body: new URLSearchParams(formData),
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        }
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Error al procesar la solicitud.');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 }

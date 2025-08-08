@@ -1,0 +1,205 @@
+@model PhonePalace.Web.ViewModels.SupplierCreateViewModel
+
+@{
+    ViewData["Title"] = "Crear Proveedor";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="mb-3">
+                <label asp-for="SupplierType" class="control-label"></label>
+                <select asp-for="SupplierType" class="form-select" id="SupplierTypeSelection">
+                    <option value="">Seleccione un tipo</option>
+                    <option value="NaturalPerson">Persona Natural</option>
+                    <option value="LegalEntity">Persona Jurídica</option>
+                </select>
+                <span asp-validation-for="SupplierType" class="text-danger"></span>
+            </div>
+
+            <div id="NaturalPersonFields" style="display:none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="FirstName" class="control-label"></label>
+                            <input asp-for="FirstName" class="form-control" />
+                            <span asp-validation-for="FirstName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="LastName" class="control-label"></label>
+                            <input asp-for="LastName" class="form-control" />
+                            <span asp-validation-for="LastName" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="DocumentType" class="control-label"></label>
+                            <select asp-for="DocumentType" class="form-select" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.DocumentType>()"></select>
+                            <span asp-validation-for="DocumentType" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="DocumentNumber" class="control-label"></label>
+                            <input asp-for="DocumentNumber" class="form-control" />
+                            <span asp-validation-for="DocumentNumber" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="LegalEntityFields" style="display:none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="CompanyName" class="control-label"></label>
+                            <input asp-for="CompanyName" class="form-control" />
+                            <span asp-validation-for="CompanyName" class="text-danger"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label asp-for="NIT" class="control-label"></label>
+                            <input asp-for="NIT" class="form-control" />
+                            <span asp-validation-for="NIT" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="Email" class="control-label"></label>
+                        <input asp-for="Email" class="form-control" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="PhoneNumber" class="control-label"></label>
+                        <input asp-for="PhoneNumber" class="form-control" />
+                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="DepartmentID" class="control-label"></label>
+                        <select asp-for="DepartmentID" class="form-control" asp-items="ViewBag.DepartmentID"></select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label asp-for="MunicipalityID" class="control-label"></label>
+                        <select asp-for="MunicipalityID" class="form-control" asp-items="ViewBag.MunicipalityID"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="StreetAddress" class="control-label"></label>
+                <input asp-for="StreetAddress" class="form-control" />
+                <span asp-validation-for="StreetAddress" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            // Initial state based on model if editing
+            var initialSupplierType = $('#SupplierTypeSelection').val();
+            if (initialSupplierType === 'NaturalPerson') {
+                $('#NaturalPersonFields').show();
+                $('#LegalEntityFields').hide();
+            } else if (initialSupplierType === 'LegalEntity') {
+                $('#NaturalPersonFields').hide();
+                $('#LegalEntityFields').show();
+            } else {
+                $('#NaturalPersonFields').hide();
+                $('#LegalEntityFields').hide();
+            }
+
+            $('#SupplierTypeSelection').change(function () {
+                var selection = $(this).val();
+                if (selection === 'NaturalPerson') {
+                    $('#NaturalPersonFields').show();
+                    $('#LegalEntityFields').hide();
+                } else if (selection === 'LegalEntity') {
+                    $('#NaturalPersonFields').hide();
+                    $('#LegalEntityFields').show();
+                } else {
+                    $('#NaturalPersonFields').hide();
+                    $('#LegalEntityFields').hide();
+                }
+            });
+
+            // Function to load municipalities
+            function loadMunicipalities(departmentId, selectedMunicipalityId) {
+                $('#MunicipalityID').empty(); // Clear existing options
+                $('#MunicipalityID').append($('<option></option>').val("").text("Cargando municipios..."));
+
+                if (departmentId) {
+                    $.ajax({
+                        url: '@Url.Action("GetMunicipalities", "Suppliers")',
+                        type: "GET",
+                        dataType: "JSON",
+                        data: { departmentId: departmentId },
+                        success: function (municipalities) {
+                            $('#MunicipalityID').empty();
+                            $('#MunicipalityID').append($('<option></option>').val("").text("Seleccione un municipio"));
+                            $.each(municipalities, function (i, municipality) {
+                                $('#MunicipalityID').append($('<option></option>').val(municipality.value).text(municipality.text));
+                            });
+                            if (selectedMunicipalityId) {
+                                $('#MunicipalityID').val(selectedMunicipalityId);
+                            }
+                        },
+                        error: function () {
+                            $('#MunicipalityID').empty();
+                            $('#MunicipalityID').append($('<option></option>').val("").text("Error al cargar municipios"));
+                        }
+                    });
+                } else {
+                    $('#MunicipalityID').empty();
+                    $('#MunicipalityID').append($('<option></option>').val("").text("Seleccione un departamento"));
+                }
+            }
+
+            // Event listener for DepartmentID change
+            $('#DepartmentID').change(function () {
+                var departmentId = $(this).val();
+                loadMunicipalities(departmentId);
+            });
+
+            // Initial load for municipalities if a department is already selected (e.g., on validation error)
+            var initialDepartmentId = $('#DepartmentID').val();
+            var initialMunicipalityId = '@Model.MunicipalityID'; // Get initial municipality from model
+            if (initialDepartmentId) {
+                loadMunicipalities(initialDepartmentId, initialMunicipalityId);
+            }
+        });
+    </script>
+}

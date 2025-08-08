@@ -1,0 +1,68 @@
+@using PhonePalace.Web.Helpers
+@model PaginatedList<PhonePalace.Web.ViewModels.SupplierIndexViewModel>
+
+@{
+    ViewData["Title"] = "Proveedores";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Crear Nuevo Proveedor</a>
+</p>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Nombre / Razón Social</th>
+                        <th>Documento</th>
+                        <th>Correo Electrónico</th>
+                        <th>Teléfono</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+            @foreach (var item in Model) {
+                    <tr>
+                        <td>
+                            @if (item.SupplierType == "Persona Natural") { <span class="badge bg-primary">@item.SupplierType</span> }
+                            else { <span class="badge bg-success">@item.SupplierType</span> }
+                        </td>
+                        <td>@Html.DisplayFor(modelItem => item.DisplayName)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Document)</td>
+                        <td>@Html.DisplayFor(modelItem => item.Email)</td>
+                        <td>@Html.DisplayFor(modelItem => item.PhoneNumber)</td>
+                        <td class="text-end">
+                            <a asp-action="Edit" asp-route-id="@item.SupplierID" class="btn btn-sm btn-warning">Editar</a> 
+                            <a asp-action="Details" asp-route-id="@item.SupplierID" class="btn btn-sm btn-info">Detalles</a> 
+                            <a asp-action="Delete" asp-route-id="@item.SupplierID" class="btn btn-sm btn-danger">Eliminar</a>
+                        </td>
+                    </tr>
+            }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-center align-items-center mt-3">
+    @{
+        var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+        var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+    }
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex - 1)"
+       class="btn btn-outline-secondary @prevDisabled">
+        Anterior
+    </a>
+    <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
+    <a asp-action="Index"
+       asp-route-pageNumber="@(Model.PageIndex + 1)"
+       class="btn btn-outline-secondary @nextDisabled">
+        Siguiente
+    </a>
+</div>

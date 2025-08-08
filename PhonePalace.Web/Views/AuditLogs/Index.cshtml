@@ -1,6 +1,4 @@
 ﻿@model PhonePalace.Web.Models.AuditLogIndexViewModel
-@using X.PagedList
-@using X.PagedList.Mvc.Core
 
 
 @{
@@ -82,12 +80,32 @@
             </table>
         </div>
     </div>
-    @if (Model.AuditLogs != null && Model.AuditLogs.PageCount > 1)
+    @if (Model.AuditLogs != null && Model.AuditLogs.TotalPages > 1)
     {
-        <div class="card-footer d-flex justify-content-center">
-            @Html.PagedListPager(Model.AuditLogs, page => Url.Action("Index",
-                new { page, selectedModule = Model.SelectedModule, searchUser = Model.SearchUser, startDate = Model.StartDate?.ToString("yyyy-MM-dd"), endDate = Model.EndDate?.ToString("yyyy-MM-dd") }),
-                new PagedListRenderOptions { LiElementClasses = new[] { "page-item" }, PageClasses = new[] { "page-link" } })
+        <div class="card-footer d-flex justify-content-center align-items-center">
+            @{
+                var prevDisabled = !Model.AuditLogs.HasPreviousPage ? "disabled" : "";
+                var nextDisabled = !Model.AuditLogs.HasNextPage ? "disabled" : "";
+            }
+            <a asp-action="Index"
+               asp-route-page="@(Model.AuditLogs.PageIndex - 1)"
+               asp-route-selectedModule="@Model.SelectedModule"
+               asp-route-searchUser="@Model.SearchUser"
+               asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+               asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+               class="btn btn-outline-secondary @prevDisabled">
+                Anterior
+            </a>
+            <span class="mx-3">Página @Model.AuditLogs.PageIndex de @Model.AuditLogs.TotalPages</span>
+            <a asp-action="Index"
+               asp-route-page="@(Model.AuditLogs.PageIndex + 1)"
+               asp-route-selectedModule="@Model.SelectedModule"
+               asp-route-searchUser="@Model.SearchUser"
+               asp-route-startDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+               asp-route-endDate="@Model.EndDate?.ToString("yyyy-MM-dd")"
+               class="btn btn-outline-secondary @nextDisabled">
+                Siguiente
+            </a>
         </div>
     }
 </div>
