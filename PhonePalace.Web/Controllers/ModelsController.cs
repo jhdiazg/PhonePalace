@@ -87,7 +87,7 @@ namespace PhonePalace.Web.Controllers
                 };
                 _context.Add(model);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Models", $"Creó el modelo '{model.Name}' (ID: {model.ModelID}).");
+                await _auditService.LogAsync("Modelos", $"Creó el modelo '{model.Name}' (ID: {model.ModelID}).");
                 return RedirectToAction(nameof(Index));
             }
             await PopulateBrandsDropdown(viewModel.BrandID);
@@ -143,7 +143,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Update(modelToUpdate);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Models", $"Editó el modelo '{modelToUpdate.Name}' (ID: {modelToUpdate.ModelID}).");
+                    await _auditService.LogAsync("Modelos", $"Editó el modelo '{modelToUpdate.Name}' (ID: {modelToUpdate.ModelID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -193,7 +193,7 @@ namespace PhonePalace.Web.Controllers
                 model.IsActive = false;
                 _context.Update(model);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Models", $"Eliminó el modelo '{model.Name}' (ID: {model.ModelID}).");
+                await _auditService.LogAsync("Modelos", $"Eliminó el modelo '{model.Name}' (ID: {model.ModelID}).");
             }
             
             return RedirectToAction(nameof(Index));

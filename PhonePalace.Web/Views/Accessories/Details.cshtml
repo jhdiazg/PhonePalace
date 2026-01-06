@@ -1,4 +1,4 @@
-@model PhonePalace.Domain.Entities.Accessory
+﻿@model PhonePalace.Domain.Entities.Accessory
 @using PhonePalace.Web.Helpers
 @using PhonePalace.Domain.Enums
 
@@ -46,14 +46,16 @@
 
                 <dt class="col-sm-4">@Html.DisplayNameFor(model => model.IsActive)</dt>
                 <dd class="col-sm-8">
-                    @if (Model.IsActive)
-                    {
-                        <span class="badge bg-success">Activo</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger">Inactivo</span>
-                    }
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" checked="@Model.IsActive" disabled />
+                    </div>
+                </dd>
+
+                <dt class="col-sm-4">@Html.DisplayNameFor(model => model.BillWithIVA)</dt>
+                <dd class="col-sm-8">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" checked="@Model.BillWithIVA" disabled />
+                    </div>
                 </dd>
 
                 <dt class="col-sm-12">@Html.DisplayNameFor(model => model.Compatibility)</dt>
@@ -62,12 +64,12 @@
         </div>
     </div>
 
-    <h5 class="mt-4">Proyección de Costo</h5>
+    <h5 class="mt-4">Proyección de Precios de Venta (Basado en Costo)</h5>
     <table class="table table-bordered table-striped">
         <thead>
             <tr>
-                <th>Porcentaje de Incremento</th>
-                <th>Costo Proyectado</th>
+                <th>Margen de Ganancia sobre Costo</th>
+                <th>Precio de Venta Sugerido</th>
             </tr>
         </thead>
         <tbody>
@@ -75,10 +77,10 @@
                 var percentages = new List<double> { 0.20, 0.35, 0.60, 0.70, 0.80, 1.00, 1.50 };
                 foreach (var p in percentages)
                 {
-                    var projectedCost = Model.Cost * (1m + (decimal)p);
+                    var projectedPrice = Model.Cost * (1m + (decimal)p);
                     <tr>
-                        <td>@(p * 100)%</td>
-                        <td>@projectedCost.ToString("C")</td>
+                        <td>@p.ToString("P0")</td>
+                        <td>@projectedPrice.ToString("C")</td>
                     </tr>
                 }
             }
@@ -86,14 +88,13 @@
     </table>
 
     <div class="form-group mt-4">
-        <label for="customCost">Calcular Porcentaje de Incremento para un Costo Personalizado:</label>
+        <label for="customPrice" class="form-label">Calculadora de Margen de Ganancia</label>
         <div class="row">
             <div class="col-md-4">
                 <div class="input-group">
-                    <input type="text" id="customCost" class="form-control" style="max-width: 180px;" />
-                    <div class="input-group-append">
-                        <span class="input-group-text">% de Incremento:&nbsp;&nbsp;<span id="calculatedPercentage">0.00</span>%</span>
-                    </div>
+                    <span class="input-group-text">Precio Venta</span>
+                    <input type="number" id="customPrice" class="form-control" step="100.00" min="0" value="@Model.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" />
+                    <span class="input-group-text">Margen: <span id="calculatedPercentage" class="ms-1 fw-bold">0.00</span>%</span>
                 </div>
             </div>
         </div>
@@ -101,82 +102,30 @@
 </div>
 
 <div class="mt-3">
-    <a asp-action="Edit" asp-route-id="@Model.ProductID" class="btn btn-secondary">Editar</a> 
+    <a asp-action="Edit" asp-route-id="@Model.ProductID" class="btn btn-primary">Editar</a> 
     <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
 </div>
 
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const baseCost = parseFloat('@Model.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture)');
-            const maxCost = baseCost * 2.5; // 150% increase
-            const customCostInput = document.getElementById('customCost');
+            // Usar InvariantCulture para asegurar que el separador decimal sea '.'
+            const baseCost = @Model.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            const customPriceInput = document.getElementById('customPrice');
             const calculatedPercentageSpan = document.getElementById('calculatedPercentage');
 
-            const currencyFormatter = new Intl.NumberFormat('es-CO', {
-                style: 'currency',
-                currency: 'COP',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-
-            function formatAsCurrency(value) {
-                return currencyFormatter.format(value);
-            }
-
-            function parseFromCurrency(value) {
-                if (typeof value !== 'string') return value;
-                return parseFloat(value.replace(/\$/g, '').replace(/\./g, '').replace(',', '.').trim());
-            }
-
-            function calculateAndDisplayPercentage(cost) {
-                let numCost = parseFloat(cost);
-                if (isNaN(numCost) || baseCost === 0) {
+            function calculatePercentage() {
+                const customPrice = parseFloat(customPriceInput.value.replace(',', '.'));
+                if (!isNaN(customPrice) && baseCost > 0 && customPrice >= baseCost) {
+                    const percentage = ((customPrice - baseCost) / baseCost) * 100;
+                    calculatedPercentageSpan.textContent = percentage.toFixed(2);
+                } else {
                     calculatedPercentageSpan.textContent = '0.00';
-                    return;
                 }
-                const percentage = ((numCost - baseCost) / baseCost) * 100;
-                calculatedPercentageSpan.textContent = percentage.toFixed(2);
             }
 
-            // Event listener for dynamic calculation while typing
-            customCostInput.addEventListener('input', () => {
-                let currentValue = parseFloat(customCostInput.value);
-                if (isNaN(currentValue)) {
-                    currentValue = 0; // Default to 0 if not a number
-                }
-                // Clamp the value between 0 and maxCost for calculation and display
-                currentValue = Math.max(0, Math.min(currentValue, maxCost));
-                // Do NOT update customCostInput.value here with toFixed(2) or it restricts typing
-                calculateAndDisplayPercentage(currentValue);
-            });
-
-            // On focus, switch to a raw number for easy editing
-            customCostInput.addEventListener('focus', function () {
-                this.type = 'number';
-                this.min = 0;
-                this.max = maxCost;
-                this.step = '0.01'; // Set a more appropriate step for currency
-                this.value = parseFromCurrency(this.value).toFixed(2);
-            });
-
-            // On blur, format back to currency string and finalize value
-            customCostInput.addEventListener('blur', function () {
-                let currentValue = parseFloat(this.value);
-                if (isNaN(currentValue)) {
-                    currentValue = baseCost;
-                }
-                // Clamp the value between 0 and maxCost on blur as well
-                currentValue = Math.max(0, Math.min(currentValue, maxCost));
-                this.type = 'text';
-                this.value = formatAsCurrency(currentValue);
-                calculateAndDisplayPercentage(currentValue); // Final update
-            });
-
-            // Initial state
-            customCostInput.type = 'text';
-            customCostInput.value = formatAsCurrency(@Model.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            calculateAndDisplayPercentage(@Model.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            customPriceInput.addEventListener('input', calculatePercentage);
+            calculatePercentage(); // Initial calculation on page load
         });
     </script>
 }

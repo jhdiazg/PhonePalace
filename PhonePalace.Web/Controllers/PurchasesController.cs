@@ -54,11 +54,11 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var purchase = new Purchase
+                                var purchase = new Purchase
                 {
                     SupplierId = model.SupplierId,
                     PurchaseDate = DateTime.UtcNow,
-                    Status = PhonePalace.Domain.Enums.PurchaseStatus.Draft, // Set initial status to Draft
+                    Status = Domain.Enums.PurchaseStatus.Draft, // Set initial status to Draft
                     PurchaseDetails = model.Details?.Select(d => new PurchaseDetail
                     {
                         ProductId = d.ProductId,
@@ -86,6 +86,7 @@ namespace PhonePalace.Web.Controllers
             var purchase = await _context.Purchases
                 .Include(p => p.Supplier)
                 .Include(p => p.PurchaseDetails)
+                .Include(d => d.PurchaseDetails)
                     .ThenInclude(d => d.Product)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -107,7 +108,7 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != PhonePalace.Domain.Enums.PurchaseStatus.Draft)
+            if (purchase.Status != Domain.Enums.PurchaseStatus.Draft)
             {
                 TempData["ErrorMessage"] = "Solo se pueden editar compras en estado Borrador.";
                 return RedirectToAction(nameof(Details), new { id });
@@ -196,13 +197,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != PhonePalace.Domain.Enums.PurchaseStatus.Draft)
+            if (purchase.Status != Domain.Enums.PurchaseStatus.Draft)
             {
                 TempData["ErrorMessage"] = "Solo se pueden confirmar órdenes en estado Borrador.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = PhonePalace.Domain.Enums.PurchaseStatus.Ordered;
+            purchase.Status = Domain.Enums.PurchaseStatus.Ordered;
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido confirmada y su estado es ahora Ordenada.";
@@ -220,13 +221,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != PhonePalace.Domain.Enums.PurchaseStatus.Received)
+            if (purchase.Status != Domain.Enums.PurchaseStatus.Received)
             {
                 TempData["ErrorMessage"] = "Solo se pueden marcar como facturadas órdenes en estado Recibida.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = PhonePalace.Domain.Enums.PurchaseStatus.Billed;
+            purchase.Status = Domain.Enums.PurchaseStatus.Billed;
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido marcada como facturada.";
@@ -244,13 +245,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != PhonePalace.Domain.Enums.PurchaseStatus.Billed)
+            if (purchase.Status != Domain.Enums.PurchaseStatus.Billed)
             {
                 TempData["ErrorMessage"] = "Solo se pueden marcar como pagadas órdenes en estado Facturada.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = PhonePalace.Domain.Enums.PurchaseStatus.Paid;
+            purchase.Status = Domain.Enums.PurchaseStatus.Paid;
 
             var accountPayable = await _context.AccountPayables.FirstOrDefaultAsync(ap => ap.PurchaseId == id);
             if (accountPayable != null)
@@ -286,13 +287,13 @@ namespace PhonePalace.Web.Controllers
             var purchase = await _context.Purchases.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
             if (purchase == null) return NotFound();
 
-            if (purchase.Status == PhonePalace.Domain.Enums.PurchaseStatus.Cancelled)
+            if (purchase.Status == Domain.Enums.PurchaseStatus.Cancelled)
             {
                 TempData["ErrorMessage"] = "Esta compra ya ha sido cancelada.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            if (purchase.Status == PhonePalace.Domain.Enums.PurchaseStatus.Received)
+            if (purchase.Status == Domain.Enums.PurchaseStatus.Received)
             {
                 // Revertir el stock solo si la compra fue recibida
                 foreach (var detail in purchase.PurchaseDetails ?? new List<PurchaseDetail>())
@@ -302,7 +303,7 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
-            purchase.Status = PhonePalace.Domain.Enums.PurchaseStatus.Cancelled;
+            purchase.Status = Domain.Enums.PurchaseStatus.Cancelled;
             purchase.DeletedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -319,8 +320,7 @@ namespace PhonePalace.Web.Controllers
             {
                 var purchase = await _context.Purchases
                     .Include(p => p.PurchaseDetails)
-                        .ThenInclude(d => (Product?)d.Product)
-                            .ThenInclude(p => p.InventoryLevels)
+                    .ThenInclude(d => d.Product)
                     .FirstOrDefaultAsync(p => p.Id == id);
 
                 if (purchase == null)
@@ -328,18 +328,19 @@ namespace PhonePalace.Web.Controllers
                     return NotFound();
                 }
 
-                if (purchase.Status == PhonePalace.Domain.Enums.PurchaseStatus.Received)
+                if (purchase.Status == Domain.Enums.PurchaseStatus.Received)
                 {
                     TempData["ErrorMessage"] = "Esta compra ya ha sido recibida.";
                     return RedirectToAction(nameof(Details), new { id });
                 }
 
-                // Update inventory for each product in the purchase
+                // Cargar manualmente los InventoryLevels para cada producto
                 foreach (var detail in purchase.PurchaseDetails ?? new List<PurchaseDetail>())
                 {
                     if (detail.Product != null)
                     {
-                        var inventory = detail.Product?.InventoryLevels?.FirstOrDefault();
+                        var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
+                        var inventory = inventoryLevels.FirstOrDefault();
                         if (inventory != null)
                         {
                             inventory.Stock += detail.Quantity;
@@ -353,7 +354,7 @@ namespace PhonePalace.Web.Controllers
                 }
 
                 // Change the purchase status
-                purchase.Status = PhonePalace.Domain.Enums.PurchaseStatus.Received;
+                purchase.Status = Domain.Enums.PurchaseStatus.Received;
 
                 // Create AccountPayable entry
                 var accountPayable = new AccountPayable
@@ -362,7 +363,7 @@ namespace PhonePalace.Web.Controllers
                     Amount = purchase.TotalAmount,
                     DueDate = DateTime.UtcNow.AddDays(30), // Example: Due in 30 days
                     IsPaid = false,
-                    DocumentType = PhonePalace.Domain.Enums.AccountPayableDocumentType.Invoice, // Default to Invoice
+                    DocumentType = Domain.Enums.AccountPayableDocumentType.Invoice, // Default to Invoice
                     DocumentNumber = purchase.Id.ToString(), // Use PurchaseId as DocumentNumber for now
                     CreatedDate = DateTime.UtcNow
                 };

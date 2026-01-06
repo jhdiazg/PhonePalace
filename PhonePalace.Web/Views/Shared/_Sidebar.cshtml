@@ -1,10 +1,10 @@
-﻿﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<IdentityUser> SignInManager
 @using PhonePalace.Web.Helpers
 
 @{
     // Define qué controladores pertenecen al menú desplegable "Configuración"
-    var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models");
+    var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks");
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
 }
 
@@ -34,7 +34,7 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="Ventas" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
+            <a asp-controller="Sales" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
                 <i class="bi bi-cash-coin me-2"></i>
                 Ventas
             </a>
@@ -140,6 +140,12 @@
                             <a asp-controller="Models" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Models")">
                                 <i class="bi bi-phone-vibrate-fill me-2"></i>
                                 Modelos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="Banks" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Banks")">
+                                <i class="bi bi-bank me-2"></i>
+                                Bancos
                             </a>
                         </li>
                     }

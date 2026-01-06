@@ -41,6 +41,9 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
         public DbSet<AccountPayable> AccountPayables { get; set; }
+        public DbSet<Bank> Banks { get; set; }
+        public DbSet<Sale> Sales { get; set; }
+        public DbSet<SaleDetail> SaleDetails { get; set; }
 
 
 
@@ -89,8 +92,22 @@ namespace PhonePalace.Infrastructure.Data
 
             // --- Filtro de Consulta Global para Borrado Lógico (Soft Delete) ---
             // El filtro se aplica a la entidad raíz 'Client' y se hereda a 'NaturalPerson' y 'LegalEntity'.
-            modelBuilder.Entity<Client>().HasQueryFilter(c => c.IsActive);
+            // modelBuilder.Entity<Client>().HasQueryFilter(c => c.IsActive); // Eliminado para mostrar todos los clientes
             modelBuilder.Entity<Purchase>().HasQueryFilter(p => !p.IsDeleted);
+            // modelBuilder.Entity<Bank>().HasQueryFilter(b => b.IsActive); // Eliminado para mostrar todos los bancos
+            modelBuilder.Entity<Sale>().HasQueryFilter(s => !s.IsDeleted);
+
+            modelBuilder.Entity<Sale>()
+                .HasMany(s => s.Details)
+                .WithOne(d => d.Sale)
+                .HasForeignKey(d => d.SaleID);
+
+            modelBuilder.Entity<Invoice>()
+                .HasMany(i => i.Payments)
+                .WithOne(p => p.Invoice)
+                .HasForeignKey(p => p.InvoiceID);
+
+
         }
     }
 }

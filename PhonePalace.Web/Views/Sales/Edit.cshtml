@@ -1,0 +1,220 @@
+@model PhonePalace.Web.ViewModels.SaleEditViewModel
+@using PhonePalace.Domain.Enums
+
+@{
+    ViewData["Title"] = "Editar Venta";
+}
+
+<h1>Editar Venta #@Model.SaleID</h1>
+
+<hr />
+<form asp-action="Edit" id="saleForm">
+    <input type="hidden" asp-for="SaleID" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label asp-for="ClientID" class="control-label"></label>
+                <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
+                    <option value="">-- Seleccione un Cliente --</option>
+                </select>
+                <span asp-validation-for="ClientID" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label asp-for="SaleDate" class="control-label"></label>
+                <input asp-for="SaleDate" class="form-control" />
+                <span asp-validation-for="SaleDate" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label asp-for="SaleChannel" class="control-label"></label>
+                <select asp-for="SaleChannel" class="form-control" asp-items="Model.SaleChannels">
+                    <option value="">-- Seleccione un Canal --</option>
+                </select>
+                <span asp-validation-for="SaleChannel" class="text-danger"></span>
+            </div>
+        </div>
+    </div>
+
+    @* Sección de Productos *@
+    <h4 class="mt-4">Productos</h4>
+    <div id="product-details-container">
+        @for (int i = 0; i < Model.Details.Count; i++)
+        {
+            <div class="row product-row mb-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Producto</label>
+                    <select name="Details[@i].ProductID" class="form-control product-select" asp-items="Model.Products">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                    <input type="hidden" name="Details[@i].UnitPrice" class="price-input" value="@Model.Details[i].UnitPrice" data-bill-with-iva="" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" name="Details[@i].Quantity" class="form-control quantity-input" value="@Model.Details[i].Quantity" min="1" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Precio Unit.</label>
+                    <input type="text" inputmode="decimal" class="form-control price-display text-end" value="@Model.Details[i].UnitPrice.ToString("F2")" readonly />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Subtotal</label>
+                    <input type="text" class="form-control subtotal-line" readonly />
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-row"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        }
+    </div>
+    <button type="button" id="add-product-row" class="btn btn-sm btn-outline-success mt-2"><i class="bi bi-plus-circle"></i> Agregar Producto</button>
+
+    <div class="form-group mt-4">
+        <input type="submit" value="Guardar Cambios" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+
+@* Plantillas para filas dinámicas *@
+<template id="product-row-template">
+    <div class="row product-row mb-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label">Producto</label>
+            <select name="Details[INDEX].ProductID" class="form-control product-select" asp-items="Model.Products">
+                <option value="">-- Seleccione --</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Cantidad</label>
+            <input type="number" name="Details[INDEX].Quantity" class="form-control quantity-input" value="1" min="1" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Precio Unit.</label>
+            <input type="text" inputmode="decimal" name="Details[INDEX].UnitPrice" class="form-control price-input text-end" readonly data-bill-with-iva="" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Subtotal</label>
+            <input type="text" class="form-control subtotal-line" readonly />
+        </div>
+        <div class="col-md-1">
+            <button type="button" class="btn btn-danger btn-sm remove-row"><i class="bi bi-trash"></i></button>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            let productIndex = @Model.Details.Count;
+            const taxRate = 0.19; // Assuming a fixed tax rate for now
+
+            function addProductRow() {
+                const template = document.getElementById('product-row-template').innerHTML;
+                const newRow = template.replace(/INDEX/g, productIndex);
+                $('#product-details-container').append(newRow);
+                productIndex++;
+                updateTotals();
+            }
+
+            function handleRemoveRow() {
+                $(this).closest('.row.product-row').remove();
+                reindexRows();
+                updateTotals();
+            }
+
+            function reindexRows() {
+                $('#product-details-container .product-row').each(function (index) {
+                    $(this).find('input, select').each(function () {
+                        this.name = this.name.replace(/Details\[\d+\]/, `Details[${index}]`);
+                    });
+                });
+                productIndex = $('#product-details-container .product-row').length;
+            }
+
+            $('#add-product-row').click(addProductRow);
+            $('body').on('click', '.remove-row', handleRemoveRow);
+
+            $('body').on('change', '.product-select', function (e) {
+                const row = $(this).closest('.row');
+                const productId = $(this).val();
+                if (!productId) {
+                    row.find('.price-input').val('');
+                    row.find('.price-display').val('');
+                    row.find('.quantity-input').val('1');
+                    updateTotals();
+                    return;
+                }
+
+                fetch(`/api/products/${productId}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Producto no encontrado (ID: ${productId})`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        const price = parseFloat(data.price) || 0;
+                        row.find('.price-input').val(price.toFixed(2));
+                        row.find('.price-display').val(price.toFixed(2));
+                        row.find('.quantity-input').attr('max', data.stock);
+                        row.find('.price-input').data('bill-with-iva', data.billWithIVA);
+                        updateTotals();
+                    })
+                    .catch(error => {
+                        console.error('Error al obtener producto:', error);
+                        alert(`Error: No se pudo obtener la información del producto. ${error.message}`);
+                        $(this).val('');
+                    });
+            });
+
+            $('body').on('input', '.quantity-input', updateTotals);
+
+            function updateTotals() {
+                let subtotal = 0;
+                let subtotalForVAT = 0;
+                const currencyFormatter = new Intl.NumberFormat('es-CO', {
+                    style: 'currency',
+                    currency: 'COP'
+                });
+
+                $('.product-row').each(function () {
+                    const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
+                    const price = parseFloat($(this).find('.price-input').val()) || 0;
+                    const lineTotal = quantity * price;
+                    $(this).find('.subtotal-line').val(currencyFormatter.format(lineTotal));
+                    subtotal += lineTotal;
+
+                    const billWithIVA = $(this).find('.price-input').data('bill-with-iva');
+                    if (billWithIVA) {
+                        subtotalForVAT += lineTotal;
+                    }
+                });
+
+                const tax = subtotalForVAT * taxRate;
+                const total = subtotal + tax;
+
+                // Update summary section (if needed, for Edit view, we might not have payments)
+                // For simplicity, only updating product totals here.
+                // If you need a full summary like Create, you'd need to add payment logic.
+            }
+
+            // Initialize product dropdowns and totals on load
+            $('.product-select').each(function() {
+                const row = $(this).closest('.row');
+                const productId = $(this).val();
+                if (productId) {
+                    fetch(`/api/products/${productId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            row.find('.price-input').data('bill-with-iva', data.billWithIVA);
+                            updateTotals();
+                        });
+                }
+            });
+            updateTotals(); // Initial calculation
+        });
+    </script>
+}

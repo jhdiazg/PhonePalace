@@ -24,10 +24,9 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Clients
-        public async Task<IActionResult> Index(int? pageNumber)
+    public IActionResult Index(int? pageNumber)
         {
             var clientsQuery = _context.Clients
-                .Where(c => c.IsActive)
                 .AsNoTracking()
                 .Select(c => new ClientIndexViewModel
                 {
@@ -36,11 +35,19 @@ namespace PhonePalace.Web.Controllers
                     DisplayName = c.DisplayName,
                     Document = c is NaturalPerson ? ((NaturalPerson)c).DocumentNumber : ((LegalEntity)c).NIT,
                     Email = c.Email,
-                    PhoneNumber = c.PhoneNumber
-                });
+                    PhoneNumber = c.PhoneNumber,
+                    IsActive = c.IsActive
+                })
+                .AsEnumerable()
+                .OrderBy(c => c.IsActive)
+                .ThenBy(c => c.DisplayName);
 
             int pageSize = 10;
-            return View(await PaginatedList<ClientIndexViewModel>.CreateAsync(clientsQuery, pageNumber ?? 1, pageSize));
+            var clientList = clientsQuery.ToList();
+            var pageIndex = pageNumber ?? 1;
+            var pagedClients = clientList.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
+            var paginated = new PaginatedList<ClientIndexViewModel>(pagedClients, clientList.Count, pageIndex, pageSize);
+            return View(paginated);
         }
 
         // GET: Clients/Details/5
@@ -128,7 +135,7 @@ namespace PhonePalace.Web.Controllers
             _context.Add(newClient);
             await _context.SaveChangesAsync();
             TempData["success"] = "Cliente creado exitosamente."; // Añadido
-            await _auditService.LogAsync("Clients", $"Creó el cliente '{newClient.DisplayName}' (ID: {newClient.ClientID}).");
+            await _auditService.LogAsync("Clientes", $"Creó el cliente '{newClient.DisplayName}' (ID: {newClient.ClientID}).");
             return RedirectToAction(nameof(Index));
         }
 
@@ -216,7 +223,7 @@ namespace PhonePalace.Web.Controllers
                     _context.Update(clientToUpdate);
                     await _context.SaveChangesAsync();
                     TempData["success"] = "Cliente natural actualizado exitosamente."; // Añadido
-                    await _auditService.LogAsync("Clients", $"Editó el cliente '{clientToUpdate.DisplayName}' (ID: {clientToUpdate.ClientID}).");
+                    await _auditService.LogAsync("Clientes", $"Editó el cliente '{clientToUpdate.DisplayName}' (ID: {clientToUpdate.ClientID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -262,7 +269,7 @@ namespace PhonePalace.Web.Controllers
                     _context.Update(clientToUpdate);
                     await _context.SaveChangesAsync();
                     TempData["success"] = "Cliente jurídico actualizado exitosamente.";
-                    await _auditService.LogAsync("Clients", $"Editó el cliente '{clientToUpdate.DisplayName}' (ID: {clientToUpdate.ClientID}).");
+                    await _auditService.LogAsync("Clientes", $"Editó el cliente '{clientToUpdate.DisplayName}' (ID: {clientToUpdate.ClientID}).");
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
@@ -304,7 +311,7 @@ namespace PhonePalace.Web.Controllers
                 client.IsActive = false;
                 _context.Update(client);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Clients", $"Eliminó (desactivó) el cliente '{clientName}' (ID: {clientId}).");
+                await _auditService.LogAsync("Clientes", $"Eliminó (desactivó) el cliente '{clientName}' (ID: {clientId}).");
             }
 
             return RedirectToAction(nameof(Index));

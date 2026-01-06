@@ -13,7 +13,7 @@
         <form asp-action="EditLegalEntity" asp-route-id="@Model.ClientID">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="ClientID" />
-            <input type="hidden" asp-for="IsActive" />
+            @await Html.PartialAsync("_ToggleButton", new PhonePalace.Web.ViewModels.ToggleButtonViewModel { IsChecked = Model.IsActive, Label = "Activo" })
 
             <div class="row">
                 <div class="col-md-6 mb-3">

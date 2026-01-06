@@ -43,14 +43,15 @@
                                 <a asp-action="Index" asp-route-sortOrder="@ViewData["PriceSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">@Html.DisplayNameFor(model => model.First().Price)</a>
                             </th>
                             <th>@Html.DisplayNameFor(model => model.First().SKU)</th>
-                            <th></th>
+                               <th>Activo</th>
+                               <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var item in Model)
                         {
                             string controllerName = item.ProductType == "Celular" ? "CellPhones" : "Accessories";
-                            <tr>
+                            <tr class="@(item.IsActive ? "" : "table-danger")">
                                 <td>
                                     <img src="@(item.PrimaryImageUrl ?? "/images/placeholder.png")" alt="Imagen de @item.Name" class="product-image-thumbnail" />
                                 </td>
@@ -60,11 +61,14 @@
                                 <td>@Html.DisplayFor(modelItem => item.ModelName)</td>
                                 <td>@item.Price.ToString("C")</td>
                                 <td>@Html.DisplayFor(modelItem => item.SKU)</td>
-                                <td class="text-end">
-                                    <a asp-controller="@controllerName" asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                    <a asp-controller="@controllerName" asp-action="Details" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-info">Detalles</a>
-                                    <a asp-controller="@controllerName" asp-action="Delete" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-danger">Borrar</a>
-                                </td>
+                                   <td>
+                                       <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
+                                   </td>
+                                   <td class="text-end">
+                                       <a asp-controller="@controllerName" asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-warning">Editar</a>
+                                       <a asp-controller="@controllerName" asp-action="Details" asp-route-id="@item.ProductID" class="btn btn-sm btn-info">Detalles</a>
+                                       <a asp-controller="@controllerName" asp-action="Delete" asp-route-id="@item.ProductID" class="btn btn-sm btn-danger">Eliminar</a>
+                                   </td>
                             </tr>
                         }
                     </tbody>

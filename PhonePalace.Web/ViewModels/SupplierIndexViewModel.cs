@@ -4,7 +4,10 @@ namespace PhonePalace.Web.ViewModels
 {
     public class SupplierIndexViewModel
     {
-        public int SupplierID { get; set; }
+    public int SupplierID { get; set; }
+
+    [Display(Name = "Activo")]
+    public bool IsActive { get; set; }
 
         [Display(Name = "Tipo de Proveedor")]
         public string SupplierType { get; set; } = string.Empty;

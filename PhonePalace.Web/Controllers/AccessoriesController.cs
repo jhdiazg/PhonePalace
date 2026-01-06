@@ -90,7 +90,8 @@ namespace PhonePalace.Web.Controllers
                     BrandID = viewModel.BrandID,
                     Color = viewModel.Color,
                     IsActive = viewModel.IsActive,
-                    ProductCondition = viewModel.ProductCondition
+                    ProductCondition = viewModel.ProductCondition,
+                    BillWithIVA = viewModel.BillWithIVA
                 };
 
                 if (viewModel.NewImageFile != null)
@@ -105,7 +106,7 @@ namespace PhonePalace.Web.Controllers
 
                 _context.Add(accessory);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Accessories", $"Creó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
+                await _auditService.LogAsync("Accesorios", $"Creó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
                 return RedirectToAction(nameof(Index));
             }
             await PopulateDropdowns(viewModel.CategoryID, viewModel.BrandID, viewModel.ProductCondition);
@@ -182,6 +183,7 @@ namespace PhonePalace.Web.Controllers
                     accessory.ProductCondition = viewModel.ProductCondition;
                     accessory.Material = viewModel.Material;
                     accessory.Compatibility = viewModel.Compatibility;
+                    accessory.BillWithIVA = viewModel.BillWithIVA;
 
                     if (viewModel.NewImageFile != null)
                     {
@@ -195,7 +197,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Update(accessory);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Accessories", $"Editó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
+                    await _auditService.LogAsync("Accesorios", $"Editó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -247,7 +249,7 @@ namespace PhonePalace.Web.Controllers
                 accessory.IsActive = false; // Borrado lógico
                 _context.Update(accessory);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Accessories", $"Eliminó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
+                                    await _auditService.LogAsync("Accesorios", $"Eliminó el accesorio '{accessory.Name}' (ID: {accessory.ProductID}).");
             }
 
             return RedirectToAction(nameof(Index));
@@ -275,7 +277,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             await _context.SaveChangesAsync();
-            await _auditService.LogAsync("Accessories", $"Eliminó una imagen del producto con ID {productId}.");
+            await _auditService.LogAsync("Accesorios", $"Eliminó una imagen del producto con ID {productId}.");
 
             return RedirectToAction(nameof(Edit), new { id = productId });
         }
@@ -290,7 +292,7 @@ namespace PhonePalace.Web.Controllers
                 img.IsPrimary = (img.ProductImageID == imageId);
             }
             await _context.SaveChangesAsync();
-            await _auditService.LogAsync("Accessories", $"Estableció una nueva imagen principal para el producto con ID {productId}.");
+            await _auditService.LogAsync("Accesorios", $"Estableció una nueva imagen principal para el producto con ID {productId}.");
             return RedirectToAction(nameof(Edit), new { id = productId });
         }
 

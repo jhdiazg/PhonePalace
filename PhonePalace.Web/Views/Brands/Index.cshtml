@@ -17,19 +17,23 @@
                         <th>
                             @Html.DisplayNameFor(model => model.Name)
                         </th>
+                        <th>Activo</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
             @foreach (var item in Model) {
-                    <tr>
+                    <tr class="@(item.IsActive ? "" : "table-danger")">
                         <td>
                             @Html.DisplayFor(modelItem => item.Name)
                         </td>
+                        <td>
+                            <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
+                        </td>
                         <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.BrandID" class="btn btn-sm btn-outline-secondary">Editar</a>
-                            <a asp-action="Details" asp-route-id="@item.BrandID" class="btn btn-sm btn-outline-info">Detalles</a>
-                            <a asp-action="Delete" asp-route-id="@item.BrandID" class="btn btn-sm btn-outline-danger">Borrar</a>
+                            <a asp-action="Edit" asp-route-id="@item.BrandID" class="btn btn-sm btn-warning">Editar</a>
+                            <a asp-action="Details" asp-route-id="@item.BrandID" class="btn btn-sm btn-info">Detalles</a>
+                            <a asp-action="Delete" asp-route-id="@item.BrandID" class="btn btn-sm btn-danger">Eliminar</a>
                         </td>
                     </tr>
             }

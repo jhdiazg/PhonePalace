@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Localization;
 using PhonePalace.Domain.Interfaces;
@@ -32,12 +33,16 @@ builder.Services.AddSession(options =>
 // --- FIN: Configuración de Sesión ---
 
 builder.Services.AddControllersWithViews()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    })
     .AddSessionStateTempDataProvider(); // Configura TempData para que use el estado de sesión en lugar de cookies.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
-builder.Services.AddTransient<EmailService>();
+builder.Services.AddTransient<IEmailSender, EmailService>();
 builder.Services.AddRazorPages();
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -85,12 +90,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // 1. Poblar roles y usuario administrador
-        await PhonePalace.Infrastructure.Data.DbSeeder.SeedRolesAndAdminAsync(services);
+        await DbSeeder.SeedRolesAndAdminAsync(services);
         logger.LogInformation("Roles and admin user seeded successfully.");
 
         // 2. Poblar datos de Departamentos y Municipios
         var context = services.GetRequiredService<ApplicationDbContext>();
-        await PhonePalace.Infrastructure.Data.DataSeeder.SeedDaneDataAsync(context);
+        await DataSeeder.SeedDaneDataAsync(context);
         logger.LogInformation("DANE data seeded successfully.");
     }
     catch (Exception ex)

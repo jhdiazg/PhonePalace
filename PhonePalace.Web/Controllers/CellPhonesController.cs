@@ -93,7 +93,8 @@ namespace PhonePalace.Web.Controllers
                     Color = viewModel.Color,
                     StorageGB = viewModel.StorageGB,
                     RamGB = viewModel.RamGB,
-                    IsActive = viewModel.IsActive
+                    IsActive = viewModel.IsActive,
+                    BillWithIVA = viewModel.BillWithIVA
                 };
 
                 if (viewModel.NewImageFile != null)
@@ -108,7 +109,7 @@ namespace PhonePalace.Web.Controllers
 
                 _context.Add(cellPhone);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("CellPhones", $"Creó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+                await _auditService.LogAsync("Celulares", $"Creó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
                 return RedirectToAction(nameof(Index));
             }
             await PopulateDropdowns(viewModel.CategoryID, viewModel.ModelID, null, (ProductCondition?)viewModel.ProductCondition);
@@ -137,17 +138,17 @@ namespace PhonePalace.Web.Controllers
             {
                 ProductID = cellPhone.ProductID,
                 Name = cellPhone.Name,
-                Description = cellPhone.Description,
+                Description = cellPhone.Description ?? string.Empty,
                 Price = cellPhone.Price,
                 Cost = cellPhone.Cost,
                 SKU = cellPhone.SKU,
                 CategoryID = cellPhone.CategoryID,
                 ModelID = cellPhone.ModelID,
-                Color = cellPhone.Color,
+                Color = cellPhone.Color ?? string.Empty,
                 StorageGB = cellPhone.StorageGB,
                 RamGB = cellPhone.RamGB,
                 IsActive = cellPhone.IsActive,
-                ProductCondition = (ProductCondition)cellPhone.ProductCondition,
+                ProductCondition = cellPhone.ProductCondition == 0 ? ProductCondition.Nuevo : cellPhone.ProductCondition,
                 Images = cellPhone.Images.Select(i => new ProductImageViewModel
                 {
                     ProductImageID = i.ProductImageID,
@@ -194,6 +195,7 @@ namespace PhonePalace.Web.Controllers
                     cellPhone.RamGB = viewModel.RamGB;
                     cellPhone.IsActive = viewModel.IsActive;
                     cellPhone.ProductCondition = viewModel.ProductCondition;
+                    cellPhone.BillWithIVA = viewModel.BillWithIVA;
 
                     // Manejar nueva imagen
                     if (viewModel.NewImageFile != null)
@@ -209,7 +211,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Update(cellPhone);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("CellPhones", $"Editó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+                    await _auditService.LogAsync("Celulares", $"Editó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -264,7 +266,7 @@ namespace PhonePalace.Web.Controllers
                 _context.Update(cellPhone);
                 
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("CellPhones", $"Eliminó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
+                await _auditService.LogAsync("Celulares", $"Eliminó el celular '{cellPhone.Name}' (ID: {cellPhone.ProductID}).");
             }
             
             return RedirectToAction(nameof(Index));
@@ -292,7 +294,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             await _context.SaveChangesAsync();
-            await _auditService.LogAsync("CellPhones", $"Eliminó una imagen del producto con ID {productId}.");
+            await _auditService.LogAsync("Celulares", $"Eliminó una imagen del producto con ID {productId}.");
 
             return RedirectToAction(nameof(Edit), new { id = productId });
         }
@@ -312,7 +314,7 @@ namespace PhonePalace.Web.Controllers
                 img.IsPrimary = (img.ProductImageID == imageId);
             }
             await _context.SaveChangesAsync();
-            await _auditService.LogAsync("CellPhones", $"Estableció una nueva imagen principal para el producto con ID {productId}.");
+            await _auditService.LogAsync("Celulares", $"Estableció una nueva imagen principal para el producto con ID {productId}.");
 
             var updatedImages = await GetImagesForProduct(productId);
             ViewData["ProductID"] = productId;

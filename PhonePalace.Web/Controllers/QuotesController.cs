@@ -1,391 +1,282 @@
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.ViewModels;
-using PhonePalace.Web.Documents;
-using QuestPDF.Fluent;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 
-public class QuotesController : Controller
+namespace PhonePalace.Web.Controllers
 {
-    private readonly ApplicationDbContext _context;
-    private readonly EmailService _emailService;
-    private readonly IWebHostEnvironment _webHostEnvironment;
-
-    public QuotesController(ApplicationDbContext context, EmailService emailService, IWebHostEnvironment webHostEnvironment)
+    public class QuotesController : Controller
     {
-        _context = context;
-        _emailService = emailService;
-        _webHostEnvironment = webHostEnvironment;
-        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-    }
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<IdentityUser> _userManager;
 
-    // GET: Quotes
-    public async Task<IActionResult> Index()
-    {
-        var quotes = await _context.Quotes
-            .Include(q => q.Client)
-            .OrderByDescending(q => q.QuoteDate)
-            .ToListAsync();
-        return View(quotes);
-    }
-
-    // GET: Quotes/Details/5
-    public async Task<IActionResult> Details(int? id)
-    {
-        if (id == null)
+        public QuotesController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
         {
-            return NotFound();
+            _context = context;
+            _userManager = userManager;
         }
 
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Details)
-                .ThenInclude(d => d.Product)
-            .FirstOrDefaultAsync(m => m.QuoteID == id);
-
-        if (quote == null)
+        // GET: Quotes
+        public async Task<IActionResult> Index()
         {
-            return NotFound();
+            var quotes = _context.Quotes.Include(q => q.Client);
+            return View(await quotes.ToListAsync());
         }
 
-        return View(quote);
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> SendQuoteByEmail(int id)
-    {
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Details)
-                .ThenInclude(d => d.Product)
-            .FirstOrDefaultAsync(q => q.QuoteID == id);
-
-        if (quote == null)
+        // GET: Quotes/Details/5
+        public async Task<IActionResult> Details(int? id)
         {
-            return NotFound();
-        }
-
-        // 1. Generar el PDF en memoria
-        string wwwRootPath = _webHostEnvironment.WebRootPath;
-        string logoPath = Path.Combine(wwwRootPath, "images", "logo_pdf.jpg");
-        byte[] logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
-
-        var document = new QuotePdfDocument(quote, logoBytes);
-        byte[] pdfBytes = document.GeneratePdf();
-        var fileName = $"Cotizacion-{quote.QuoteID}.pdf";
-
-        // 2. Enviar el correo
-        var subject = $"Cotización de PhonePalace #{quote.QuoteID}";
-        var clientDisplayName = quote.Client!.DisplayName;
-        var body = $"<p>Hola {clientDisplayName},</p><p>Adjunto encontrarás la cotización solicitada.</p><p>Gracias,<br/>El equipo de PhonePalace</p>";
-
-        if (quote.Client != null && !string.IsNullOrEmpty(quote.Client.Email))
-        {
-            await _emailService.SendEmailWithAttachmentAsync(quote.Client.Email, subject, body, pdfBytes, fileName);
-        }
-        else
-        {
-            // Log the error or handle the case where the client or email is missing
-            Console.WriteLine("No se puede enviar el correo electrónico porque el cliente o el correo electrónico no están presentes.");
-        }
-
-        // TempData["SuccessMessage"] = "La cotización ha sido enviada por correo.";
-        return RedirectToAction("Details", new { id = quote.QuoteID });
-    }
-
-    // GET: Quotes/Create
-    public async Task<IActionResult> Create()
-    {
-        var viewModel = new QuoteCreateViewModel();
-        await PopulateCreateDropdowns(viewModel);
-        return View(viewModel);
-    }
-
-    // POST: Quotes/Create
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(QuoteCreateViewModel viewModel)
-    {
-        // Remove la fila de plantilla vacía si se envía
-        viewModel.Details.RemoveAll(d => d.ProductID == 0 || d.Quantity <= 0);
-
-        if (!viewModel.Details.Any())
-        {
-            ModelState.AddModelError("", "Debe agregar al menos un producto a la cotización.");
-        }
-
-        if (ModelState.IsValid)
-        {
-            var client = await _context.Clients.FindAsync(viewModel.ClientID);
-            if (client == null)
+            if (id == null)
             {
-                ModelState.AddModelError(string.Empty, "Cliente no encontrado.");
-                await PopulateCreateDropdowns(viewModel);
-                return View(viewModel);
+                return NotFound();
             }
 
-            var quote = new Quote
+            var quote = await _context.Quotes
+                .Include(q => q.Client)
+                .Include(q => q.Details)
+                .ThenInclude(qd => qd.Product)
+                .FirstOrDefaultAsync(m => m.QuoteID == id);
+            if (quote == null)
             {
-                ClientID = viewModel.ClientID,
-                QuoteDate = viewModel.QuoteDate,
-                ExpirationDate = viewModel.ExpirationDate,
-                Status = "Pending", // Estado inicial
-                Client = client
-            };
+                return NotFound();
+            }
 
-            decimal subtotal = 0;
-            foreach (var detailVM in viewModel.Details)
+            return View(quote);
+        }
+
+        // GET: Quotes/Create
+        public async Task<IActionResult> Create()
+        {
+            var viewModel = new QuoteCreateViewModel
             {
-                var product = await _context.Products.FindAsync(detailVM.ProductID);
-                if (product == null)
+                Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName"),
+                Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
+                QuoteDate = DateTime.Today,
+                ExpirationDate = DateTime.Today.AddDays(7)
+            };
+            return View(viewModel);
+        }
+
+        // POST: Quotes/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(QuoteCreateViewModel viewModel)
+        {
+            if (ModelState.IsValid)
+            {
+                var client = await _context.Clients.FindAsync(viewModel.ClientID);
+                if (client == null)
                 {
-                    ModelState.AddModelError(string.Empty, $"Product with ID {detailVM.ProductID} not found.");
-                    await PopulateCreateDropdowns(viewModel);
+                    ModelState.AddModelError("", $"Cliente con ID {viewModel.ClientID} no encontrado.");
+                    viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
+                    viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
                     return View(viewModel);
                 }
 
-                var detail = new QuoteDetail
+                var quote = new Quote
                 {
-                    ProductID = detailVM.ProductID,
-                    Quantity = detailVM.Quantity,
-                    UnitPrice = detailVM.UnitPrice,
-                    Product = product,
-                    Quote = quote
+                    QuoteDate = viewModel.QuoteDate,
+                    ExpirationDate = viewModel.ExpirationDate,
+                    ClientID = viewModel.ClientID,
+                    Client = client, // Set the required Client navigation property
+                    Status = "Pending", // Default status
+                    Details = new List<QuoteDetail>()
                 };
-                subtotal += detail.Quantity * detail.UnitPrice;
-                _context.QuoteDetails.Add(detail);
-            }
 
-            quote.Subtotal = subtotal;
-            quote.Tax = subtotal * 0.19m; // 19% IVA
-            quote.Total = quote.Subtotal + quote.Tax;
-
-            _context.Quotes.Add(quote);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-        // Si el modelo no es válido, volver a la vista con los errores
-        return View(viewModel);
-    }
-
-    // GET: Quotes/Edit/5
-    public async Task<IActionResult> Edit(int? id)
-    {
-        if (id == null)
-        {
-            return NotFound();
-        }
-
-        var quote = await _context.Quotes
-            .Include(q => q.Details)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(q => q.QuoteID == id);
-
-        if (quote == null)
-        {
-            return NotFound();
-        }
-
-        var viewModel = new QuoteEditViewModel
-        {
-            QuoteID = quote.QuoteID,
-            ClientID = quote.ClientID,
-            QuoteDate = quote.QuoteDate,
-            ExpirationDate = quote.ExpirationDate,
-            Status = quote.Status!,
-            Details = quote.Details.Select(d => new QuoteDetailViewModel
-            {
-                ProductID = d.ProductID,
-                Quantity = d.Quantity,
-                UnitPrice = d.UnitPrice
-            }).ToList()
-        };
-
-        await PopulateEditDropdowns(viewModel);
-        return View(viewModel);
-    }
-
-    // POST: Quotes/Edit/5
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, QuoteEditViewModel viewModel)
-    {
-        if (id != viewModel.QuoteID)
-        {
-            return NotFound();
-        }
-
-        viewModel.Details.RemoveAll(d => d.ProductID == 0 || d.Quantity <= 0);
-
-        if (!viewModel.Details.Any())
-        {
-            ModelState.AddModelError("", "Debe agregar al menos un producto a la cotización.");
-        }
-
-        if (ModelState.IsValid)
-        {
-            try
-            {
-                var quoteToUpdate = await _context.Quotes
-                    .Include(q => q.Details)
-                    .FirstOrDefaultAsync(q => q.QuoteID == id);
-
-                if (quoteToUpdate == null)
+                foreach (var detailVm in viewModel.Details)
                 {
-                    return NotFound();
-                }
-
-                // Actualizar propiedades
-                quoteToUpdate.ClientID = viewModel.ClientID;
-                quoteToUpdate.QuoteDate = viewModel.QuoteDate;
-                quoteToUpdate.ExpirationDate = viewModel.ExpirationDate;
-                quoteToUpdate.Status = viewModel.Status;
-
-                // Actualizar detalles (método simple: borrar y volver a crear)
-                _context.QuoteDetails.RemoveRange(quoteToUpdate.Details);
-
-                decimal subtotal = 0;
-                foreach (var detailVM in viewModel.Details)
-                {
-                    var product = await _context.Products.FindAsync(detailVM.ProductID);
+                    var product = await _context.Products.FindAsync(detailVm.ProductID);
                     if (product == null)
                     {
-                        ModelState.AddModelError(string.Empty, $"Product with ID {detailVM.ProductID} not found.");
-                        await PopulateEditDropdowns(viewModel);
+                        ModelState.AddModelError("", $"Producto con ID {detailVm.ProductID} no encontrado.");
+                        // Re-populate SelectLists before returning view
+                        viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
+                        viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
                         return View(viewModel);
                     }
 
-                    var detail = new QuoteDetail
+                    quote.Details.Add(new QuoteDetail
                     {
-                        ProductID = detailVM.ProductID,
-                        Quantity = detailVM.Quantity,
-                        Product = product,
-                        UnitPrice = product.Price,
-                        Quote = quoteToUpdate
-                    };
-                    quoteToUpdate.Details.Add(detail);
-                    subtotal += detail.Quantity * detail.UnitPrice;
+                        Quote = quote, // Set the required Quote navigation property
+                        Product = product, // Set the required Product navigation property
+                        ProductID = detailVm.ProductID,
+                        Quantity = detailVm.Quantity,
+                        UnitPrice = detailVm.UnitPrice
+                    });
                 }
 
-                quoteToUpdate.Subtotal = subtotal;
-                quoteToUpdate.Tax = quoteToUpdate.Subtotal * 0.19m; // Corregido a 19% IVA
-                quoteToUpdate.Total = quoteToUpdate.Subtotal + quoteToUpdate.Tax;
+                // Calculate Total (Subtotal + Tax) - Assuming 0 tax for now
+                quote.Subtotal = quote.Details.Sum(d => d.Quantity * d.UnitPrice);
+                quote.Tax = 0; // Implement tax calculation if needed
+                quote.Total = quote.Subtotal + quote.Tax;
 
-                _context.Update(quoteToUpdate);
+                _context.Add(quote);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+
+            // If ModelState is not valid, re-populate SelectLists and return view
+            foreach (var modelStateEntry in ModelState.Values)
+            {
+                foreach (var error in modelStateEntry.Errors)
+                {
+                    Console.WriteLine($"Error: {error.ErrorMessage}");
+                }
+            }
+
+            viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
+            viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+            return View(viewModel);
+        }
+
+        // GET: Quotes/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var quote = await _context.Quotes.FindAsync(id);
+            if (quote == null)
+            {
+                return NotFound();
+            }
+            ViewData["ClientID"] = new SelectList(_context.Clients, "ClientID", "DisplayName", quote.ClientID);
+            return View(quote);
+        }
+
+        // POST: Quotes/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("QuoteID,QuoteDate,ClientID,Total")] Quote quote)
+        {
+            if (id != quote.QuoteID)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(quote);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!QuoteExists(quote.QuoteID))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["ClientID"] = new SelectList(_context.Clients, "ClientID", "DisplayName", quote.ClientID);
+            return View(quote);
+        }
+
+        // GET: Quotes/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var quote = await _context.Quotes
+                .Include(q => q.Client)
+                .FirstOrDefaultAsync(m => m.QuoteID == id);
+            if (quote == null)
+            {
+                return NotFound();
+            }
+
+            return View(quote);
+        }
+
+        // POST: Quotes/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var quote = await _context.Quotes.FindAsync(id);
+            if (quote != null)
+            {
+                _context.Quotes.Remove(quote);
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Quotes.Any(e => e.QuoteID == viewModel.QuoteID))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return RedirectToAction(nameof(Details), new { id = viewModel.QuoteID });
+            return RedirectToAction(nameof(Index));
         }
 
-        await PopulateEditDropdowns(viewModel);
-        return View(viewModel);
-    }
-
-    // GET: Quotes/Delete/5
-    public async Task<IActionResult> Delete(int? id)
-    {
-        if (id == null)
+        private bool QuoteExists(int id)
         {
-            return NotFound();
+            return _context.Quotes.Any(e => e.QuoteID == id);
         }
 
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .FirstOrDefaultAsync(m => m.QuoteID == id);
-
-        if (quote == null)
+        // POST: Quotes/ConvertToSale/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConvertToSale(int id)
         {
-            return NotFound();
-        }
-
-        return View(quote);
-    }
-
-    // POST: Quotes/Delete/5
-    [HttpPost, ActionName("Delete")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int id)
-    {
-        var quote = await _context.Quotes.FindAsync(id);
-        if (quote != null)
-        {
-            _context.Quotes.Remove(quote);
-            await _context.SaveChangesAsync();
-        }
-        return RedirectToAction(nameof(Index));
-    }
-
-    public async Task<IActionResult> GeneratePdf(int id)
-    {
-        var quote = await _context.Quotes
-            .Include(q => q.Client)
-            .Include(q => q.Details)
+            var quote = await _context.Quotes
+                .Include(q => q.Details)
                 .ThenInclude(d => d.Product)
-            .FirstOrDefaultAsync(q => q.QuoteID == id);
+                .FirstOrDefaultAsync(q => q.QuoteID == id);
 
-        if (quote == null)
-        {
-            return NotFound();
+            if (quote == null)
+            {
+                return NotFound();
+            }
+
+            var client = await _context.Clients.FindAsync(quote.ClientID);
+            if (client == null)
+            {
+                return NotFound();
+            }
+
+            // Construye el SaleCreateViewModel para la venta
+            var saleCreateViewModel = new PhonePalace.Web.ViewModels.SaleCreateViewModel
+            {
+                ClientID = quote.ClientID,
+                SaleDate = DateTime.Now,
+                SaleChannel = Domain.Enums.SaleChannel.Quotations,
+                Details = quote.Details.Select(qd => new PhonePalace.Web.ViewModels.SaleDetailViewModel
+                {
+                    ProductID = qd.ProductID,
+                    Quantity = qd.Quantity
+                }).ToList(),
+                Payments = new List<PhonePalace.Web.ViewModels.PaymentViewModel>()
+            };
+
+            TempData["SaleModel"] = System.Text.Json.JsonSerializer.Serialize(saleCreateViewModel);
+            TempData["InfoMessage"] = "Cotización convertida. Completa la venta y registra los pagos.";
+            return RedirectToAction("Create", "Sales");
         }
 
-        string wwwRootPath = _webHostEnvironment.WebRootPath;
-        string logoPath = Path.Combine(wwwRootPath, "images", "logo_pdf.jpg");
-        byte[] logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
-
-        var document = new QuotePdfDocument(quote, logoBytes);
-        var pdfBytes = document.GeneratePdf();
-
-        return File(pdfBytes, "application/pdf", $"Cotizacion-{quote.QuoteID}.pdf");
-    }
-
-    // GET: Quotes/GetProductPrice
-    [HttpGet]
-    public async Task<IActionResult> GetProductPrice(int productId)
-    {
-        var product = await _context.Products.FindAsync(productId);
-        if (product == null)
+        [HttpGet]
+        public async Task<IActionResult> GetProductPrice(int productId)
         {
-            return NotFound();
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            return Json(new { price = product.Price });
         }
-        return Json(new { price = product.Price });
-    }
-
-    private async Task PopulateCreateDropdowns(QuoteCreateViewModel viewModel)
-    {
-        var clients = await _context.Clients
-            .OrderBy(c => c is LegalEntity ? ((LegalEntity)c).CompanyName : ((NaturalPerson)c).FirstName)
-            .ThenBy(c => c is NaturalPerson ? ((NaturalPerson)c).LastName : null)
-            .ToListAsync();
-        viewModel.Clients = new SelectList(clients, "ClientID", "DisplayName", viewModel.ClientID);
-        viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync(), "ProductID", "Name");
-    }
-
-    private async Task PopulateEditDropdowns(QuoteEditViewModel viewModel)
-    {
-        var clients = await _context.Clients
-            .OrderBy(c => c is LegalEntity ? ((LegalEntity)c).CompanyName : ((NaturalPerson)c).FirstName)
-            .ThenBy(c => c is NaturalPerson ? ((NaturalPerson)c).LastName : null)
-            .ToListAsync();
-        viewModel.Clients = new SelectList(clients, "ClientID", "DisplayName", viewModel.ClientID);
-        viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync(), "ProductID", "Name");
-        viewModel.Statuses = new SelectList(new List<string> { "Pending", "Approved", "Expired" }, viewModel.Status);
     }
 }
+
+

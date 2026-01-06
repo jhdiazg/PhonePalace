@@ -229,7 +229,7 @@ namespace PhonePalace.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -241,7 +241,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DocumentNumber")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DocumentType")
@@ -300,6 +299,30 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Bank", b =>
+                {
+                    b.Property<int>("BankID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BankID"));
+
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("BankID");
+
+                    b.ToTable("Banks");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Brand", b =>
@@ -455,6 +478,9 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<DateTime?>("CompletionDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("SaleChannel")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("SaleDate")
                         .HasColumnType("datetime2");
 
@@ -597,11 +623,14 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductID"));
 
+                    b.Property<bool>("BillWithIVA")
+                        .HasColumnType("bit");
+
                     b.Property<int>("CategoryID")
                         .HasColumnType("int");
 
                     b.Property<decimal>("Cost")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
@@ -614,7 +643,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<int>("ProductCondition")
                         .HasColumnType("int");
@@ -796,6 +825,67 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.ToTable("QuoteDetails");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Sale", b =>
+                {
+                    b.Property<int>("SaleID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SaleID"));
+
+                    b.Property<int>("ClientID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InvoiceID")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("SaleDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.HasKey("SaleID");
+
+                    b.HasIndex("ClientID");
+
+                    b.HasIndex("InvoiceID");
+
+                    b.ToTable("Sales");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.SaleDetail", b =>
+                {
+                    b.Property<int>("SaleDetailID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SaleDetailID"));
+
+                    b.Property<int>("ProductID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SaleID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.HasKey("SaleDetailID");
+
+                    b.HasIndex("ProductID");
+
+                    b.HasIndex("SaleID");
+
+                    b.ToTable("SaleDetails");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Supplier", b =>
                 {
                     b.Property<int>("SupplierID")
@@ -893,7 +983,8 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Color")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Accessory_Color");
 
                     b.Property<string>("Compatibility")
                         .HasColumnType("nvarchar(max)");
@@ -902,12 +993,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasIndex("BrandID");
-
-                    b.ToTable("Products", t =>
-                        {
-                            t.Property("Color")
-                                .HasColumnName("Accessory_Color");
-                        });
 
                     b.HasDiscriminator().HasValue("Accessory");
                 });
@@ -1210,6 +1295,42 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Quote");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Sale", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceID");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Invoice");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.SaleDetail", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Sale", "Sale")
+                        .WithMany("Details")
+                        .HasForeignKey("SaleID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Sale");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Supplier", b =>
                 {
                     b.HasOne("PhonePalace.Domain.Entities.Department", "Department")
@@ -1280,6 +1401,11 @@ namespace PhonePalace.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Quote", b =>
+                {
+                    b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Sale", b =>
                 {
                     b.Navigation("Details");
                 });

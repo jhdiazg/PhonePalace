@@ -55,6 +55,7 @@ namespace PhonePalace.Web.Controllers
                     ModelName = cp.Model != null ? cp.Model.Name : null,
                     Price = cp.Price,
                     Cost = cp.Cost,
+                    IsActive = cp.IsActive,
                     PrimaryImageUrl = cp.Images.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
                 });
 
@@ -71,6 +72,7 @@ namespace PhonePalace.Web.Controllers
                     ModelName = null, // Accessories don't have models
                     Price = a.Price,
                     Cost = a.Cost,
+                    IsActive = a.IsActive,
                     PrimaryImageUrl = a.Images.OrderByDescending(i => i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
                 });
 
@@ -128,7 +130,7 @@ namespace PhonePalace.Web.Controllers
         {
             var product = await _context.Products.FindAsync(id);
 
-            if (product == null)
+            if (product == null || !product.IsActive)
             {
                 return NotFound();
             }
@@ -137,7 +139,7 @@ namespace PhonePalace.Web.Controllers
                                       .Where(i => i.ProductID == id)
                                       .SumAsync(i => i.Stock);
 
-            return Ok(new { price = product.Price, stock });
+            return Ok(new { id = product.ProductID, name = product.Name, price = product.Price, stock, billWithIVA = product.BillWithIVA });
         }
     }
 }

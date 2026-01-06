@@ -1,311 +1,425 @@
 @model PhonePalace.Web.ViewModels.SaleCreateViewModel
 @using PhonePalace.Domain.Enums
+@using System.Text.Json
 
 @{
     ViewData["Title"] = "Registrar Nueva Venta";
     var taxRate = 0.19m; // 19% IVA
 }
 
-<h1>@ViewData["Title"]</h1>
-<hr />
-
-<form asp-action="Create" id="saleForm">
-    <input type="hidden" name="HasProducts" value="true" />
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<form asp-action="Create" id="saleForm" novalidate>
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div id="hidden-inputs-container" style="display:none;"></div>
 
     <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label asp-for="ClientID" class="control-label"></label>
-                <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
-                    <option value="">-- Seleccione un Cliente --</option>
-                </select>
-                <span asp-validation-for="ClientID" class="text-danger"></span>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="form-group">
-                <label asp-for="SaleDate" class="control-label"></label>
-                <input asp-for="SaleDate" class="form-control" />
-                <span asp-validation-for="SaleDate" class="text-danger"></span>
-            </div>
-        </div>
-    </div>
-
-    @* Sección de Productos *@
-    <h4 class="mt-4">Productos</h4>
-    <div id="product-details-container">
-        @* Las filas de productos se agregarán aquí dinámicamente *@
-    </div>
-    <button type="button" id="add-product-row" class="btn btn-sm btn-outline-success mt-2"><i class="bi bi-plus-circle"></i> Agregar Producto</button>
-
-    @* Sección de Pagos *@
-    <h4 class="mt-4">Formas de Pago</h4>
-    <div id="payment-details-container">
-        @* Las filas de pago se agregarán aquí dinámicamente *@
-    </div>
-    <button type="button" id="add-payment-row" class="btn btn-sm btn-outline-primary mt-2"><i class="bi bi-plus-circle"></i> Agregar Pago</button>
-
-    @* Sección de Totales *@
-    <div class="row mt-4 justify-content-end">
-        <div class="col-md-4">
-            <div class="card">
+        <!-- Columna principal de contenido -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Información de la Venta</h4>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">Resumen de la Venta</h5>
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label asp-for="ClientID" class="control-label"></label>
+                            <select name="ClientID" class="form-control" asp-items="Model.Clients">
+                                <option value="">-- Seleccione un Cliente --</option>
+                            </select>
+                            <span asp-validation-for="ClientID" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label asp-for="SaleChannel" class="control-label"></label>
+                            <select name="SaleChannel" class="form-control" asp-items="Model.SaleChannels">
+                                <option value="">-- Seleccione un Canal de Venta --</option>
+                            </select>
+                            <span asp-validation-for="SaleChannel" class="text-danger"></span>
+                        </div>
+                        <div class="col-md-6 form-group mt-3">
+                            <label asp-for="SaleDate" class="control-label"></label>
+                            <input asp-for="SaleDate" class="form-control" />
+                            <span asp-validation-for="SaleDate" class="text-danger"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Productos</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-6 form-group">
+                            <label for="product-select">Producto</label>
+                            <select id="product-select" name="Products" class="form-control">
+                                <option value="">-- Seleccione un Producto --</option>
+                                @foreach (var product in ViewBag.AllProducts)
+                                {
+                                    var isActive = product.IsActive;
+                                    <option value="@product.ProductID" class="@(isActive ? "" : "text-danger")">@product.Name @(isActive ? "" : "(Inactivo)")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="quantity-input">Cantidad</label>
+                            <input type="number" id="quantity-input" class="form-control" value="1" min="1">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <button type="button" id="add-product-btn" class="btn btn-info w-100">Agregar</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Unit.</th>
+                                    <th>Subtotal</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="product-details-body">
+                                <!-- Filas de productos agregados dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Formas de Pago</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end gx-2">
+                        <div class="col-md-4 form-group">
+                            <label for="payment-method-select">Método de Pago</label>
+                            <select id="payment-method-select" name="PaymentMethods" class="form-control" asp-items="Model.PaymentMethods">
+                                <option value="">-- Seleccione un Método de Pago --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="payment-amount-input">Monto</label>
+                            <input type="number" id="payment-amount-input" class="form-control" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label for="payment-reference-input">Referencia</label>
+                            <input type="text" id="payment-reference-input" class="form-control" placeholder="(Opcional)">
+                        </div>
+                        <div class="col-md-2 form-group">
+                            <button type="button" id="add-payment-btn" class="btn btn-info w-100">Agregar</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Método</th>
+                                    <th>Monto</th>
+                                    <th>Referencia</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payment-details-body">
+                                <!-- Filas de pagos agregados dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Completar Venta</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+
+        </div>
+
+        <!-- Columna lateral para el resumen -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header">
+                    <h4 class="mb-0">Resumen de la Venta</h4>
+                </div>
+                <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Subtotal
-                            <span id="subtotal-display">$0.00</span>
+                            <span id="subtotal-display" class="fw-bold">$0.00</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             IVA (@((taxRate * 100).ToString("F0"))%)
-                            <span id="tax-display">$0.00</span>
+                            <span id="tax-display" class="fw-bold">$0.00</span>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                        <li class="list-group-item d-flex justify-content-between align-items-center fs-5 fw-bold">
                             Total Factura
-                            <span id="total-display" class="fs-5">$0.00</span>
+                            <span id="total-display" class="text-primary">$0.00</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center text-success">
                             Total Pagado
-                            <span id="paid-display">$0.00</span>
+                            <span id="paid-display" class="fw-bold">$0.00</span>
                         </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center fw-bold">
+                        <li class="list-group-item d-flex justify-content-between align-items-center fs-5 fw-bold">
                             Balance
-                            <span id="balance-display" class="fs-5">$0.00</span>
+                            <span id="balance-display" class="text-danger">$0.00</span>
                         </li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="form-group mt-4">
-        <input type="submit" value="Completar Venta" class="btn btn-primary" />
-        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
-    </div>
 </form>
 
-@* Plantillas para filas dinámicas *@
-<template id="product-row-template">
-    <div class="row product-row mb-2 align-items-end">
-        <div class="col-md-5">
-            <label class="form-label">Producto</label>
-            <select name="Details[INDEX].ProductID" class="form-control product-select" asp-items="Model.Products">
-                <option value="">-- Seleccione --</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Cantidad</label>
-            <input type="number" name="Details[INDEX].Quantity" class="form-control quantity-input" value="1" min="1" />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Precio Unit.</label>
-            <input type="text" inputmode="decimal" name="Details[INDEX].UnitPrice" class="form-control price-input text-end" readonly />
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Subtotal</label>
-            <input type="text" class="form-control subtotal-line" readonly />
-        </div>
-        <div class="col-md-1">
-            <button type="button" class="btn btn-danger btn-sm remove-row"><i class="bi bi-trash"></i></button>
-        </div>
-    </div>
-</template>
-
-<template id="payment-row-template">
-    <div class="row payment-row mb-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label">Método de Pago</label>
-            <select name="Payments[INDEX].PaymentMethod" class="form-control payment-method-select" asp-items="Model.PaymentMethods"></select>
-        </div>
-        <div class="col-md-3">
-            <label class="form-label">Monto</label>
-            <input type="text" inputmode="decimal" name="Payments[INDEX].Amount" class="form-control amount-input text-end" />
-        </div>
-        <div class="col-md-4 reference-container" style="display: none;">
-            <label class="form-label">Referencia</label>
-            <input type="text" name="Payments[INDEX].ReferenceNumber" class="form-control" />
-        </div>
-        <div class="col-md-1">
-            <button type="button" class="btn btn-danger btn-sm remove-row"><i class="bi bi-trash"></i></button>
-        </div>
-    </div>
-</template>
-
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
     <script>
         $(document).ready(function () {
-            let productIndex = 0;
-            let paymentIndex = 0;
-            // Se pasa taxRate usando InvariantCulture para asegurar que el separador decimal sea '.'
-            const taxRate = @taxRate.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            // Data from the server
+            const taxRate = @taxRate;
 
-            // --- Funciones para agregar y quitar filas ---
-            function addProductRow() {
-                const template = document.getElementById('product-row-template').innerHTML;
-                const newRow = template.replace(/INDEX/g, productIndex);
-                $('#product-details-container').append(newRow);
-                productIndex++;
-                updateTotals();
+            // State
+            let products = [];
+            let payments = [];
+
+            // Inicializa cliente si viene del modelo
+            var initialClientId = '@Model.ClientID';
+            if (initialClientId && initialClientId !== '0') {
+                $("select[name='ClientID']").val(initialClientId).trigger('change');
+            }
+            // Establece el canal de venta automáticamente si viene de conversión
+            var initialSaleChannel = '@Model.SaleChannel';
+            if (initialSaleChannel && initialSaleChannel === 'Quotations') {
+                $("select[name='SaleChannel']").val('Quotations').trigger('change');
             }
 
-            function addPaymentRow() {
-                const template = document.getElementById('payment-row-template').innerHTML;
-                const newRow = template.replace(/INDEX/g, paymentIndex);
-                $('#payment-details-container').append(newRow);
-                paymentIndex++;
-                updateTotals();
-            }
+            // Diccionario de productos para inicialización rápida
+            var allProductsDict = {
+                @foreach (var p in ViewBag.AllProducts)
+                {
+                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price, billWithIVA: @(p.BillWithIVA != null ? p.BillWithIVA.ToString().ToLower() : "false") },</text>
+                }
+            };
 
-            function handleRemoveRow() {
-                $(this).closest('.row.product-row, .row.payment-row').remove();
-                reindexRows();
-                updateTotals();
-            }
-
-            function reindexRows() {
-                // Re-indexar las filas de productos para que los índices sean consecutivos
-                $('#product-details-container .product-row').each(function (index) {
-                    $(this).find('input, select').each(function () {
-                        this.name = this.name.replace(/Details\[\d+\]/, `Details[${index}]`);
-                    });
+            // Inicializa productos si vienen del modelo
+            var initialDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Details ?? new List<PhonePalace.Web.ViewModels.SaleDetailViewModel>()));
+            if (initialDetails && initialDetails.length > 0) {
+                initialDetails.forEach(function (d) {
+                    var prod = allProductsDict[String(d.ProductID)];
+                    if (prod) {
+                        products.push({
+                            id: prod.id,
+                            name: prod.name,
+                            price: prod.price,
+                            billWithIVA: prod.billWithIVA,
+                            quantity: d.Quantity
+                        });
+                    }
                 });
-                productIndex = $('#product-details-container .product-row').length;
-
-                // Re-indexar las filas de pagos
-                $('#payment-details-container .payment-row').each(function (index) {
-                    $(this).find('input, select').each(function () {
-                        this.name = this.name.replace(/Payments\[\d+\]/, `Payments[${index}]`);
-                    });
-                });
-                paymentIndex = $('#payment-details-container .payment-row').length;
+                renderProducts();
+                updateTotals();
             }
 
-            // --- Manejadores de Eventos ---
-            $('#add-product-row').click(addProductRow);
-            $('#add-payment-row').click(addPaymentRow);
-            $('body').on('click', '.remove-row', handleRemoveRow);
+            // Initialize Select2
+            $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
+            $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
+            $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
 
-            $('body').on('change', '.product-select', function (e) {
-                const row = $(this).closest('.row');
-                const productId = $(this).val();
-                if (!productId) {
-                    row.find('.price-input').val('');
-                    row.find('.quantity-input').val('1');
-                    updateTotals();
+            // --- PRODUCT LOGIC ---
+            $('#add-product-btn').on('click', function () {
+                const productId = $('#product-select').val();
+                const quantity = parseInt($('#quantity-input').val(), 10);
+
+                if (!productId || quantity <= 0) {
+                    alert("Por favor, seleccione un producto y una cantidad válida.");
                     return;
                 }
 
                 fetch(`/api/products/${productId}`)
                     .then(response => {
-                        if (!response.ok) throw new Error(`Producto no encontrado (ID: ${productId})`);
+                        if (!response.ok) throw new Error('Producto no encontrado o error en el servidor.');
                         return response.json();
                     })
-                    .then(data => {
-                        const price = parseFloat(data.price) || 0;
-                        row.find('.price-input').val(price.toFixed(2));
-                        row.find('.quantity-input').attr('max', data.stock);
+                    .then(productData => {
+                        const existingProduct = products.find(p => p.id === productData.id);
+                        if (existingProduct) {
+                            existingProduct.quantity += quantity;
+                        } else {
+                            products.push({
+                                id: productData.id,
+                                name: productData.name,
+                                quantity: quantity,
+                                price: productData.price,
+                                billWithIVA: productData.billWithIVA
+                            });
+                        }
+                        renderProducts();
                         updateTotals();
+                        $('#product-select').val('').trigger('change');
+                        $('#quantity-input').val(1);
                     })
                     .catch(error => {
-                        console.error('Error al obtener producto:', error);
-                        alert(`Error: No se pudo obtener la información del producto. ${error.message}`);
-                        $(this).val('');
+                        console.error("Error al obtener datos del producto:", error);
+                        alert("No se pudo obtener la información del producto. " + error.message);
                     });
             });
 
-            $('body').on('input', '.quantity-input, .amount-input', updateTotals);
-
-            $('body').on('change', '.payment-method-select', function () {
-                const selectedMethod = $(this).val();
-                const refContainer = $(this).closest('.row').find('.reference-container');
-                const needsReference = ['CreditCard', 'DebitCard', 'Transfer'].includes(selectedMethod);
-                if (needsReference) {
-                    refContainer.show();
-                } else {
-                    refContainer.hide().find('input').val('');
-                }
-            });
-
-            // --- Lógica de Cálculo y Formato ---
-            function updateTotals() {
-                let subtotal = 0;
-                const currencyFormatter = new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP'
+            function renderProducts() {
+                const tbody = $('#product-details-body');
+                tbody.empty();
+                products.forEach((p, index) => {
+                    const subtotal = p.quantity * p.price;
+                    const row = `
+                        <tr data-product-id="${p.id}">
+                            <td>${p.name}</td>
+                            <td>${p.quantity}</td>
+                            <td>${formatCurrency(p.price)}</td>
+                            <td>${formatCurrency(subtotal)}</td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-product-btn" data-index="${index}">&times;</button></td>
+                        </tr>`;
+                    tbody.append(row);
                 });
-
-                $('.product-row').each(function () {
-                    const quantity = parseFloat($(this).find('.quantity-input').val()) || 0;
-                    const price = parseFloat($(this).find('.price-input').val()) || 0;
-                    const lineTotal = quantity * price;
-                    $(this).find('.subtotal-line').val(currencyFormatter.format(lineTotal));
-                    subtotal += lineTotal;
-                });
-
-                const tax = subtotal * taxRate;
-                const total = subtotal + tax;
-                let paidAmount = 0;
-                $('.payment-row').each(function () {
-                    // Reemplazar coma por punto para un parseo robusto
-                    const amountValue = $(this).find('.amount-input').val().replace(',', '.');
-                    paidAmount += parseFloat(amountValue) || 0;
-                });
-
-                const balance = total - paidAmount;
-
-                $('#subtotal-display').text(currencyFormatter.format(subtotal));
-                $('#tax-display').text(currencyFormatter.format(tax));
-                $('#total-display').text(currencyFormatter.format(total));
-                $('#paid-display').text(currencyFormatter.format(paidAmount));
-                $('#balance-display').text(currencyFormatter.format(balance));
-
-                const balanceDisplay = $('#balance-display');
-                balanceDisplay.removeClass('text-danger text-success');
-                if (balance < -0.001) {
-                    balanceDisplay.addClass('text-success');
-                } else if (balance > 0.001) {
-                    balanceDisplay.addClass('text-danger');
-                } else {
-                    balanceDisplay.addClass('text-success');
-                }
             }
 
-            // --- Validación y Preparación para el Envío ---
-            $('#saleForm').on('submit', function (e) {
-                // 1. Validar que haya productos
-                if ($('#product-details-container .product-row').length === 0) {
-                    alert('Error: Debe agregar al menos un producto a la venta.');
-                    e.preventDefault();
+            $(document).on('click', '.remove-product-btn', function () {
+                const index = $(this).data('index');
+                products.splice(index, 1);
+                renderProducts();
+                updateTotals();
+            });
+
+            // --- PAYMENT LOGIC ---
+            function renderPayments() {
+                const tbody = $('#payment-details-body');
+                tbody.empty();
+                payments.forEach((p, index) => {
+                    const row = `
+                        <tr data-payment-index="${index}">
+                            <td>${p.methodText}</td>
+                            <td>${formatCurrency(p.amount)}</td>
+                            <td>${p.reference}</td>
+                            <td><button type="button" class="btn btn-danger btn-sm remove-payment-btn" data-index="${index}">&times;</button></td>
+                        </tr>`;
+                    tbody.append(row);
+                });
+                updateTotals();
+            }
+
+            $('#add-payment-btn').on('click', function() {
+                const methodSelect = $('#payment-method-select');
+                const amountInput = $('#payment-amount-input');
+                const referenceInput = $('#payment-reference-input');
+
+                const method = methodSelect.val();
+                const methodText = methodSelect.find('option:selected').text();
+                const amount = parseFloat(amountInput.val());
+                const reference = referenceInput.val();
+
+                if (!method || !amount || amount <= 0) {
+                    alert('Por favor, seleccione un método de pago y un monto válido.');
                     return;
                 }
 
-                // 2. Normalizar todos los valores numéricos ANTES de enviar
-                // Esto asegura que el servidor reciba "10000.00" y no "10.000,00" o "10000"
-                $('.amount-input, .price-input').each(function () {
-                    let value = $(this).val().replace(',', '.');
-                    let parsedValue = parseFloat(value) || 0;
-                    $(this).val(parsedValue.toFixed(2));
-                });
+                payments.push({ method, methodText, amount, reference });
+                renderPayments();
 
-                // 3. Validar que el pago cubra el total (opcional, pero buena UX)
-                const balanceText = $('#balance-display').text();
-                const balance = parseFloat(balanceText.replace(/[^0-9,-]+/g, "").replace(',', '.'));
-                if (balance > 0.001) {
-                    if (!confirm('La venta tiene un balance pendiente por $' + balance.toFixed(2) + '. ¿Desea continuar de todas formas?')) {
-                        e.preventDefault();
-                        return;
-                    }
-                }
-
-                // Si todo está bien, el formulario se envía.
+                // Clear inputs
+                amountInput.val('');
+                referenceInput.val('');
+                methodSelect.val('').trigger('change');
             });
 
-            // --- Inicialización de la página ---
-            addProductRow();
-            addPaymentRow();
+            $(document).on('click', '.remove-payment-btn', function () {
+                const index = $(this).data('index');
+                payments.splice(index, 1);
+                renderPayments();
+            });
+
+
+            // --- TOTALS CALCULATION ---
+            function updateTotals() {
+                let subtotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let subtotalForVAT = products.filter(p => p.billWithIVA).reduce((acc, p) => acc + (p.quantity * p.price), 0);
+
+                const tax = subtotalForVAT * taxRate;
+                const total = subtotal + tax;
+                const totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
+                const balance = total - totalPaid;
+
+                $('#subtotal-display').text(formatCurrency(subtotal));
+                $('#tax-display').text(formatCurrency(tax));
+                $('#total-display').text(formatCurrency(total));
+                $('#paid-display').text(formatCurrency(totalPaid));
+                $('#balance-display').text(formatCurrency(balance));
+
+                // Actualizar el campo de monto en la forma de pago con el balance
+                if (balance > 0.01) {
+                    $('#payment-amount-input').val(balance.toFixed(2));
+                } else {
+                    $('#payment-amount-input').val('');
+                }
+            }
+
+            // --- FORM SUBMISSION ---
+            $('#saleForm').on('submit', function (e) {
+                console.log("Submit button clicked");
+                e.preventDefault();
+
+                const hiddenContainer = $('#hidden-inputs-container');
+                hiddenContainer.empty();
+
+                console.log("Products:", products);
+                if (products.length === 0) {
+                    alert("Debe agregar al menos un producto a la venta.");
+                    return;
+                }
+
+                products.forEach((p, index) => {
+                    hiddenContainer.append(`<input type="hidden" name="Details[${index}].ProductID" value="${p.id}" />`);
+                    hiddenContainer.append(`<input type="hidden" name="Details[${index}].Quantity" value="${p.quantity}" />`);
+                });
+
+                console.log("Payments:", payments);
+                if (payments.length === 0) {
+                    alert("Debe agregar al menos un método de pago a la venta.");
+                    return;
+                }
+
+                // Ajustar dinámicamente el monto del último pago al balance
+                let subtotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let subtotalForVAT = products.filter(p => p.billWithIVA).reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                const tax = subtotalForVAT * taxRate;
+                const total = subtotal + tax;
+                let totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
+                let balance = total - totalPaid;
+
+                if (Math.abs(balance) > 0.01 && payments.length > 0) {
+                    payments[payments.length - 1].amount += balance;
+                    totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
+                    balance = total - totalPaid;
+                }
+
+                payments.filter(p => p.amount > 0).forEach((p, index) => {
+                    hiddenContainer.append(`<input type="hidden" name="Payments[${index}].PaymentMethod" value="${p.method}" />`);
+                    hiddenContainer.append(`<input type="hidden" name="Payments[${index}].Amount" value="${p.amount}" />`);
+                    hiddenContainer.append(`<input type="hidden" name="Payments[${index}].ReferenceNumber" value="${p.reference || ''}" />`);
+                });
+
+                hiddenContainer.append('<input type="hidden" name="HasProducts" value="true" />');
+
+                console.log("Submitting form...");
+                this.submit();
+            });
+
+            // --- INITIALIZATION ---
+            updateTotals();
+
+            // --- HELPERS ---
+            function formatCurrency(value) {
+                return (value || 0).toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 });
+            }
         });
     </script>
 }

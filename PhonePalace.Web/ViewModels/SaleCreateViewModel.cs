@@ -1,51 +1,31 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
-using PhonePalace.Domain.Enums;
-using System;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using PhonePalace.Domain.Enums;
+using System;
 
 namespace PhonePalace.Web.ViewModels
 {
     public class SaleCreateViewModel
     {
-        [Required(ErrorMessage = "Debe seleccionar un cliente.")]
-        [Display(Name = "Cliente")]
-        public int ClientID { get; set; }
-
-        [Required]
-        [DataType(DataType.Date)]
+        public int? ClientID { get; set; }
         [Display(Name = "Fecha de Venta")]
-        public DateTime SaleDate { get; set; } = DateTime.Today;
+        public DateTime SaleDate { get; set; } = DateTime.Now;
+        [Display(Name = "Canal de Venta")]
+        public SaleChannel? SaleChannel { get; set; }
 
-        public List<InvoiceDetailViewModel> Details { get; set; } = new();
-        public List<PaymentViewModel> Payments { get; set; } = new();
+        public List<SaleDetailViewModel> Details { get; set; } = new List<SaleDetailViewModel>();
+        public List<PaymentViewModel> Payments { get; set; } = new List<PaymentViewModel>();
 
-        // Para poblar los dropdowns
+        // For dropdowns (no deben ser validados en el POST)
+        [NotMapped]
         public SelectList? Clients { get; set; }
+        [NotMapped]
         public SelectList? Products { get; set; }
+        [NotMapped]
         public SelectList? PaymentMethods { get; set; }
-    }
-
-    public class PaymentViewModel
-    {
-        [Required(ErrorMessage = "El método de pago es obligatorio.")]
-        [Display(Name = "Método de Pago")]
-        public PaymentMethod PaymentMethod { get; set; }
-
-        [Required(ErrorMessage = "El monto es obligatorio.")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a cero.")]
-        [Display(Name = "Monto")]
-        public decimal Amount { get; set; }
-
-        [Display(Name = "Referencia")]
-        [StringLength(100)]
-        public string? ReferenceNumber { get; set; }
-    }
-    
-    public class InvoiceDetailViewModel
-    {
-        [Required] public int ProductID { get; set; }
-        [Required] [Range(1, int.MaxValue)] public int Quantity { get; set; }
-        [Required] [Range(0, double.MaxValue)] public decimal UnitPrice { get; set; }
+        [NotMapped]
+        public SelectList? SaleChannels { get; set; }
     }
 }

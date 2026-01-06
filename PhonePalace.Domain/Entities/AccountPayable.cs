@@ -12,9 +12,9 @@ namespace PhonePalace.Domain.Entities
         public int PurchaseId { get; set; }
         [DisplayName("Compra")]
         public Purchase? Purchase { get; set; }
-        [DisplayName("Valor")]
-                
-        public decimal Amount { get; set; }
+    [DisplayName("Valor")]
+    [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
+    public decimal Amount { get; set; }
         [DisplayName("Fecha de vencimiento")]
         public DateTime DueDate { get; set; }
         [DisplayName("Pagada")]

@@ -112,12 +112,15 @@ namespace PhonePalace.Web.Documents
                     header.Cell().AlignRight().Text("Subtotal");
                 });
 
-                foreach (var item in _purchase.PurchaseDetails)
+                if (_purchase.PurchaseDetails != null)
                 {
-                    table.Cell().Text(item.Product?.Name ?? string.Empty);
-                    table.Cell().AlignRight().Text(item.Quantity.ToString());
-                    table.Cell().AlignRight().Text(item.UnitPrice.ToString("N2", UsCulture));
-                    table.Cell().AlignRight().Text(item.TotalPrice.ToString("N2", UsCulture));
+                    foreach (var item in _purchase.PurchaseDetails)
+                    {
+                        table.Cell().Text(item.Product?.Name ?? string.Empty);
+                        table.Cell().AlignRight().Text(item.Quantity.ToString());
+                        table.Cell().AlignRight().Text(item.UnitPrice.ToString("N2", UsCulture));
+                        table.Cell().AlignRight().Text(item.TotalPrice.ToString("N2", UsCulture));
+                    }
                 }
             });
         }

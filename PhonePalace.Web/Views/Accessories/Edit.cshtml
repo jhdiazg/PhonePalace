@@ -14,9 +14,14 @@
         <form asp-action="Edit" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="ProductID" />
-            <div class="mb-3 form-check">
+            <div class="form-check form-switch mb-3">
                 <input class="form-check-input" asp-for="IsActive" />
                 <label class="form-check-label" asp-for="IsActive"></label>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" asp-for="BillWithIVA" />
+                <label class="form-check-label" asp-for="BillWithIVA"></label>
             </div>
 
             <div class="row">

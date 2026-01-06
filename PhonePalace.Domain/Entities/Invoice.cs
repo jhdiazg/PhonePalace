@@ -18,6 +18,9 @@ namespace PhonePalace.Domain.Entities
         public DateTime SaleDate { get; set; }
 
         [Required]
+        public SaleChannel SaleChannel { get; set; }
+
+        [Required]
         public string? UserId { get; set; }
 
         [Column(TypeName = "decimal(18, 2)")]

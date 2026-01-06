@@ -1,397 +1,243 @@
+
 using Microsoft.AspNetCore.Mvc;
-using PhonePalace.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using PhonePalace.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using PhonePalace.Web.Helpers;
-using PhonePalace.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
-using System;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Hosting;
-using PhonePalace.Web.Documents;
-using Microsoft.Extensions.Logging;
-using QuestPDF.Fluent;
+using PhonePalace.Domain.Enums;
+using PhonePalace.Infrastructure.Data;
+using PhonePalace.Web.Helpers;
+using System.Threading.Tasks;
+using System.Linq;
 
-public class SalesController : Controller
+namespace PhonePalace.Web.Controllers
 {
-    private readonly ApplicationDbContext _context;
-    private readonly IWebHostEnvironment _webHostEnvironment;
-    private readonly ILogger<SalesController> _logger;
-
-    public SalesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, ILogger<SalesController> logger)
-    {
-        _context = context;
-        _webHostEnvironment = webHostEnvironment;
-        _logger = logger;
-        QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
-    }
-
     [Route("Ventas")]
-    public async Task<IActionResult> Index(int? pageNumber)
+    public class SalesController : Controller
     {
-        var invoicesQuery = _context.Invoices
-            .Include(i => i.Client)
-            .OrderByDescending(i => i.SaleDate)
-            .AsNoTracking();
+        private readonly ApplicationDbContext _context;
 
-        int pageSize = 10;
-        var paginatedInvoices = await PaginatedList<Invoice>.CreateAsync(invoicesQuery, pageNumber ?? 1, pageSize);
-
-        return View(paginatedInvoices);
-    }
-
-    [Route("Ventas/Crear")]
-    public async Task<IActionResult> Create()
-    {
-        var viewModel = new SaleCreateViewModel
+        public SalesController(ApplicationDbContext context)
         {
-            Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName"),
-            Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
-            PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
-        };
-        return View(viewModel);
-    }
+            _context = context;
+        }
+
+    [HttpGet]
+    [Route("")]
+    public async Task<IActionResult> Index()
+        {
+            var sales = _context.Sales.Include(s => s.Client);
+            return View(await sales.ToListAsync());
+        }
+
+    [HttpGet]
+    [Route("Details/{id?}")]
+    public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var sale = await _context.Sales
+                .Include(s => s.Client)
+                .Include(s => s.Invoice)
+                .ThenInclude(i => i.Payments)
+                .Include(s => s.Details)
+                .ThenInclude(sd => sd.Product)
+                .FirstOrDefaultAsync(m => m.SaleID == id);
+
+            if (sale == null)
+            {
+                return NotFound();
+            }
+
+            return View(sale);
+        }
+    [HttpGet]
+    [Route("Create")]
+    public IActionResult Create()
+        {
+            var viewModel = new ViewModels.SaleCreateViewModel();
+            // Inicializa dropdowns
+            viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
+            viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
+            viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
+            ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+
+            // Si hay datos en TempData (por conversión de cotización), los carga y re-inicializa dropdowns
+            if (TempData["SaleModel"] is string saleJson)
+            {
+                var tempModel = System.Text.Json.JsonSerializer.Deserialize<ViewModels.SaleCreateViewModel>(saleJson);
+                if (tempModel != null)
+                {
+                    viewModel = tempModel;
+                    viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                    viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
+                    viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
+                    viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
+                    ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+                }
+            }
+            return View(viewModel);
+        }
 
     [HttpPost]
-    [Route("Ventas/Crear")]
+    [Route("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(SaleCreateViewModel model)
-    {
-        // Método auxiliar para recargar los dropdowns en caso de error
-        async Task PopulateViewModelDropdowns()
+    public async Task<IActionResult> Create(ViewModels.SaleCreateViewModel viewModel)
         {
-            model.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", model.ClientID);
-            model.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
-            model.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
-        }
+            viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
+            viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
+            viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
+            ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+            if (!ModelState.IsValid || viewModel.ClientID == null)
+            {
+                ModelState.AddModelError("ClientID", "Debe seleccionar un cliente.");
+                return View(viewModel);
+            }
 
-        // 1. Limpieza y validaciones iniciales del modelo.
-        model.Details.RemoveAll(d => d.ProductID == 0);
-        if (model.Details.Count == 0 && !Request.Form.ContainsKey("HasProducts"))
-        {
-            ModelState.AddModelError("", "Debe agregar al menos un producto a la venta.");
-        }
+            // Obtener el cliente
+            var client = await _context.Clients.FindAsync(viewModel.ClientID.Value);
+            if (client == null)
+            {
+                ModelState.AddModelError("ClientID", "Cliente no encontrado.");
+                return View(viewModel);
+            }
 
-        // Si el modelo ya es inválido (por DataAnnotations o la validación anterior), retornar inmediatamente.
-        if (!ModelState.IsValid)
-        {
-            await PopulateViewModelDropdowns();
-            return View(model);
-        }
-
-        // Usar una transacción para garantizar la atomicidad de la operación.
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
+            // Calcular subtotal y IVA
             decimal subtotal = 0;
-            var invoiceDetails = new List<InvoiceDetail>();
-
-            // 2. Validaciones de lógica de negocio (ej. Stock).
-            // Se realizan todas las validaciones ANTES de modificar la base de datos.
-            var productsFromDb = new Dictionary<int, Product>();
-            foreach (var detailVm in model.Details)
+            decimal subtotalForVAT = 0;
+            decimal taxRate = 0.19m;
+            if (viewModel.Details != null)
             {
-                var product = await _context.Products
-                    .Include(p => p.InventoryLevels)
-                    .FirstOrDefaultAsync(p => p.ProductID == detailVm.ProductID);
-
-                if (product == null)
+                foreach (var detailVM in viewModel.Details)
                 {
-                    ModelState.AddModelError("", $"El producto con ID {detailVm.ProductID} no fue encontrado.");
-                    continue; // Continúa validando los demás productos.
-                }
-                productsFromDb[product.ProductID] = product;
-
-                var inventory = product.InventoryLevels.FirstOrDefault();
-                if (inventory == null || inventory.Stock < detailVm.Quantity)
-                {
-                    ModelState.AddModelError("", $"No hay stock suficiente para el producto '{product.Name}'. Stock actual: {inventory?.Stock ?? 0}.");
+                    var product = await _context.Products.FindAsync(detailVM.ProductID);
+                    if (product == null) continue;
+                    decimal price = product.Price;
+                    subtotal += detailVM.Quantity * price;
+                    if (product.BillWithIVA) subtotalForVAT += detailVM.Quantity * price;
                 }
             }
+            decimal tax = subtotalForVAT * taxRate;
+            decimal total = subtotal + tax;
 
-            // Calcular totales para validar el pago.
-            var taxRate = 0.19m; // 19% de IVA.
-            subtotal = model.Details.Sum(d => d.Quantity * (productsFromDb.ContainsKey(d.ProductID) ? productsFromDb[d.ProductID].Price : 0));
-            var tax = subtotal * taxRate;
-            var total = subtotal + tax;
-
-            var totalPaid = model.Payments?.Sum(p => p.Amount) ?? 0;
-            if (totalPaid < total)
-            {
-                ModelState.AddModelError("", $"El monto pagado ({totalPaid:C}) es menor al total de la factura ({total:C}).");
-            }
-
-            // Si hubo algún error de validación de negocio, no continuar.
-            if (!ModelState.IsValid)
-            {
-                await transaction.RollbackAsync();
-                await PopulateViewModelDropdowns();
-                return View(model);
-            }
-
-            // 3. Procesar la venta si todo es válido.
+            // Crear la factura (Invoice) asociada
             var invoice = new Invoice
             {
-                ClientID = model.ClientID,
-                SaleDate = model.SaleDate,
-                UserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "System",
-                Status = InvoiceStatus.Completed, // Set initial status to Completed
-                CompletionDate = DateTime.UtcNow
+                ClientID = client.ClientID,
+                Client = client,
+                SaleDate = viewModel.SaleDate,
+                SaleChannel = viewModel.SaleChannel ?? SaleChannel.InStore,
+                UserId = User?.Identity?.Name,
+                Subtotal = subtotal,
+                Tax = tax,
+                Total = total,
+                Status = InvoiceStatus.Completed
             };
-
-            // Asignar detalles y recalcular totales
-            invoice.Details = model.Details.Select(d => new InvoiceDetail
-            {
-                ProductID = d.ProductID,
-                Quantity = d.Quantity,
-                UnitPrice = productsFromDb[d.ProductID].Price
-            }).ToList();
-
-            invoice.Subtotal = invoice.Details.Sum(d => d.LineTotal);
-            invoice.Tax = invoice.Subtotal * taxRate;
-            invoice.Total = invoice.Subtotal + invoice.Tax;
-
-            // Asignar detalles y recalcular totales
-            invoice.Details = model.Details.Select(d => new InvoiceDetail
-            {
-                ProductID = d.ProductID,
-                Quantity = d.Quantity,
-                UnitPrice = productsFromDb[d.ProductID].Price
-            }).ToList();
-
-            invoice.Subtotal = invoice.Details.Sum(d => d.LineTotal);
-            invoice.Tax = invoice.Subtotal * taxRate;
-            invoice.Total = invoice.Subtotal + invoice.Tax;
-
-            // Update stock
-            foreach (var detail in invoice.Details)
-            {
-                if (productsFromDb.TryGetValue(detail.ProductID, out var product))
-                {
-                    var inventory = product.InventoryLevels.FirstOrDefault();
-                    if (inventory != null)
-                    {
-                        inventory.Stock -= detail.Quantity;
-                        inventory.LastUpdated = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para deducir el stock.", detail.ProductID, invoice.InvoiceID);
-                    }
-                }
-            }
-
-            // Add payments to the invoice
-            if (model.Payments != null && model.Payments.Any())
-            {
-                invoice.Payments = model.Payments.Select(p => new Payment
-                {
-                    PaymentMethod = p.PaymentMethod,
-                    Amount = p.Amount,
-                    PaymentDate = DateTime.UtcNow,
-                    ReferenceNumber = p.ReferenceNumber
-                }).ToList();
-            }
-
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
-            TempData["SuccessMessage"] = $"Venta #{invoice.InvoiceID} creada y completada exitosamente.";
-            return RedirectToAction(nameof(Details), new { id = invoice.InvoiceID });
+            // Crear la venta
+            var sale = new Sale
+            {
+                ClientID = client.ClientID,
+                Client = client,
+                InvoiceID = invoice.InvoiceID,
+                Invoice = invoice,
+                SaleDate = viewModel.SaleDate,
+                TotalAmount = total,
+                Details = new List<SaleDetail>()
+            };
+
+            // Crear los detalles de la venta
+            if (viewModel.Details != null)
+            {
+                foreach (var detailVM in viewModel.Details)
+                {
+                    var product = await _context.Products.FindAsync(detailVM.ProductID);
+                    if (product == null) continue;
+                    var detail = new SaleDetail
+                    {
+                        ProductID = detailVM.ProductID,
+                        Product = product,
+                        Quantity = detailVM.Quantity,
+                        UnitPrice = product.Price,
+                        Sale = sale
+                    };
+                    sale.Details.Add(detail);
+                }
+            }
+
+            _context.Sales.Add(sale);
+            await _context.SaveChangesAsync();
+
+            // Reducir inventario
+            foreach (var detail in sale.Details)
+            {
+                var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
+                if (inventory != null && inventory.Stock >= detail.Quantity)
+                {
+                    inventory.Stock -= detail.Quantity;
+                    _context.Update(inventory);
+                }
+            }
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
         }
-        catch (Exception ex)
+
+        [HttpGet]
+        [Route("Delete/{id}")]
+        public async Task<IActionResult> Delete(int? id)
         {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Error inesperado al procesar la venta para el cliente ID {ClientId}", model.ClientID);
-            ModelState.AddModelError("", "Ocurrió un error inesperado al procesar la venta. Por favor, intente de nuevo.");
-            await PopulateViewModelDropdowns();
-            return View(model);
-        }
-    }
-
-    [Route("Ventas/Detalles/{id}")]
-    public async Task<IActionResult> Details(int id)
-    {
-        var invoice = await _context.Invoices
-            .Include(i => i.Client)
-            .Include(i => i.Details)
-                .ThenInclude(d => d.Product)
-            .Include(i => i.Payments)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(i => i.InvoiceID == id);
-
-        if (invoice == null)
-        {
-            return NotFound();
-        }
-
-        return View(invoice);
-    }
-
-    [Route("Ventas/FacturaPdf/{id}")]
-    public async Task<IActionResult> GenerateInvoicePdf(int id)
-    {
-        var invoice = await _context.Invoices
-            .Include(i => i.Client)
-            .Include(i => i.Details)
-                .ThenInclude(d => d.Product)
-            .Include(i => i.Payments)
-            .FirstOrDefaultAsync(i => i.InvoiceID == id);
-
-        if (invoice == null)
-        {
-            return NotFound();
-        }
-
-        string wwwRootPath = _webHostEnvironment.WebRootPath;
-        string logoPath = Path.Combine(wwwRootPath, "images", "logo_pdf.jpg");
-        byte[] logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
-
-        var document = new InvoicePdfDocument(invoice, logoBytes);
-        var pdfBytes = document.GeneratePdf();
-
-        return File(pdfBytes, "application/pdf", $"Factura-{invoice.InvoiceID:D5}.pdf");
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Route("Ventas/Completar/{id}")]
-    public async Task<IActionResult> CompleteSale(int id)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            var invoice = await _context.Invoices
-                .Include(i => i.Details)
-                    .ThenInclude(d => d.Product)
-                        .ThenInclude(p => p.InventoryLevels)
-                .Include(i => i.Payments)
-                .FirstOrDefaultAsync(i => i.InvoiceID == id);
-
-            if (invoice == null)
+            if (id == null)
             {
                 return NotFound();
             }
 
-            if (invoice.Status != InvoiceStatus.Pending)
+            var sale = await _context.Sales
+                .Include(s => s.Client)
+                .Include(s => s.Invoice)
+                .FirstOrDefaultAsync(m => m.SaleID == id);
+            if (sale == null)
             {
-                TempData["ErrorMessage"] = "Solo se pueden completar ventas en estado Pendiente.";
-                return RedirectToAction(nameof(Details), new { id });
+                return NotFound();
             }
 
-            // Validar que el monto pagado sea igual al total de la factura
-            var totalPaid = invoice.Payments?.Sum(p => p.Amount) ?? 0;
-            if (totalPaid < invoice.Total)
-            {
-                TempData["ErrorMessage"] = $"El monto pagado ({totalPaid:C}) es menor al total de la factura ({invoice.Total:C}). No se puede completar la venta.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
+            return View(sale);
+        }
 
-            // Actualizar el stock
-            foreach (var detail in invoice.Details)
+        [HttpPost, ActionName("Delete")]
+        [Route("Delete/{id}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var sale = await _context.Sales
+                .Include(s => s.Details)
+                .ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(s => s.SaleID == id);
+            if (sale != null)
             {
-                if (detail.Product != null)
+                // Restaurar inventario
+                foreach (var detail in sale.Details)
                 {
-                    var inventory = detail.Product?.InventoryLevels?.FirstOrDefault();
+                    var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
                     if (inventory != null)
                     {
-                        inventory.Stock -= detail.Quantity;
-                        inventory.LastUpdated = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para deducir el stock.", detail.ProductID, invoice.InvoiceID);
+                        inventory.Stock += detail.Quantity;
+                        _context.Update(inventory);
                     }
                 }
+
+                sale.IsDeleted = true;
+                _context.Update(sale);
+                await _context.SaveChangesAsync();
             }
 
-            // Cambiar el estado de la factura a Completado
-            invoice.Status = InvoiceStatus.Completed;
-            invoice.CompletionDate = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            TempData["SuccessMessage"] = $"La venta #{invoice.InvoiceID} ha sido completada exitosamente y el inventario actualizado.";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Error al completar la venta con ID {InvoiceID}", id);
-            TempData["ErrorMessage"] = "Ocurrió un error inesperado al completar la venta.";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    [Route("Ventas/Anular/{id}")]
-    public async Task<IActionResult> Cancel(int id)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            var invoice = await _context.Invoices
-                .Include(i => i.Details)
-                    .ThenInclude(d => d.Product)
-                        .ThenInclude(p => p.InventoryLevels)
-                .FirstOrDefaultAsync(i => i.InvoiceID == id);
-
-            if (invoice == null)
-            {
-                return NotFound();
-            }
-
-            if (invoice.Status == InvoiceStatus.Cancelled)
-            {
-                TempData["ErrorMessage"] = "Esta venta ya ha sido anulada.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            // Revertir el stock para cada producto en la factura
-            // Solo revertir si la venta estaba en estado Completed (stock ya deducido)
-            if (invoice.Status == InvoiceStatus.Completed)
-            {
-                foreach (var detail in invoice.Details)
-                {
-                    if (detail.Product != null)
-                    {
-                        var inventory = detail.Product.InventoryLevels.FirstOrDefault();
-                        if (inventory != null)
-                        {
-                            inventory.Stock += detail.Quantity;
-                            inventory.LastUpdated = DateTime.UtcNow;
-                        }
-                        else
-                        {
-                            _logger.LogWarning("El producto con ID {ProductID} en la factura {InvoiceID} no tiene un registro de inventario para revertir el stock.", detail.ProductID, invoice.InvoiceID);
-                        }
-                    }
-                }
-            }
-
-            // Cambiar el estado de la factura
-            invoice.Status = InvoiceStatus.Cancelled;
-            invoice.CancellationDate = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            TempData["SuccessMessage"] = $"La venta #{invoice.InvoiceID} ha sido anulada exitosamente y el stock ha sido revertido.";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Error al anular la venta con ID {InvoiceID}", id);
-            TempData["ErrorMessage"] = "Ocurrió un error inesperado al anular la venta.";
-            return RedirectToAction(nameof(Details), new { id });
+            return RedirectToAction(nameof(Index));
         }
     }
 }

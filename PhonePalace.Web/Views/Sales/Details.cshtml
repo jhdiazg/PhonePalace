@@ -1,187 +1,114 @@
-@model PhonePalace.Domain.Entities.Invoice
-@using PhonePalace.Domain.Enums
-@using PhonePalace.Domain.Entities
+@model PhonePalace.Domain.Entities.Sale
+
 @{
-    ViewData["Title"] = $"Detalles de la Venta #{Model.InvoiceID}";
+    ViewData["Title"] = "Detalles de Venta";
 }
 
-<div class="container-fluid">
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <h1 class="h3">@ViewData["Title"]</h1>
-        </div>
-        <div class="col-md-6 text-md-end">
-            <a href="@Url.Action("GenerateInvoicePdf", new { id = Model.InvoiceID })" class="btn btn-primary" target="_blank">
-                <i class="fas fa-file-pdf"></i> Descargar PDF
-            </a>
-            @if (Model.Status == InvoiceStatus.Pending)
-            {
-                <form asp-action="CompleteSale" asp-route-id="@Model.InvoiceID" method="post" style="display:inline;">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea completar esta venta? Esto actualizará el inventario y procesará los pagos.');">
-                        <i class="fas fa-check-circle"></i> Completar Venta
-                    </button>
-                </form>
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelSaleModal">
-                    <i class="fas fa-ban"></i> Anular Venta
-                </button>
-            }
-            else if (Model.Status == InvoiceStatus.Completed)
-            {
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelSaleModal">
-                    <i class="fas fa-ban"></i> Anular Venta
-                </button>
-            }
-        </div>
+<h1>@ViewData["Title"]</h1>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">
+        <h4 class="mb-0">Información de la Venta</h4>
     </div>
-
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
-    }
-
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title">Información General</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Cliente:</strong> @Model.Client.DisplayName</p>
-                    @if (Model.Client is NaturalPerson naturalPerson)
-                    {
-                        <p><strong>Documento:</strong> @naturalPerson.DocumentNumber</p>
-                    }
-                    else if (Model.Client is LegalEntity legalEntity)
-                    {
-                        <p><strong>NIT:</strong> @legalEntity.NIT</p>
-                    }
-                    <p><strong>Email:</strong> @Model.Client.Email</p>
-                    <p><strong>Teléfono:</strong> @Model.Client.PhoneNumber</p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Fecha de Venta:</strong> @Model.SaleDate.ToString("dd/MM/yyyy")</p>
-                    <p><strong>Estado:</strong> <span class="badge bg-@(Model.Status == InvoiceStatus.Completed ? "success" : (Model.Status == InvoiceStatus.Pending ? "warning" : "danger"))">@Html.DisplayFor(model => model.Status)</span></p>
-                    @if (Model.CompletionDate.HasValue)
-                    {
-                        <p><strong>Fecha de Completado:</strong> @Model.CompletionDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
-                    }
-                    @if (Model.CancellationDate.HasValue)
-                    {
-                        <p><strong>Fecha de Anulación:</strong> @Model.CancellationDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
-                    }
-                    <p><strong>Atendido por:</strong> @Model.UserId</p>
-                </div>
-            </div>
-        </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-2">
+                ID de Venta
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.SaleID)
+            </dd>
+            <dt class="col-sm-2">
+                Fecha de Venta
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.SaleDate)
+            </dd>
+            <dt class="col-sm-2">
+                Cliente
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.Client.DisplayName)
+            </dd>
+            <dt class="col-sm-2">
+                Canal de Venta
+            </dt>
+            <dd class="col-sm-10">
+                @Html.DisplayFor(model => model.Invoice.SaleChannel)
+            </dd>
+            <dt class="col-sm-2">
+                Monto Total
+            </dt>
+            <dd class="col-sm-10">
+                @String.Format("{0:C}", Model.TotalAmount)
+            </dd>
+        </dl>
     </div>
+</div>
 
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="card-title">Artículos Vendidos</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Producto</th>
-                            <th class="text-end">Cantidad</th>
-                            <th class="text-end">Precio Unitario</th>
-                            <th class="text-end">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model.Details)
-                        {
-                            <tr>
-                                <td>@item.Product.Name</td>
-                                <td class="text-end">@item.Quantity</td>
-                                <td class="text-end">@item.UnitPrice.ToString("C")</td>
-                                <td class="text-end">@item.LineTotal.ToString("C")</td>
-                            </tr>
-                        }
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th colspan="3" class="text-end">Subtotal:</th>
-                            <td class="text-end">@Model.Subtotal.ToString("C")</td>
-                        </tr>
-                        <tr>
-                            <th colspan="3" class="text-end">IVA (19%):</th>
-                            <td class="text-end">@Model.Tax.ToString("C")</td>
-                        </tr>
-                        <tr>
-                            <th colspan="3" class="text-end fs-5">Total:</th>
-                            <td class="text-end fs-5 fw-bold">@Model.Total.ToString("C")</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h4 class="mb-0">Productos Vendidos</h4>
     </div>
-
-    <div class="card mt-4">
-        <div class="card-header">
-            <h5 class="card-title">Pagos Realizados</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
-                    <thead class="table-dark">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Details)
+                    {
                         <tr>
-                            <th>Método de Pago</th>
-                            <th>Referencia</th>
-                            <th class="text-end">Monto</th>
+                            <td>@Html.DisplayFor(modelItem => item.Product.Name)</td>
+                            <td>@Html.DisplayFor(modelItem => item.Quantity)</td>
+                            <td>@String.Format("{0:C}", item.UnitPrice)</td>
+                            <td>@String.Format("{0:C}", item.Quantity * item.UnitPrice)</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Payments != null && Model.Payments.Any())
-                        {
-                            @foreach (var payment in Model.Payments)
-                            {
-                                <tr>
-                                    <td>@Html.DisplayFor(modelItem => payment.PaymentMethod)</td>
-                                    <td>@payment.ReferenceNumber</td>
-                                    <td class="text-end">@payment.Amount.ToString("C")</td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="3" class="text-center">No hay pagos registrados para esta venta. Los pagos se registran al completar la venta.</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- Modal de Confirmación de Anulación -->
-<div class="modal fade" id="cancelSaleModal" tabindex="-1" aria-labelledby="cancelSaleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="cancelSaleModalLabel">Confirmar Anulación</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>¿Está seguro de que desea anular esta venta? Esta acción no se puede deshacer y el stock de los productos será revertido.</p>
-            </div>
-            <div class="modal-footer">
-                <form asp-action="Cancel" asp-route-id="@Model.InvoiceID" method="post">
-                    @Html.AntiForgeryToken()
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="submit" class="btn btn-danger">Sí, Anular Venta</button>
-                </form>
+@if (Model.Invoice?.Payments != null && Model.Invoice.Payments.Any())
+{
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h4 class="mb-0">Formas de Pago</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Método de Pago</th>
+                            <th>Monto</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var payment in Model.Invoice.Payments)
+                        {
+                            <tr>
+                                <td>@payment.PaymentMethod.ToString()</td>
+                                <td>@String.Format("{0:C}", payment.Amount)</td>
+                                <td>@(payment.ReferenceNumber ?? "N/A")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+}
+
+<div class="mt-4">
+    <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
 </div>

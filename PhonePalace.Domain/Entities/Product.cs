@@ -18,10 +18,12 @@ namespace PhonePalace.Domain.Entities
         public string Name { get; set; } = string.Empty;
         [DisplayName("Descripción")]
         public string? Description { get; set; }
-        [DisplayName("Precio")]    
-        public decimal Price { get; set; }
-        [DisplayName("Costo")]
-        public decimal Cost { get; set; }
+    [DisplayName("Precio")]
+    [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
+    public decimal Price { get; set; }
+    [DisplayName("Costo")]
+    [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
+    public decimal Cost { get; set; }
         [DisplayName("SKU")]
         public string SKU { get; set; } = string.Empty;
 
@@ -35,5 +37,8 @@ namespace PhonePalace.Domain.Entities
         public ProductCondition ProductCondition { get; set; }
         [DisplayName("Estado")]
         public bool IsActive { get; set; } = true;
+
+        [DisplayName("Facturar con IVA")]
+        public bool BillWithIVA { get; set; }
     }
 }

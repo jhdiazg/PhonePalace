@@ -31,23 +31,33 @@
                 <tbody>
                     @foreach (var item in Model)
                     {
-                        <tr>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@Html.DisplayFor(modelItem => item.Name)</td>
+                        <tr class="@(item.IsActive ? "" : "table-danger")">
+                            <td>@Html.DisplayFor(modelItem => item.Name)</td>
                             <td>
                                 <img src="@ImageHelper.GetImageUrl(item.Images)" alt="Imagen de @item.Name" class="product-image-thumbnail" />
                             </td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@Html.DisplayFor(modelItem => item.Model.Brand.Name)</td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@Html.DisplayFor(modelItem => item.Model.Name)</td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@item.Price.ToString("C")</td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@item.Cost.ToString("C")</td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">@Html.DisplayFor(modelItem => item.SKU)</td>
-                            <td class="@(item.IsActive ? "" : "text-danger")">
-                                @Html.DisplayFor(modelItem => item.IsActive)
+                            <td>@Html.DisplayFor(modelItem => item.Model.Brand.Name)</td>
+                            <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
+                            <td>@item.Price.ToString("C")</td>
+                            <td>@item.Cost.ToString("C")</td>
+                            <td>@Html.DisplayFor(modelItem => item.SKU)</td>
+                            <td>
+                                <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
+                            </td>
+                            <td>
+                                @if (item.BillWithIVA)
+                                {
+                                    <span class="badge bg-info">Sí</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
                             </td>
                             <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-secondary">Editar</a>
-                                <a asp-action="Details" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-info">Detalles</a>
-                                <a asp-action="Delete" asp-route-id="@item.ProductID" class="btn btn-sm btn-outline-danger">Borrar</a>
+                                <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-warning">Editar</a>
+                                <a asp-action="Details" asp-route-id="@item.ProductID" class="btn btn-sm btn-info">Detalles</a>
+                                <a asp-action="Delete" asp-route-id="@item.ProductID" class="btn btn-sm btn-danger">Eliminar</a>
                             </td>
                         </tr>
                     }

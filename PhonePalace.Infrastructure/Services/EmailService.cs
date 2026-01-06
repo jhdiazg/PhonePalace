@@ -1,9 +1,10 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
 using MimeKit;
 
-public class EmailService
+public class EmailService : IEmailSender
 {
     private readonly IConfiguration _configuration;
 
@@ -12,7 +13,12 @@ public class EmailService
         _configuration = configuration;
     }
 
-    public async Task SendEmailWithAttachmentAsync(string toEmail, string subject, string body, byte[] attachment, string attachmentFileName)
+    public async Task SendEmailAsync(string email, string subject, string htmlMessage)
+    {
+        await SendEmailWithAttachmentAsync(email, subject, htmlMessage, null, null);
+    }
+
+    public async Task SendEmailWithAttachmentAsync(string toEmail, string subject, string body, byte[]? attachment, string? attachmentFileName)
     {
         var settings = _configuration.GetSection("SmtpSettings");
 
@@ -22,7 +28,10 @@ public class EmailService
         email.Subject = subject;
 
         var builder = new BodyBuilder { HtmlBody = body };
-        builder.Attachments.Add(attachmentFileName, attachment, new ContentType("application", "pdf"));
+        if (attachment != null && !string.IsNullOrEmpty(attachmentFileName))
+        {
+            builder.Attachments.Add(attachmentFileName, attachment, new ContentType("application", "pdf"));
+        }
         email.Body = builder.ToMessageBody();
 
         using var smtp = new SmtpClient();

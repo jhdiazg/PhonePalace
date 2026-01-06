@@ -4,6 +4,8 @@ namespace PhonePalace.Web.ViewModels
 {
     public class ClientIndexViewModel
     {
+        [Display(Name = "Activo")]
+        public bool IsActive { get; set; }
         public int ClientID { get; set; }
         [Display(Name = "Tipo de Cliente")]
         public string ClientType { get; set; } = string.Empty;

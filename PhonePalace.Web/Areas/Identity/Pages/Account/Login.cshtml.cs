@@ -14,17 +14,20 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using PhonePalace.Domain.Interfaces;
 namespace PhonePalace.Web.Areas.Identity.Pages.Account
 {
     public class LoginModel : PageModel
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IAuditService _auditService;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, IAuditService auditService)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _auditService = auditService;
         }
 
         [BindProperty]
@@ -74,6 +77,7 @@ namespace PhonePalace.Web.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
+                    await _auditService.LogAsync("Inicio de Sesión", $"User {Input.Email} logged in successfully.");
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)

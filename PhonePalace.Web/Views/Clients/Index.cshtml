@@ -22,12 +22,13 @@
                         <th>Documento</th>
                         <th>Correo Electrónico</th>
                         <th>Teléfono</th>
+                        <th>Activo</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
             @foreach (var item in Model) {
-                    <tr>
+                    <tr class="@(item.IsActive ? "" : "table-danger")">
                         <td>
                             @if (item.ClientType == "Persona Natural") { <span class="badge bg-primary">@item.ClientType</span> }
                             else { <span class="badge bg-success">@item.ClientType</span> }
@@ -36,11 +37,14 @@
                         <td>@Html.DisplayFor(modelItem => item.Document)</td>
                         <td>@Html.DisplayFor(modelItem => item.Email)</td>
                         <td>@Html.DisplayFor(modelItem => item.PhoneNumber)</td>
-                        <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.ClientID" class="btn btn-sm btn-warning">Editar</a> 
-                            <a asp-action="Details" asp-route-id="@item.ClientID" class="btn btn-sm btn-info">Detalles</a> 
-                            <a asp-action="Delete" asp-route-id="@item.ClientID" class="btn btn-sm btn-danger">Eliminar</a>
-                        </td>
+                            <td>
+                                <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.ClientID" class="btn btn-sm btn-warning">Editar</a>
+                                <a asp-action="Details" asp-route-id="@item.ClientID" class="btn btn-sm btn-info">Detalles</a>
+                                <a asp-action="Delete" asp-route-id="@item.ClientID" class="btn btn-sm btn-danger">Eliminar</a>
+                            </td>
                     </tr>
             }
                 </tbody>

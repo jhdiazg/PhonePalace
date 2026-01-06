@@ -30,10 +30,10 @@ namespace PhonePalace.Web.Controllers
                     CurrentStock = i.Stock,
                     LastUpdated = i.LastUpdated,
                     TotalPurchases = _context.PurchaseDetails
-                        .Where(pd => pd.ProductId == i.ProductID && pd.Purchase.Status == PhonePalace.Domain.Enums.PurchaseStatus.Received)
+                        .Where(pd => pd.ProductId == i.ProductID && pd.Purchase != null && pd.Purchase.Status == Domain.Enums.PurchaseStatus.Received)
                         .Sum(pd => pd.Quantity),
                     TotalSales = _context.InvoiceDetails
-                        .Where(id => id.ProductID == i.ProductID && id.Invoice.Status == PhonePalace.Domain.Enums.InvoiceStatus.Completed)
+                        .Where(id => id.ProductID == i.ProductID && id.Invoice != null && id.Invoice.Status == Domain.Enums.InvoiceStatus.Completed)
                         .Sum(id => id.Quantity)
                 })
                 .OrderBy(item => item.ProductName)

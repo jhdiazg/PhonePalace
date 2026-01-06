@@ -66,6 +66,9 @@ namespace PhonePalace.Web.ViewModels
         [Display(Name = "Activo")]
         public bool IsActive { get; set; }
 
+        [Display(Name = "Facturar con IVA")]
+        public bool BillWithIVA { get; set; }
+
         public List<ProductImageViewModel> Images { get; set; } = new List<ProductImageViewModel>();
     }
 }

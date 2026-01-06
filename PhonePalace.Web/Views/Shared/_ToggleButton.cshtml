@@ -1,0 +1,8 @@
+<!-- ToggleButton Partial for logical delete (IsActive) -->
+@* Usage: @await Html.PartialAsync("_ToggleButton", new ToggleButtonViewModel { IsChecked = Model.IsActive, Label = "Activo" }) *@
+@model PhonePalace.Web.ViewModels.ToggleButtonViewModel
+
+<div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="toggleActive" name="IsActive" value="true" @(Model.IsChecked ? "checked" : "") />
+    <label class="form-check-label" for="toggleActive">@Model.Label</label>
+</div>

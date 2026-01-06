@@ -12,6 +12,7 @@
         <form asp-action="EditNaturalPersonSupplier">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="SupplierID" />
+            @await Html.PartialAsync("_ToggleButton", new PhonePalace.Web.ViewModels.ToggleButtonViewModel { IsChecked = Model.IsActive, Label = "Activo" })
 
             <div class="row">
                 <div class="col-md-6">

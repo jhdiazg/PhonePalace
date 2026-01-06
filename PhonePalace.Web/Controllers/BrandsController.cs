@@ -62,7 +62,7 @@ namespace PhonePalace.Web.Controllers
             {
                 _context.Add(brand);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Brands", $"Creó la marca '{brand.Name}' (ID: {brand.BrandID}).");
+                await _auditService.LogAsync("Marcas", $"Creó la marca '{brand.Name}' (ID: {brand.BrandID}).");
                 return RedirectToAction(nameof(Index));
             }
             return View(brand);
@@ -100,7 +100,7 @@ namespace PhonePalace.Web.Controllers
                 {
                     _context.Update(brand);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Brands", $"Editó la marca '{brand.Name}' (ID: {brand.BrandID}).");
+                    await _auditService.LogAsync("Marcas", $"Editó la marca '{brand.Name}' (ID: {brand.BrandID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -148,7 +148,7 @@ namespace PhonePalace.Web.Controllers
                 brand.IsActive = false;
                 _context.Update(brand);
                 await _context.SaveChangesAsync();
-                await _auditService.LogAsync("Brands", $"Eliminó la marca '{brand.Name}' (ID: {brand.BrandID}).");
+                await _auditService.LogAsync("Marcas", $"Eliminó la marca '{brand.Name}' (ID: {brand.BrandID}).");
             }
             
             return RedirectToAction(nameof(Index));

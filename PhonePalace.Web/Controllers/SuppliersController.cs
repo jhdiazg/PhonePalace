@@ -27,7 +27,6 @@ namespace PhonePalace.Web.Controllers
         public async Task<IActionResult> Index(int? pageNumber)
         {
             var suppliersQuery = _context.Suppliers
-                .Where(s => s.IsActive)
                 .AsNoTracking()
                 .Select(s => new SupplierIndexViewModel
                 {
@@ -36,7 +35,8 @@ namespace PhonePalace.Web.Controllers
                     DisplayName = s.DisplayName,
                     Document = s is NaturalPersonSupplier ? ((NaturalPersonSupplier)s).DocumentNumber : ((LegalEntitySupplier)s).NIT ?? string.Empty,
                     Email = s.Email ?? string.Empty,
-                    PhoneNumber = s.PhoneNumber ?? string.Empty
+                    PhoneNumber = s.PhoneNumber ?? string.Empty,
+                    IsActive = s.IsActive
                 });
 
             int pageSize = 10;
@@ -126,7 +126,7 @@ namespace PhonePalace.Web.Controllers
             _context.Add(newSupplier);
             await _context.SaveChangesAsync();
             TempData["success"] = "Proveedor creado exitosamente.";
-            await _auditService.LogAsync("Suppliers", $"Creó el proveedor '{newSupplier.DisplayName}' (ID: {newSupplier.SupplierID}).");
+            await _auditService.LogAsync("Proveedores", $"Creó el proveedor '{newSupplier.DisplayName}' (ID: {newSupplier.SupplierID}).");
             return RedirectToAction(nameof(Index));
         }
 
@@ -213,7 +213,7 @@ namespace PhonePalace.Web.Controllers
                     _context.Update(supplierToUpdate);
                     await _context.SaveChangesAsync();
                     TempData["success"] = "Proveedor natural actualizado exitosamente.";
-                    await _auditService.LogAsync("Suppliers", $"Editó el proveedor '{supplierToUpdate.DisplayName}' (ID: {supplierToUpdate.SupplierID}).");
+                    await _auditService.LogAsync("Proveedores", $"Editó el proveedor '{supplierToUpdate.DisplayName}' (ID: {supplierToUpdate.SupplierID}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -245,10 +245,10 @@ namespace PhonePalace.Web.Controllers
                     var supplierToUpdate = await _context.LegalEntitySuppliers.FindAsync(id);
                     if (supplierToUpdate == null) return NotFound();
 
-                    supplierToUpdate.CompanyName = viewModel.CompanyName;
-                    supplierToUpdate.NIT = viewModel.NIT;
-                    supplierToUpdate.Email = viewModel.Email;
-                    supplierToUpdate.PhoneNumber = viewModel.PhoneNumber;
+                    supplierToUpdate.CompanyName = viewModel.CompanyName ?? string.Empty;
+                    supplierToUpdate.NIT = viewModel.NIT ?? string.Empty;
+                    supplierToUpdate.Email = viewModel.Email ?? string.Empty;
+                    supplierToUpdate.PhoneNumber = viewModel.PhoneNumber ?? string.Empty;
                     supplierToUpdate.DepartmentID = viewModel.DepartmentID;
                     supplierToUpdate.MunicipalityID = viewModel.MunicipalityID;
                     supplierToUpdate.StreetAddress = viewModel.StreetAddress;
@@ -258,7 +258,7 @@ namespace PhonePalace.Web.Controllers
                     _context.Update(supplierToUpdate);
                     await _context.SaveChangesAsync();
                     TempData["success"] = "Proveedor jurídico actualizado exitosamente.";
-                    await _auditService.LogAsync("Suppliers", $"Editó el proveedor '{supplierToUpdate.DisplayName}' (ID: {supplierToUpdate.SupplierID}).");
+                    await _auditService.LogAsync("Proveedores", $"Editó el proveedor '{supplierToUpdate.DisplayName}' (ID: {supplierToUpdate.SupplierID}).");
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
