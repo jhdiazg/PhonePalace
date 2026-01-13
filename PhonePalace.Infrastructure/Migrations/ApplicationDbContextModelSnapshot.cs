@@ -287,8 +287,8 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<string>("SessionId")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(max)");
@@ -343,6 +343,80 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasKey("BrandID");
 
                     b.ToTable("Brands");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.CashMovement", b =>
+                {
+                    b.Property<int>("CashMovementID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CashMovementID"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("CashRegisterID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("MovementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MovementType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PaymentID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("CashMovementID");
+
+                    b.HasIndex("CashRegisterID");
+
+                    b.HasIndex("PaymentID");
+
+                    b.ToTable("CashMovements");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.CashRegister", b =>
+                {
+                    b.Property<int>("CashRegisterID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CashRegisterID"));
+
+                    b.Property<string>("ClosedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("ClosingAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime?>("ClosingDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsOpen")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OpenedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("OpeningAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime>("OpeningDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("CashRegisterID");
+
+                    b.ToTable("CashRegisters");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Category", b =>
@@ -623,11 +697,12 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProductID"));
 
-                    b.Property<bool>("BillWithIVA")
-                        .HasColumnType("bit");
-
                     b.Property<int>("CategoryID")
                         .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<decimal>("Cost")
                         .HasColumnType("decimal(18, 2)");
@@ -654,7 +729,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(13)");
 
                     b.Property<string>("SKU")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ProductID");
@@ -716,8 +790,14 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("SubtotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("SupplierId")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
@@ -745,6 +825,9 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasColumnType("decimal(5, 2)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18, 2)");
@@ -1122,6 +1205,23 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Purchase");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.CashMovement", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.CashRegister", "CashRegister")
+                        .WithMany("CashMovements")
+                        .HasForeignKey("CashRegisterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Payment", "Payment")
+                        .WithMany()
+                        .HasForeignKey("PaymentID");
+
+                    b.Navigation("CashRegister");
+
+                    b.Navigation("Payment");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Client", b =>
                 {
                     b.HasOne("PhonePalace.Domain.Entities.Department", "Department")
@@ -1369,6 +1469,11 @@ namespace PhonePalace.Infrastructure.Migrations
             modelBuilder.Entity("PhonePalace.Domain.Entities.Brand", b =>
                 {
                     b.Navigation("Models");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.CashRegister", b =>
+                {
+                    b.Navigation("CashMovements");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Department", b =>
