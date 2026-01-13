@@ -11,7 +11,7 @@ using PhonePalace.Web.ViewModels;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Admin,Vendedor")]
+    [Authorize(Roles = "Administrador,Vendedor")]
     public class ClientsController : Controller
     {
         private readonly ApplicationDbContext _context;

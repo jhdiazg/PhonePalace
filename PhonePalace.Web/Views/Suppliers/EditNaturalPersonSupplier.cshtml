@@ -9,7 +9,7 @@
 <hr />
 <div class="row">
     <div class="col-md-8">
-        <form asp-action="EditNaturalPersonSupplier">
+        <form asp-action="EditNaturalPersonSupplier" asp-route-id="@Model.SupplierID">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="SupplierID" />
             @await Html.PartialAsync("_ToggleButton", new PhonePalace.Web.ViewModels.ToggleButtonViewModel { IsChecked = Model.IsActive, Label = "Activo" })
@@ -100,7 +100,7 @@
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
+    <a asp-action="Index" class="btn btn-primary">Volver a la Lista</a>
 </div>
 
 @section Scripts {

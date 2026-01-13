@@ -48,6 +48,7 @@ namespace PhonePalace.Web.Controllers
                 {
                     ProductID = cp.ProductID,
                     SKU = cp.SKU,
+                    Code = cp.Code,
                     Name = cp.Name,
                     ProductType = "Celular", // Directly assign for CellPhone
                     CategoryName = cp.Category != null ? cp.Category.Name : "N/A",
@@ -65,6 +66,7 @@ namespace PhonePalace.Web.Controllers
                 {
                     ProductID = a.ProductID,
                     SKU = a.SKU,
+                    Code = a.Code,
                     Name = a.Name,
                     ProductType = "Accesorio", // Directly assign for Accessory
                     CategoryName = a.Category != null ? a.Category.Name : "N/A",
@@ -84,8 +86,10 @@ namespace PhonePalace.Web.Controllers
             {
                 combinedQuery = combinedQuery.Where(p => p.Name.Contains(searchString)
                                        || (p.SKU != null && p.SKU.Contains(searchString))
+                                       || (p.Code != null && p.Code.Contains(searchString))
                                        || (!string.IsNullOrEmpty(p.BrandName) && p.BrandName.Contains(searchString))
-                                       || (p.ModelName != null && p.ModelName.Contains(searchString)));
+                                       || (p.ModelName != null && p.ModelName.Contains(searchString))
+                                       || p.ProductType.Contains(searchString));
             }
 
             // Apply sorting
@@ -109,16 +113,25 @@ namespace PhonePalace.Web.Controllers
 
         // API Endpoint for product search (used by Purchase Create view)
         [HttpGet("api/products")]
-        public async Task<IActionResult> SearchProductsApi([FromQuery] string term)
+        public async Task<IActionResult> SearchProductsApi([FromQuery] string term, [FromQuery] int? categoryId)
         {
-            if (string.IsNullOrWhiteSpace(term) || term.Length < 1)
+            var query = _context.Products.Where(p => p.IsActive);
+
+            if (categoryId.HasValue)
             {
-                return Ok(new object[] { });
+                query = query.Where(p => p.CategoryID == categoryId.Value);
             }
 
-            var products = await _context.Products
-                .Where(p => p.IsActive && p.Name.Contains(term))
+            if (!string.IsNullOrWhiteSpace(term) && term.Length >= 1)
+            {
+                query = query.Where(p => p.Name.ToLower().Contains(term.ToLower()) ||
+                                         (p.SKU != null && p.SKU.ToLower().Contains(term.ToLower())) ||
+                                         (p.Code != null && p.Code.ToLower().Contains(term.ToLower())));
+            }
+
+            var products = await query
                 .Select(p => new { p.ProductID, p.Name, p.Price })
+                .Take(20) // Limit results for performance
                 .ToListAsync();
 
             return Ok(products);
@@ -139,7 +152,7 @@ namespace PhonePalace.Web.Controllers
                                       .Where(i => i.ProductID == id)
                                       .SumAsync(i => i.Stock);
 
-            return Ok(new { id = product.ProductID, name = product.Name, price = product.Price, stock, billWithIVA = product.BillWithIVA });
+            return Ok(new { id = product.ProductID, name = product.Name, price = product.Price, stock });
         }
     }
 }

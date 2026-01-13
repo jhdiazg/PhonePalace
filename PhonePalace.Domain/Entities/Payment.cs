@@ -23,6 +23,6 @@ namespace PhonePalace.Domain.Entities
         [StringLength(100)]
         public string? ReferenceNumber { get; set; } // Para tarjetas, transferencias, etc.
         
-        public DateTime PaymentDate { get; set; } = DateTime.UtcNow;
+        public DateTime PaymentDate { get; set; } = DateTime.Now;
     }
 }

@@ -14,9 +14,9 @@
 
 <form asp-action="Index" method="get" class="mb-4">
     <div class="input-group">
-        <input type="text" name="SearchString" class="form-control" placeholder="Buscar por nombre, SKU, marca..." value="@ViewData["CurrentFilter"]" />
-        <button type="submit" class="btn btn-outline-primary">Buscar</button>
-        <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+        <input type="text" name="SearchString" class="form-control" placeholder="Buscar por nombre, SKU, código, marca, tipo..." value="@ViewData["CurrentFilter"]" />
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
     </div>
 </form>
 
@@ -43,6 +43,7 @@
                                 <a asp-action="Index" asp-route-sortOrder="@ViewData["PriceSortParm"]" asp-route-currentFilter="@ViewData["CurrentFilter"]">@Html.DisplayNameFor(model => model.First().Price)</a>
                             </th>
                             <th>@Html.DisplayNameFor(model => model.First().SKU)</th>
+                            <th>@Html.DisplayNameFor(model => model.First().Code)</th>
                                <th>Activo</th>
                                <th></th>
                         </tr>
@@ -61,6 +62,7 @@
                                 <td>@Html.DisplayFor(modelItem => item.ModelName)</td>
                                 <td>@item.Price.ToString("C")</td>
                                 <td>@Html.DisplayFor(modelItem => item.SKU)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Code)</td>
                                    <td>
                                        <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
                                    </td>

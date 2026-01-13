@@ -22,8 +22,8 @@
                         <th>Categoría</th>
                         <th>Precio</th>
                         <th>SKU</th>
+                        <th>Código</th>
                         <th>Activo</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -48,17 +48,10 @@
                             @Html.DisplayFor(modelItem => item.SKU)
                         </td>
                         <td>
-                            <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
+                            @Html.DisplayFor(modelItem => item.Code)
                         </td>
                         <td>
-                            @if (item.BillWithIVA)
-                            {
-                                <span class="badge bg-info">Sí</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">No</span>
-                            }
+                            <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
                         </td>
                         <td class="text-end">
                             <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-warning">Editar</a>

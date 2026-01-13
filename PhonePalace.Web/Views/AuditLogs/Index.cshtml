@@ -7,6 +7,19 @@
 
 <h1>@ViewData["Title"]</h1>
 
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning">
+        @TempData["Warning"]
+    </div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info">
+        @TempData["Info"]
+    </div>
+}
+
 <div class="card shadow-sm mb-4">
     <div class="card-header">
         <h5 class="mb-0">Filtros</h5>
@@ -49,7 +62,7 @@
             <table class="table table-striped table-hover">
                 <thead>
                     <tr>
-                        <th>Fecha y Hora (UTC)</th>
+                        <th>Fecha y Hora (Local)</th>
                         <th>Usuario</th>
                         <th>Módulo</th>
                         <th>Descripción</th>
@@ -62,7 +75,7 @@
                         @foreach (var item in Model.AuditLogs)
                         {
                             <tr>
-                                <td>@item.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@item.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                                 <td>@Html.DisplayFor(modelItem => item.UserName)</td>
                                 <td>@Html.DisplayFor(modelItem => item.Origin)</td>
                                 <td>@Html.DisplayFor(modelItem => item.Description)</td>

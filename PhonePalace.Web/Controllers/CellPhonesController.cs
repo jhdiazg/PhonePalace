@@ -15,7 +15,7 @@ using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrador")]
     public class CellPhonesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -93,8 +93,7 @@ namespace PhonePalace.Web.Controllers
                     Color = viewModel.Color,
                     StorageGB = viewModel.StorageGB,
                     RamGB = viewModel.RamGB,
-                    IsActive = viewModel.IsActive,
-                    BillWithIVA = viewModel.BillWithIVA
+                    IsActive = viewModel.IsActive
                 };
 
                 if (viewModel.NewImageFile != null)
@@ -141,7 +140,7 @@ namespace PhonePalace.Web.Controllers
                 Description = cellPhone.Description ?? string.Empty,
                 Price = cellPhone.Price,
                 Cost = cellPhone.Cost,
-                SKU = cellPhone.SKU,
+                SKU = cellPhone.SKU ?? string.Empty,
                 CategoryID = cellPhone.CategoryID,
                 ModelID = cellPhone.ModelID,
                 Color = cellPhone.Color ?? string.Empty,
@@ -195,7 +194,6 @@ namespace PhonePalace.Web.Controllers
                     cellPhone.RamGB = viewModel.RamGB;
                     cellPhone.IsActive = viewModel.IsActive;
                     cellPhone.ProductCondition = viewModel.ProductCondition;
-                    cellPhone.BillWithIVA = viewModel.BillWithIVA;
 
                     // Manejar nueva imagen
                     if (viewModel.NewImageFile != null)

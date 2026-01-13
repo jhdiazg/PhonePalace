@@ -199,7 +199,7 @@
             var allProductsDict = {
                 @foreach (var p in ViewBag.AllProducts)
                 {
-                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price, billWithIVA: @(p.BillWithIVA != null ? p.BillWithIVA.ToString().ToLower() : "false") },</text>
+                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price },</text>
                 }
             };
 

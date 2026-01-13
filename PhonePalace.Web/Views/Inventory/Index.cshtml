@@ -2,10 +2,10 @@
 @using PhonePalace.Web.Helpers
 
 @{
-    ViewData["Title"] = "Reporte de Inventario";
+    ViewData["Title"] = "Stock";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1>Gestión de Stock</h1>
 
 <div class="card shadow-sm">
     <div class="card-body">
@@ -18,7 +18,7 @@
                         <th>Stock Actual</th>
                         <th>Compras</th>
                         <th>Ventas</th>
-                        <th>Última Actualización (UTC)</th>
+                        <th>Última Actualización (Local)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -32,7 +32,7 @@
                                 <td>@Html.DisplayFor(modelItem => item.CurrentStock)</td>
                                 <td>@Html.DisplayFor(modelItem => item.TotalPurchases)</td>
                                 <td>@Html.DisplayFor(modelItem => item.TotalSales)</td>
-                                <td>@item.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td>@item.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                             </tr>
                         }
                     }
@@ -55,13 +55,13 @@
     }
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex - 1)"
-       class="btn btn-outline-secondary @prevDisabled">
+       class="btn btn-secondary @prevDisabled">
         Anterior
     </a>
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex + 1)"
-       class="btn btn-outline-secondary @nextDisabled">
+       class="btn btn-secondary @nextDisabled">
         Siguiente
     </a>
 </div>

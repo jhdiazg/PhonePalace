@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using PhonePalace.Domain.Enums;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PhonePalace.Domain.Entities
 {
@@ -14,6 +15,11 @@ namespace PhonePalace.Domain.Entities
         public Supplier? Supplier { get; set; }
         [DisplayName("Fecha Orden")]
         public DateTime PurchaseDate { get; set; }
+        [DisplayName("Subtotal")]
+        public decimal SubtotalAmount { get; set; }
+        [DisplayName("IVA")]
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal TaxAmount { get; set; }
         [DisplayName("Total")]
         public decimal TotalAmount { get; set; }
         [DisplayName("Estado")]

@@ -11,7 +11,7 @@ using PhonePalace.Infrastructure.Data;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrador")]
     public class ModelsController : Controller
     {
         private readonly ApplicationDbContext _context;

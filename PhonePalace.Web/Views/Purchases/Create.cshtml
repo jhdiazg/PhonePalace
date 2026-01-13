@@ -12,12 +12,18 @@
         <form asp-action="Create" id="purchase-form">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
-                <label asp-for="SupplierId" class="control-label"></label>
+                <label asp-for="SupplierId" class="control-label">Proveedor</label>
                 <select asp-for="SupplierId" class="form-control" asp-items="Model.Suppliers"></select>
             </div>
 
             <h3>Productos</h3>
             <span asp-validation-for="Details" class="text-danger"></span>
+            <div class="form-group">
+                <label for="category-select">Filtrar por Categoría</label>
+                <select id="category-select" class="form-control" asp-items="Model.Categories">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
             <div class="form-group">
                 <label for="product-search">Buscar Producto</label>
                 <select id="product-search" class="form-control"></select>
@@ -56,6 +62,12 @@
                 allowClear: true
             });
 
+            $('#category-select').on('change', function() {
+                // Trigger a search with empty term to load products for the category
+                $('#product-search').select2('open');
+                $('#product-search').data('select2').$dropdown.find('input').val('').trigger('input');
+            });
+
             let detailIndex = 0;
 
             const formatRepo = (repo) => {
@@ -73,28 +85,29 @@
                 placeholder: "Buscar un producto",
                 allowClear: true,
                 ajax: {
-                    url: "/api/products",
+                    url: "@Url.Action("SearchProductsApi", "Products")",
                     dataType: 'json',
                     delay: 250,
                     data: function (params) {
                         return {
-                            term: params.term
+                            term: params.term,
+                            categoryId: $('#category-select').val()
                         };
                     },
                     processResults: function (data) {
                         return {
                             results: $.map(data, function (item) {
                                 return {
-                                    id: item.productID, // Corregido a productID
-                                    text: item.name,
-                                    price: item.price
+                                    id: item.ProductID,
+                                    text: item.Name,
+                                    price: item.Price
                                 }
                             })
                         };
                     },
                     cache: true
                 },
-                minimumInputLength: 1,
+                minimumInputLength: 0,
                 templateResult: formatRepo,
                 templateSelection: formatRepoSelection
             }).on('select2:select', function (e) {
@@ -114,7 +127,12 @@
                         <td>
                             <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${price.toFixed(2)}" step="0.01" />
                         </td>
+                        <td>
+                            <input type="number" name="Details[${detailIndex}].TaxRate" class="form-control tax-rate" value="19.00" step="0.01" min="0" max="100" />
+                        </td>
                         <td class="subtotal">${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="total">${(price * 1.19).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="total">${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>
                             <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
                         </td>
@@ -128,12 +146,16 @@
                 $(this).closest("tr").remove();
             });
 
-            $(document).on('input', '.quantity, .unit-price', function() {
+            $(document).on('input', '.quantity, .unit-price, .tax-rate', function() {
                 let row = $(this).closest('tr');
                 let quantity = parseFloat(row.find('.quantity').val()) || 0;
                 let unitPrice = parseFloat(row.find('.unit-price').val()) || 0;
+                let taxRate = parseFloat(row.find('.tax-rate').val()) || 0;
                 let subtotal = quantity * unitPrice;
-                row.find('.subtotal').text(subtotal.toFixed(2));
+                let taxAmount = subtotal * taxRate / 100;
+                let total = subtotal + taxAmount;
+                row.find('.subtotal').text(subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                row.find('.total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
             });
         });
     </script>

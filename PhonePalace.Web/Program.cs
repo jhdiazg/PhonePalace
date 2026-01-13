@@ -41,6 +41,7 @@ builder.Services.AddControllersWithViews()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<ICashService, CashService>();
 
 builder.Services.AddTransient<IEmailSender, EmailService>();
 builder.Services.AddRazorPages();

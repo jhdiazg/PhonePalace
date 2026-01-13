@@ -19,7 +19,7 @@ namespace PhonePalace.Infrastructure.Data
             var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
             // --- Crear Roles ---
-            string[] roleNames = { "Admin", "Vendedor", "Almacenista", "Cajero" };
+            string[] roleNames = { "Administrador", "Vendedor", "Almacenista", "Cajero" };
             foreach (var roleName in roleNames)
             {
                 var roleExist = await roleManager.RoleExistsAsync(roleName);
@@ -56,17 +56,17 @@ namespace PhonePalace.Infrastructure.Data
                 if (createResult.Succeeded)
                 {
                     logger.LogInformation("Usuario administrador creado exitosamente.");
-                    // Asigna el rol "Admin" al nuevo usuario
-                    var addToRoleResult = await userManager.AddToRoleAsync(newAdminUser, "Admin");
+                    // Asigna el rol "Administrador" al nuevo usuario
+                    var addToRoleResult = await userManager.AddToRoleAsync(newAdminUser, "Administrador");
                     if (addToRoleResult.Succeeded)
                     {
-                        logger.LogInformation("Rol 'Admin' asignado al usuario administrador.");
+                        logger.LogInformation("Rol 'Administrador' asignado al usuario administrador.");
                     }
                     else
                     {
                         foreach (var error in addToRoleResult.Errors)
                         {
-                            logger.LogError("Error asignando rol 'Admin': {Code} - {Description}", error.Code, error.Description);
+                            logger.LogError("Error asignando rol 'Administrador': {Code} - {Description}", error.Code, error.Description);
                         }
                     }
                 }

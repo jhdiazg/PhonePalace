@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using PhonePalace.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
@@ -16,11 +17,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _webHostEnvironment;
+        private readonly IConfiguration _config;
 
-        public PurchasesController(ApplicationDbContext context, Microsoft.AspNetCore.Hosting.IWebHostEnvironment webHostEnvironment)
+        public PurchasesController(ApplicationDbContext context, Microsoft.AspNetCore.Hosting.IWebHostEnvironment webHostEnvironment, IConfiguration config)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _config = config;
         }
 
         [Route("Compras")]
@@ -43,6 +46,8 @@ namespace PhonePalace.Web.Controllers
             var viewModel = new PurchaseCreateViewModel
             {
                 Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName"),
+                Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name"),
+                IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
             };
             return View(viewModel);
         }
@@ -63,7 +68,8 @@ namespace PhonePalace.Web.Controllers
                     {
                         ProductId = d.ProductId,
                         Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice
+                        UnitPrice = d.UnitPrice,
+                        TaxRate = d.TaxRate == 0 ? _config.GetValue<decimal>("TaxSettings:IVARate") : d.TaxRate
                     }).ToList() ?? new List<PurchaseDetail>()
                 };
 
@@ -124,7 +130,8 @@ namespace PhonePalace.Web.Controllers
                 {
                     ProductId = d.ProductId,
                     Quantity = d.Quantity,
-                    UnitPrice = d.UnitPrice
+                    UnitPrice = d.UnitPrice,
+                    TaxRate = d.TaxRate
                 }).ToList() ?? new List<PurchaseDetailViewModel>()
             };
 

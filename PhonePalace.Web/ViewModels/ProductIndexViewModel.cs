@@ -9,6 +9,8 @@ namespace PhonePalace.Web.ViewModels
         public int ProductID { get; set; }
         [Display(Name = "SKU")]
         public string? SKU { get; set; }
+        [Display(Name = "Código")]
+        public string? Code { get; set; }
         [Display(Name = "Nombre")]
         public required string Name { get; set; }
         [Display(Name = "Tipo")]

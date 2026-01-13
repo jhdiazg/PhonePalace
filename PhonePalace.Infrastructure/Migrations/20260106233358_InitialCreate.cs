@@ -282,8 +282,9 @@ namespace PhonePalace.Infrastructure.Migrations
                     Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Cost = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     SKU = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CategoryID = table.Column<int>(type: "int", nullable: false),
-                    ProductCondition = table.Column<int>(type: "int", nullable: false),
+                    ProductCondition = table.Column<int>(type: "int", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     BillWithIVA = table.Column<bool>(type: "bit", nullable: false),
                     ProductType = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
@@ -372,7 +373,7 @@ namespace PhonePalace.Infrastructure.Migrations
                     NIT = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     FirstName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     LastName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    DocumentType = table.Column<int>(type: "int", nullable: true),
+                    DocumentType = table.Column<int>(type: "smallint", nullable: true),
                     DocumentNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
                 },
                 constraints: table =>

@@ -24,8 +24,8 @@
                         <th>Precio</th>
                         <th>Costo</th>
                         <th>SKU</th>
+                        <th>Código</th>
                         <th>Activo</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,23 +36,14 @@
                             <td>
                                 <img src="@ImageHelper.GetImageUrl(item.Images)" alt="Imagen de @item.Name" class="product-image-thumbnail" />
                             </td>
-                            <td>@Html.DisplayFor(modelItem => item.Model.Brand.Name)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Model.Name)</td>
+                            <td>@(item.Model?.Brand?.Name ?? "N/A")</td>
+                            <td>@(item.Model?.Name ?? "N/A")</td>
                             <td>@item.Price.ToString("C")</td>
                             <td>@item.Cost.ToString("C")</td>
                             <td>@Html.DisplayFor(modelItem => item.SKU)</td>
+                            <td>@Html.DisplayFor(modelItem => item.Code)</td>
                             <td>
                                 <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
-                            </td>
-                            <td>
-                                @if (item.BillWithIVA)
-                                {
-                                    <span class="badge bg-info">Sí</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">No</span>
-                                }
                             </td>
                             <td class="text-end">
                                 <a asp-action="Edit" asp-route-id="@item.ProductID" class="btn btn-sm btn-warning">Editar</a>

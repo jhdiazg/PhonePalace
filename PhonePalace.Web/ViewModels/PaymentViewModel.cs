@@ -7,7 +7,7 @@ namespace PhonePalace.Web.ViewModels
     {
         [Required]
         [Display(Name = "Método de Pago")]
-        public PaymentMethod PaymentMethod { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
 
         [Required]
         [Range(0.01, double.MaxValue, ErrorMessage = "El monto debe ser mayor a cero.")]

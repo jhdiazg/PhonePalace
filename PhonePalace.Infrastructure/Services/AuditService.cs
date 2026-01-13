@@ -29,7 +29,7 @@ namespace PhonePalace.Infrastructure.Services
                 UserId = httpContext.User?.FindFirstValue(ClaimTypes.NameIdentifier),
                 UserName = httpContext.User?.Identity?.Name,
                 SessionId = httpContext.Session.Id,
-                Timestamp = DateTime.UtcNow,
+                Timestamp = DateTimeOffset.Now,
                 Origin = origin,
                 Description = description,
                 IPAddress = httpContext.Connection?.RemoteIpAddress?.ToString()

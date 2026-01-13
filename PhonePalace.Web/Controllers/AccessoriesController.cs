@@ -15,7 +15,7 @@ using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrador")]
     public class AccessoriesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -90,8 +90,7 @@ namespace PhonePalace.Web.Controllers
                     BrandID = viewModel.BrandID,
                     Color = viewModel.Color,
                     IsActive = viewModel.IsActive,
-                    ProductCondition = viewModel.ProductCondition,
-                    BillWithIVA = viewModel.BillWithIVA
+                    ProductCondition = viewModel.ProductCondition
                 };
 
                 if (viewModel.NewImageFile != null)
@@ -138,7 +137,7 @@ namespace PhonePalace.Web.Controllers
                 Description = accessory.Description ?? string.Empty,
                 Price = accessory.Price,
                 Cost = accessory.Cost,
-                SKU = accessory.SKU,
+                SKU = accessory.SKU ?? string.Empty,
                 CategoryID = accessory.CategoryID,
                 BrandID = accessory.BrandID,
                 Color = accessory.Color ?? string.Empty,
@@ -183,7 +182,6 @@ namespace PhonePalace.Web.Controllers
                     accessory.ProductCondition = viewModel.ProductCondition;
                     accessory.Material = viewModel.Material;
                     accessory.Compatibility = viewModel.Compatibility;
-                    accessory.BillWithIVA = viewModel.BillWithIVA;
 
                     if (viewModel.NewImageFile != null)
                     {

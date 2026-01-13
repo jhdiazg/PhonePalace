@@ -1,0 +1,119 @@
+@model PhonePalace.Web.ViewModels.CashIndexViewModel
+
+@{
+    ViewData["Title"] = "Estado de Caja";
+}
+
+<h1>Estado de Caja</h1>
+
+@if (Model.CurrentCashRegister == null)
+{
+    <div class="alert alert-warning">
+        <strong>No hay caja abierta.</strong> Debe abrir la caja para comenzar operaciones.
+    </div>
+    <a asp-action="Open" class="btn btn-primary">Abrir Caja</a>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Información de la Caja Actual
+                </div>
+                <div class="card-body">
+                    <p><strong>Fecha de Apertura:</strong> @Model.CurrentCashRegister.OpeningDate.ToString("dd/MM/yyyy HH:mm")</p>
+                    <p><strong>Monto Inicial:</strong> @Model.CurrentCashRegister.OpeningAmount.ToString("C")</p>
+                    <p><strong>Saldo Actual:</strong> @Model.CurrentBalance.ToString("C")</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Acciones
+                </div>
+                <div class="card-body">
+                    <a asp-action="Income" class="btn btn-success me-2">Registrar Ingreso</a>
+                    <a asp-action="Expense" class="btn btn-danger me-2">Registrar Egreso</a>
+                    <a asp-action="Close" class="btn btn-warning">Cerrar Caja</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.RecentMovements != null && Model.RecentMovements.Any())
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Movimientos Recientes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción</th>
+                                        <th>Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var movement in Model.RecentMovements)
+                                    {
+                                        <tr>
+                                            <td>@movement.MovementDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td>
+                                                @switch (movement.MovementType)
+                                                {
+                                                    case PhonePalace.Domain.Enums.CashMovementType.Opening:
+                                                        <span class="badge bg-info">Apertura</span>
+                                                        break;
+                                                    case PhonePalace.Domain.Enums.CashMovementType.Income:
+                                                        <span class="badge bg-success">Ingreso</span>
+                                                        break;
+                                                    case PhonePalace.Domain.Enums.CashMovementType.Expense:
+                                                        <span class="badge bg-danger">Egreso</span>
+                                                        break;
+                                                    case PhonePalace.Domain.Enums.CashMovementType.Closing:
+                                                        <span class="badge bg-warning">Cierre</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td>@movement.Description</td>
+                                            <td class="@(movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Income || movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Opening ? "text-success" : movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Closing ? "text-info" : "text-danger")">
+                                                @(movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Income || movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Opening || movement.MovementType == PhonePalace.Domain.Enums.CashMovementType.Closing ? "+" : "-")@movement.Amount.ToString("C")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success mt-3">
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger mt-3">
+            @TempData["Error"]
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning mt-3">
+            @TempData["Warning"]
+        </div>
+    }
+}

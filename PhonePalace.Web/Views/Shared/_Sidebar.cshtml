@@ -4,8 +4,9 @@
 
 @{
     // Define qué controladores pertenecen al menú desplegable "Configuración"
-    var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks");
+    var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks", "UserManagement");
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
+    var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash");
 }
 
 <div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
@@ -52,10 +53,20 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="Local" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Local")">
+            <a href="#local-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isLocalActive ? "" : "collapsed")" aria-expanded="@isLocalActive.ToString().ToLower()">
                 <i class="bi bi-shop me-2"></i>
                 Local
             </a>
+            <div class="collapse @(isLocalActive ? "show" : "")" id="local-submenu">
+                <ul class="nav flex-column ms-4">
+                    <li class="nav-item">
+                        <a asp-controller="Cash" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Cash")">
+                            <i class="bi bi-cash-coin me-2"></i>
+                            Caja
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
         <li class="nav-item">
             <a asp-controller="Clients" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Clients")">
@@ -102,10 +113,11 @@
                     </li>
                     <li class="nav-item">
                         <a asp-controller="Inventory" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Inventory")">
-                            <i class="bi bi-clipboard-data-fill me-2"></i>
-                            Reporte de Inventario
+                            <i class="bi bi-boxes me-2"></i>
+                            Stock
                         </a>
                     </li>
+
                 </ul>
             </div>
         </li>
@@ -116,7 +128,7 @@
             </a>
             <div class="collapse @(isConfigActive ? "show" : "")" id="config-submenu">
                 <ul class="nav flex-column ms-4">
-                    @if (User.IsInRole("Admin"))
+                    @if (User.IsInRole("Administrador"))
                     {
                         <li class="nav-item">
                             <a asp-controller="Categories" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Categories")">
@@ -146,6 +158,12 @@
                             <a asp-controller="Banks" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Banks")">
                                 <i class="bi bi-bank me-2"></i>
                                 Bancos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a asp-controller="UserManagement" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "UserManagement")">
+                                <i class="bi bi-people-fill me-2"></i>
+                                Usuarios
                             </a>
                         </li>
                     }

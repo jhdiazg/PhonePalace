@@ -115,7 +115,7 @@ namespace PhonePalace.Web.Documents
                     {
                         totalsCol.Spacing(2);
                         totalsCol.Item().AlignRight().Text($"Subtotal: {_invoice.Subtotal:C}").FontSize(12);
-                        totalsCol.Item().AlignRight().Text($"IVA (19%): {_invoice.Tax:C}").FontSize(12);
+                        totalsCol.Item().AlignRight().Text($"IVA ({(_invoice.Subtotal > 0 ? Math.Round((_invoice.Tax / _invoice.Subtotal) * 100, 1) : 0)}%): {_invoice.Tax:C}").FontSize(12);
                         totalsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
                         totalsCol.Item().AlignRight().Text($"Total: {_invoice.Total:C}").FontSize(14).Bold();
                     });

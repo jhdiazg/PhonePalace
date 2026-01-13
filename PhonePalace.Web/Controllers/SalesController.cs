@@ -1,11 +1,16 @@
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
+using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.Helpers;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Linq;
 
@@ -15,18 +20,86 @@ namespace PhonePalace.Web.Controllers
     public class SalesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICashService _cashService;
+        private readonly IConfiguration _config;
 
-        public SalesController(ApplicationDbContext context)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IConfiguration config)
         {
             _context = context;
+            _cashService = cashService;
+            _config = config;
         }
 
     [HttpGet]
     [Route("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string? clientName)
         {
-            var sales = _context.Sales.Include(s => s.Client);
-            return View(await sales.ToListAsync());
+            // Validaciones de fechas
+            bool datesAdjusted = false;
+            DateTime? originalStartDate = startDate;
+            DateTime? originalEndDate = endDate;
+
+            if (startDate.HasValue && startDate.Value.Date > DateTime.Now.Date)
+            {
+                startDate = DateTime.Now.Date;
+                datesAdjusted = true;
+            }
+            if (endDate.HasValue && startDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            {
+                endDate = startDate;
+                datesAdjusted = true;
+            }
+
+            if (datesAdjusted)
+            {
+                TempData["Info"] = "Las fechas han sido ajustadas para cumplir con las validaciones.";
+                // Redirigir con fechas corregidas
+                return RedirectToAction("Index", new
+                {
+                    startDate = startDate?.ToString("yyyy-MM-dd"),
+                    endDate = endDate?.ToString("yyyy-MM-dd"),
+                    clientName
+                });
+            }
+
+            // Por defecto, mostrar solo ventas del día actual
+            if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(clientName))
+            {
+                startDate = DateTime.Now.Date;
+                endDate = DateTime.Now.Date;
+            }
+
+            var salesQuery = _context.Sales
+                .Include(s => s.Client)
+                .Include(s => s.Invoice)
+                .AsQueryable();
+
+            if (startDate.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.SaleDate.Date >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                salesQuery = salesQuery.Where(s => s.SaleDate.Date <= endDate.Value.Date);
+            }
+
+            if (!string.IsNullOrEmpty(clientName))
+            {
+                salesQuery = salesQuery.Where(s => s.Client.DisplayName.Contains(clientName));
+            }
+
+            var sales = await salesQuery.OrderByDescending(s => s.SaleDate).ToListAsync();
+
+            // Calcular total de la consulta
+            decimal total = sales.Sum(s => s.Invoice?.Total ?? 0);
+
+            ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
+            ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
+            ViewData["ClientName"] = clientName;
+            ViewData["Total"] = total;
+
+            return View(sales);
         }
 
     [HttpGet]
@@ -92,6 +165,23 @@ namespace PhonePalace.Web.Controllers
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
             ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+
+            // Validaciones de caja
+            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+            if (currentCash == null)
+            {
+                ModelState.AddModelError("", "Debe abrir la caja antes de registrar ventas.");
+            }
+
+            // Validación de fecha: solo fecha actual permitida
+            if (viewModel.SaleDate.Date != DateTime.Now.Date)
+            {
+                ModelState.AddModelError("SaleDate", "La fecha de venta debe ser la fecha actual.");
+            }
+
+            // Debug: Log payments
+            TempData["Info"] = $"Payments: {string.Join(", ", viewModel.Payments?.Select(p => $"{p.PaymentMethod}:{p.Amount}") ?? new string[0])}";
+
             if (!ModelState.IsValid || viewModel.ClientID == null)
             {
                 ModelState.AddModelError("ClientID", "Debe seleccionar un cliente.");
@@ -109,7 +199,7 @@ namespace PhonePalace.Web.Controllers
             // Calcular subtotal y IVA
             decimal subtotal = 0;
             decimal subtotalForVAT = 0;
-            decimal taxRate = 0.19m;
+            decimal taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
             if (viewModel.Details != null)
             {
                 foreach (var detailVM in viewModel.Details)
@@ -118,7 +208,7 @@ namespace PhonePalace.Web.Controllers
                     if (product == null) continue;
                     decimal price = product.Price;
                     subtotal += detailVM.Quantity * price;
-                    if (product.BillWithIVA) subtotalForVAT += detailVM.Quantity * price;
+                    subtotalForVAT += detailVM.Quantity * price; // Todo se factura con IVA incluido
                 }
             }
             decimal tax = subtotalForVAT * taxRate;
@@ -139,6 +229,36 @@ namespace PhonePalace.Web.Controllers
             };
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync();
+
+            // Crear payments si hay
+            if (viewModel.Payments != null && viewModel.Payments.Any())
+            {
+                var payments = new List<Payment>();
+                foreach (var paymentVM in viewModel.Payments)
+                {
+                    if (!Enum.TryParse<PaymentMethod>(paymentVM.PaymentMethod, out var paymentMethod))
+                    {
+                        continue; // Skip invalid payment methods
+                    }
+                    var payment = new Payment
+                    {
+                        InvoiceID = invoice.InvoiceID,
+                        Invoice = invoice,
+                        PaymentMethod = paymentMethod,
+                        Amount = paymentVM.Amount,
+                        ReferenceNumber = paymentVM.ReferenceNumber
+                    };
+                    payments.Add(payment);
+                    _context.Payments.Add(payment);
+                }
+                await _context.SaveChangesAsync();
+
+                // Registrar ingresos en caja para pagos en efectivo
+                foreach (var payment in payments.Where(p => p.PaymentMethod == PaymentMethod.Cash))
+                {
+                    await _cashService.RegisterIncomeAsync(payment.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", User.FindFirstValue(ClaimTypes.NameIdentifier), payment.PaymentID);
+                }
+            }
 
             // Crear la venta
             var sale = new Sale

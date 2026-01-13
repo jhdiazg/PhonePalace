@@ -14,7 +14,7 @@ using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrador")]
     public class AuditLogsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -26,6 +26,36 @@ namespace PhonePalace.Web.Controllers
 
         public async Task<IActionResult> Index(string? selectedModule, string? searchUser, DateTime? startDate, DateTime? endDate, int? page)
         {
+            // Validaciones de fechas
+            bool datesAdjusted = false;
+            DateTime? originalStartDate = startDate;
+            DateTime? originalEndDate = endDate;
+
+            if (startDate.HasValue && startDate.Value.Date > DateTime.Now.Date)
+            {
+                startDate = DateTime.Now.Date;
+                datesAdjusted = true;
+            }
+            if (endDate.HasValue && startDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            {
+                endDate = startDate;
+                datesAdjusted = true;
+            }
+
+            if (datesAdjusted)
+            {
+                TempData["Info"] = "Las fechas han sido ajustadas para cumplir con las validaciones.";
+                // Redirigir con fechas corregidas
+                return RedirectToAction("Index", new
+                {
+                    selectedModule,
+                    searchUser,
+                    startDate = startDate?.ToString("yyyy-MM-dd"),
+                    endDate = endDate?.ToString("yyyy-MM-dd"),
+                    page
+                });
+            }
+
             // Define la página actual y el tamaño de la página
             var pageNumber = page ?? 1;
             var pageSize = 15; // Puedes ajustar este número según tus necesidades
@@ -77,6 +107,16 @@ namespace PhonePalace.Web.Controllers
 
         public async Task<IActionResult> ExportToExcel(string? selectedModule, string? searchUser, DateTime? startDate, DateTime? endDate)
         {
+            // Validaciones de fechas
+            if (startDate.HasValue && startDate.Value.Date > DateTime.Now.Date)
+            {
+                startDate = DateTime.Now.Date;
+            }
+            if (endDate.HasValue && startDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            {
+                endDate = startDate;
+            }
+
             var query = _context.AuditLogs.AsQueryable();
 
             // Replicamos la misma lógica de filtrado que en el método Index
@@ -116,7 +156,7 @@ namespace PhonePalace.Web.Controllers
                 foreach (var log in auditLogs)
                 {
                     currentRow++;
-                    worksheet.Cell(currentRow, 1).Value = log.Timestamp;
+                    worksheet.Cell(currentRow, 1).Value = log.Timestamp.ToLocalTime().DateTime;
                     worksheet.Cell(currentRow, 2).Value = log.UserName;
                     worksheet.Cell(currentRow, 3).Value = log.Origin;
                     worksheet.Cell(currentRow, 4).Value = log.Description;

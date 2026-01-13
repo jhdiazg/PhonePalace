@@ -45,6 +45,9 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleDetail> SaleDetails { get; set; }
 
+        public DbSet<CashRegister> CashRegisters { get; set; }
+        public DbSet<CashMovement> CashMovements { get; set; }
+
 
 
         // ... (otros DbSets)
@@ -107,6 +110,11 @@ namespace PhonePalace.Infrastructure.Data
                 .WithOne(p => p.Invoice)
                 .HasForeignKey(p => p.InvoiceID);
 
+            // Configuración para CashRegister y CashMovement
+            modelBuilder.Entity<CashRegister>()
+                .HasMany(cr => cr.CashMovements)
+                .WithOne(cm => cm.CashRegister)
+                .HasForeignKey(cm => cm.CashRegisterID);
 
         }
     }
