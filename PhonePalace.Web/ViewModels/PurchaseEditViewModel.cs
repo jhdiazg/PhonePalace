@@ -9,6 +9,7 @@ namespace PhonePalace.Web.ViewModels
         public int SupplierId { get; set; }
         public SelectList? Suppliers { get; set; }
         public SelectList? Products { get; set; }
+        public decimal IVARate { get; set; }
         public List<PurchaseDetailViewModel> Details { get; set; } = new List<PurchaseDetailViewModel>();
     }
 }
