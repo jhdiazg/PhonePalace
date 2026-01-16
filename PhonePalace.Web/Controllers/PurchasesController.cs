@@ -49,6 +49,7 @@ namespace PhonePalace.Web.Controllers
                 Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
             };
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -83,6 +84,9 @@ namespace PhonePalace.Web.Controllers
             }
 
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
+            model.Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name");
+            model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -126,6 +130,7 @@ namespace PhonePalace.Web.Controllers
                 SupplierId = purchase.SupplierId,
                 Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", purchase.SupplierId),
                 Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
+                IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
                 Details = purchase.PurchaseDetails?.Select(d => new PurchaseDetailViewModel
                 {
                     ProductId = d.ProductId,

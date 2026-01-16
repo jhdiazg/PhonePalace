@@ -26,7 +26,7 @@ namespace PhonePalace.Web.Controllers
                 {
                     ProductID = i.ProductID,
                     ProductName = i.Product.Name,
-                    ProductSKU = i.Product.SKU,
+                    ProductSKU = i.Product.SKU ?? string.Empty,
                     CurrentStock = i.Stock,
                     LastUpdated = i.LastUpdated,
                     TotalPurchases = _context.PurchaseDetails
