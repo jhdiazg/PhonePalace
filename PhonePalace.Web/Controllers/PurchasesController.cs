@@ -10,6 +10,8 @@ using PhonePalace.Web.Helpers;
 using PhonePalace.Domain.Entities;
 using System;
 using System.Collections.Generic;
+using PhonePalace.Domain.Interfaces;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -18,12 +20,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _webHostEnvironment;
         private readonly IConfiguration _config;
+        private readonly IAuditService _auditService;
 
-        public PurchasesController(ApplicationDbContext context, Microsoft.AspNetCore.Hosting.IWebHostEnvironment webHostEnvironment, IConfiguration config)
+        public PurchasesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IConfiguration config, IAuditService auditService)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _config = config;
+            _auditService = auditService;
         }
 
         [Route("Compras")]
@@ -65,12 +69,17 @@ namespace PhonePalace.Web.Controllers
                     SupplierId = model.SupplierId,
                     PurchaseDate = DateTime.UtcNow,
                     Status = Domain.Enums.PurchaseStatus.Draft, // Set initial status to Draft
-                    PurchaseDetails = model.Details?.Select(d => new PurchaseDetail
+                    PaymentMethod = model.PaymentMethod,
+                    PurchaseDetails = model.Details?.Select(d => 
                     {
-                        ProductId = d.ProductId,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        TaxRate = d.TaxRate == 0 ? _config.GetValue<decimal>("TaxSettings:IVARate") : d.TaxRate
+                        var taxRate = d.TaxRate;
+                        return new PurchaseDetail
+                        {
+                            ProductId = d.ProductId,
+                            Quantity = d.Quantity,
+                            UnitPrice = d.UnitPrice,
+                            TaxRate = taxRate
+                        };
                     }).ToList() ?? new List<PurchaseDetail>()
                 };
 
@@ -80,6 +89,7 @@ namespace PhonePalace.Web.Controllers
 
                 _context.Add(purchase);
                 await _context.SaveChangesAsync();
+                await _auditService.LogAsync("Compras", $"Creó la compra #{purchase.Id} para el proveedor ID: {purchase.SupplierId} (Pago: {purchase.PaymentMethod}).");
                 return RedirectToAction(nameof(Index));
             }
 
@@ -112,7 +122,10 @@ namespace PhonePalace.Web.Controllers
         [Route("Compras/Editar/{id}")]
         public async Task<IActionResult> Edit(int id)
         {
-            var purchase = await _context.Purchases.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
+            var purchase = await _context.Purchases
+                .Include(p => p.PurchaseDetails)
+                .ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(p => p.Id == id);
             if (purchase == null)
             {
                 return NotFound();
@@ -131,15 +144,18 @@ namespace PhonePalace.Web.Controllers
                 Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", purchase.SupplierId),
                 Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
+                PaymentMethod = purchase.PaymentMethod,
                 Details = purchase.PurchaseDetails?.Select(d => new PurchaseDetailViewModel
                 {
                     ProductId = d.ProductId,
+                    ProductName = d.Product?.Name,
                     Quantity = d.Quantity,
                     UnitPrice = d.UnitPrice,
                     TaxRate = d.TaxRate
                 }).ToList() ?? new List<PurchaseDetailViewModel>()
             };
 
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -165,11 +181,17 @@ namespace PhonePalace.Web.Controllers
                     _context.PurchaseDetails.RemoveRange(purchase.PurchaseDetails ?? new List<PurchaseDetail>());
 
                     purchase.SupplierId = model.SupplierId;
-                    purchase.PurchaseDetails = model.Details?.Select(d => new PurchaseDetail
+                    purchase.PaymentMethod = model.PaymentMethod;
+                    purchase.PurchaseDetails = model.Details?.Select(d => 
                     {
-                        ProductId = d.ProductId,
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice
+                        var taxRate = d.TaxRate;
+                        return new PurchaseDetail
+                        {
+                            ProductId = d.ProductId,
+                            Quantity = d.Quantity,
+                            UnitPrice = d.UnitPrice,
+                            TaxRate = taxRate
+                        };
                     }).ToList() ?? new List<PurchaseDetail>();
 
                     purchase.TotalAmount = purchase.PurchaseDetails.Sum(d => d.TotalPrice);
@@ -178,6 +200,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Update(purchase);
                     await _context.SaveChangesAsync();
+                    await _auditService.LogAsync("Compras", $"Editó la compra #{purchase.Id} (Pago: {purchase.PaymentMethod}).");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -195,6 +218,8 @@ namespace PhonePalace.Web.Controllers
 
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
             model.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+            model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -217,6 +242,7 @@ namespace PhonePalace.Web.Controllers
 
             purchase.Status = Domain.Enums.PurchaseStatus.Ordered;
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Compras", $"Confirmó la orden de compra #{purchase.Id}.");
 
             TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido confirmada y su estado es ahora Ordenada.";
             return RedirectToAction(nameof(Details), new { id });
@@ -241,6 +267,7 @@ namespace PhonePalace.Web.Controllers
 
             purchase.Status = Domain.Enums.PurchaseStatus.Billed;
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Compras", $"Marcó como facturada la compra #{purchase.Id}.");
 
             TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido marcada como facturada.";
             return RedirectToAction(nameof(Details), new { id });
@@ -272,6 +299,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Compras", $"Marcó como pagada la compra #{purchase.Id}.");
 
             TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido marcada como pagada.";
             return RedirectToAction(nameof(Details), new { id });
@@ -319,6 +347,7 @@ namespace PhonePalace.Web.Controllers
             purchase.DeletedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Compras", $"Anuló la compra #{purchase.Id}.");
             return RedirectToAction(nameof(Index));
         }
 
@@ -352,6 +381,20 @@ namespace PhonePalace.Web.Controllers
                     if (detail.Product != null)
                     {
                         var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
+                        
+                        // Calcular Costo Promedio Ponderado
+                        var currentStock = inventoryLevels.Sum(i => i.Stock);
+                        var currentCost = detail.Product.Cost;
+                        var incomingQuantity = detail.Quantity;
+                        var incomingCost = detail.UnitPrice; // Costo entrante sin IVA
+
+                        if (currentStock + incomingQuantity > 0)
+                        {
+                            var newCost = ((currentStock * currentCost) + (incomingQuantity * incomingCost)) / (currentStock + incomingQuantity);
+                            detail.Product.Cost = newCost;
+                            _context.Update(detail.Product);
+                        }
+
                         var inventory = inventoryLevels.FirstOrDefault();
                         if (inventory != null)
                         {
@@ -369,22 +412,29 @@ namespace PhonePalace.Web.Controllers
                 purchase.Status = Domain.Enums.PurchaseStatus.Received;
 
                 // Create AccountPayable entry
-                var accountPayable = new AccountPayable
+                // Generar Cuenta por Pagar si la forma de pago es Crédito o Transferencia
+                if (purchase.PaymentMethod == PurchasePaymentMethod.Credit || 
+                    purchase.PaymentMethod == PurchasePaymentMethod.Transfer)
                 {
-                    PurchaseId = purchase.Id,
-                    Amount = purchase.TotalAmount,
-                    DueDate = DateTime.UtcNow.AddDays(30), // Example: Due in 30 days
-                    IsPaid = false,
-                    DocumentType = Domain.Enums.AccountPayableDocumentType.Invoice, // Default to Invoice
-                    DocumentNumber = purchase.Id.ToString(), // Use PurchaseId as DocumentNumber for now
-                    CreatedDate = DateTime.UtcNow
-                };
-                _context.AccountPayables.Add(accountPayable);
+                    var accountPayable = new AccountPayable
+                    {
+                        PurchaseId = purchase.Id,
+                        Purchase = purchase,
+                        Amount = purchase.TotalAmount,
+                        DueDate = DateTime.UtcNow.AddDays(30), // Example: Due in 30 days
+                        IsPaid = false,
+                        DocumentType = AccountPayableDocumentType.Invoice, // Default to Invoice
+                        DocumentNumber = purchase.Id.ToString(), // Use PurchaseId as DocumentNumber for now
+                        CreatedDate = DateTime.UtcNow
+                    };
+                    _context.AccountPayables.Add(accountPayable);
+                }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                await _auditService.LogAsync("Compras", $"Recibió la compra #{purchase.Id} (Pago: {purchase.PaymentMethod}) y actualizó el inventario.");
 
-                TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido recibida exitosamente y el inventario actualizado.";
+                TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido recibida (Pago: {purchase.PaymentMethod}).";
                 return RedirectToAction(nameof(Details), new { id });
             }
             catch (Exception ex)

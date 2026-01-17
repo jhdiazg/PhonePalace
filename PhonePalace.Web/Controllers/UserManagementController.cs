@@ -38,8 +38,8 @@ namespace PhonePalace.Web.Controllers
                 userRolesViewModel.Add(new UserRolesViewModel
                 {
                     UserId = user.Id,
-                    UserName = user.UserName,
-                    Email = user.Email,
+                    UserName = user.UserName?? string.Empty,
+                    Email = user.Email ?? string.Empty,
                     Roles = roles.ToList()
                 });
             }
@@ -106,15 +106,15 @@ namespace PhonePalace.Web.Controllers
             }
 
             var definedRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" };
-            var roles = await _roleManager.Roles.Where(r => definedRoles.Contains(r.Name)).ToListAsync();
+            var roles = await _roleManager.Roles.Where(r => r.Name != null && definedRoles.Contains(r.Name)).ToListAsync();
             var userRoles = await _userManager.GetRolesAsync(user);
 
             var model = new EditUserRolesViewModel
             {
                 UserId = user.Id,
-                UserName = user.UserName,
-                Email = user.Email,
-                AvailableRoles = roles.Select(r => r.Name).ToList(),
+                UserName = user.UserName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
+                AvailableRoles = roles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList(),
                 SelectedRoles = userRoles.ToList()
             };
 

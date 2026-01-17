@@ -254,9 +254,13 @@ namespace PhonePalace.Web.Controllers
                 await _context.SaveChangesAsync();
 
                 // Registrar ingresos en caja para pagos en efectivo
-                foreach (var payment in payments.Where(p => p.PaymentMethod == PaymentMethod.Cash))
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(userId))
                 {
-                    await _cashService.RegisterIncomeAsync(payment.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", User.FindFirstValue(ClaimTypes.NameIdentifier), payment.PaymentID);
+                    foreach (var payment in payments.Where(p => p.PaymentMethod == PaymentMethod.Cash))
+                    {
+                        await _cashService.RegisterIncomeAsync(payment.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", userId, payment.PaymentID);
+                    }
                 }
             }
 

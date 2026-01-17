@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
+using PhonePalace.Domain.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace PhonePalace.Web.ViewModels
 {
@@ -10,6 +12,8 @@ namespace PhonePalace.Web.ViewModels
         public SelectList? Suppliers { get; set; }
         public SelectList? Products { get; set; }
         public decimal IVARate { get; set; }
+        [Display(Name = "Forma de Pago")]
+        public PurchasePaymentMethod PaymentMethod { get; set; }
         public List<PurchaseDetailViewModel> Details { get; set; } = new List<PurchaseDetailViewModel>();
     }
 }

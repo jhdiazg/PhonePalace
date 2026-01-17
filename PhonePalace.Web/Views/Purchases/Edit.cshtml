@@ -1,6 +1,6 @@
 @model PhonePalace.Web.ViewModels.PurchaseEditViewModel
 
-@{ 
+@{
     ViewData["Title"] = "Editar Compra";
 }
 
@@ -9,37 +9,60 @@
 <hr />
 <div class="row">
     <div class="col-md-12">
-        <form asp-action="Edit">
+        <form asp-action="Edit" id="purchase-form">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="Id" />
             <div class="form-group">
-                <label asp-for="SupplierId" class="control-label"></label>
+                <label asp-for="SupplierId" class="control-label">Proveedor</label>
                 <select asp-for="SupplierId" class="form-control" asp-items="Model.Suppliers"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentMethod" class="control-label"></label>
+                <select asp-for="PaymentMethod" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.PurchasePaymentMethod>()"></select>
             </div>
 
             <h3>Productos</h3>
+            <span asp-validation-for="Details" class="text-danger"></span>
+            
+            <div class="form-group">
+                <label for="product-search">Buscar Producto</label>
+                <select id="product-search" class="form-control"></select>
+            </div>
             <table class="table" id="purchase-details">
                 <thead>
                     <tr>
                         <th>Producto</th>
                         <th>Cantidad</th>
                         <th>Precio Unitario</th>
+                        <th>IVA</th>
+                        <th>Subtotal</th>
+                        <th>Total</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    @for (var i = 0; i < Model.Details.Count; i++)
+                    @for (int i = 0; i < Model.Details.Count; i++)
                     {
+                        var item = Model.Details[i];
                         <tr>
                             <td>
-                                <select asp-for="Details[i].ProductId" class="form-control" asp-items="Model.Products"></select>
+                                <input type="hidden" name="Details[@i].ProductId" value="@item.ProductId" />
+                                @item.ProductName
                             </td>
                             <td>
-                                <input type="number" asp-for="Details[i].Quantity" class="form-control" />
+                                <input type="number" name="Details[@i].Quantity" class="form-control quantity" value="@item.Quantity" min="1" />
                             </td>
                             <td>
-                                <input type="number" asp-for="Details[i].UnitPrice" class="form-control" />
+                                <input type="number" name="Details[@i].UnitPrice" class="form-control unit-price" value="@item.UnitPrice.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.01" />
                             </td>
+                            <td>
+                                <select name="Details[@i].TaxRate" class="form-control tax-rate">
+                                    <option value="0" selected="@(item.TaxRate == 0)">0%</option>
+                                    <option value="@Model.IVARate" selected="@(item.TaxRate == Model.IVARate)">@(Model.IVARate)%</option>
+                                </select>
+                            </td>
+                            <td class="subtotal">@((item.Quantity * item.UnitPrice).ToString("N0", new System.Globalization.CultureInfo("es-CO")))</td>
+                            <td class="total">@((item.Quantity * item.UnitPrice * (1 + item.TaxRate / 100)).ToString("N0", new System.Globalization.CultureInfo("es-CO")))</td>
                             <td>
                                 <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
                             </td>
@@ -47,42 +70,112 @@
                     }
                 </tbody>
             </table>
-            <button type="button" id="add-detail" class="btn btn-secondary">Agregar Producto</button>
 
             <div class="form-group mt-3">
-                <input type="submit" value="Guardar" class="btn btn-primary" />
+                <input type="submit" value="Guardar Cambios" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </div>
 </div>
 
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+}
+
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function () {
+            $('#SupplierId').select2({
+                placeholder: "Seleccione un proveedor",
+                allowClear: true
+            });
+
             let detailIndex = @Model.Details.Count;
 
-            $("#add-detail").click(function () {
+            const formatRepo = (repo) => {
+                if (repo.loading) return repo.text;
+                return repo.text;
+            };
+
+            const formatRepoSelection = (repo) => repo.text;
+
+            $('#product-search').select2({
+                placeholder: "Buscar un producto",
+                allowClear: true,
+                ajax: {
+                    url: "@Url.Action("SearchProductsApi", "Products")",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            term: params.term
+                        };
+                    },
+                    processResults: function (data) {
+                        return {
+                            results: $.map(data, function (item) {
+                                return {
+                                    id: item.ProductID,
+                                    text: item.Name,
+                                    price: item.Price
+                                }
+                            })
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 0,
+                templateResult: formatRepo,
+                templateSelection: formatRepoSelection
+            }).on('select2:select', function (e) {
+                var data = e.params.data;
+                var price = parseFloat(data.price) || 0.0;
+
                 let newRow = `
                     <tr>
                         <td>
-                            <select name="Details[${detailIndex}].ProductId" class="form-control" asp-items="Model.Products"></select>
+                            <input type="hidden" name="Details[${detailIndex}].ProductId" value="${data.id}" />
+                            ${data.text}
                         </td>
                         <td>
-                            <input type="number" name="Details[${detailIndex}].Quantity" class="form-control" />
+                            <input type="number" name="Details[${detailIndex}].Quantity" class="form-control quantity" value="1" min="1" />
                         </td>
                         <td>
-                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control" />
+                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${price.toFixed(2)}" step="0.01" />
                         </td>
+                        <td>
+                            <select name="Details[${detailIndex}].TaxRate" class="form-control tax-rate">
+                                <option value="0">0%</option>
+                                <option value="@Model.IVARate" selected>@(Model.IVARate)%</option>
+                            </select>
+                        </td>
+                        <td class="subtotal">${price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        <td class="total">${(price * (1 + @Model.IVARate.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100)).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
                         <td>
                             <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
                         </td>
                     </tr>`;
                 $("#purchase-details tbody").append(newRow);
                 detailIndex++;
+                $('#product-search').val(null).trigger('change');
             });
 
             $(document).on("click", ".remove-detail", function () {
                 $(this).closest("tr").remove();
+            });
+
+            $(document).on('input', '.quantity, .unit-price, .tax-rate', function() {
+                let row = $(this).closest('tr');
+                let quantity = parseFloat(row.find('.quantity').val()) || 0;
+                let unitPrice = parseFloat(row.find('.unit-price').val()) || 0;
+                let taxRate = parseFloat(row.find('.tax-rate').val()) || 0;
+                let subtotal = quantity * unitPrice;
+                let taxAmount = subtotal * taxRate / 100;
+                let total = subtotal + taxAmount;
+                row.find('.subtotal').text(subtotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
+                row.find('.total').text(total.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
             });
         });
     </script>

@@ -1,21 +1,16 @@
 @model PhonePalace.Domain.Entities.AccountPayable
 
 @{
-    ViewData["Title"] = "Detalles de Cuenta por Pagar";
+    ViewData["Title"] = "Eliminar Cuenta por Pagar";
 }
 
-<h1>Detalles de Cuenta por Pagar</h1>
+<h1>Eliminar</h1>
 
+<h3>¿Está seguro de que desea eliminar esta cuenta por pagar?</h3>
 <div>
-    <h4>Información de la Cuenta</h4>
+    <h4>Cuenta por Pagar</h4>
     <hr />
     <dl class="row">
-        <dt class="col-sm-3">
-            Proveedor
-        </dt>
-        <dd class="col-sm-9">
-            @(Model.Purchase?.Supplier?.DisplayName ?? "N/A")
-        </dd>
         <dt class="col-sm-3">
             @Html.DisplayNameFor(model => model.DocumentType)
         </dt>
@@ -35,12 +30,6 @@
             @Model.Amount.ToString("C")
         </dd>
         <dt class="col-sm-3">
-            @Html.DisplayNameFor(model => model.CreatedDate)
-        </dt>
-        <dd class="col-sm-9">
-            @Model.CreatedDate.ToString("g")
-        </dd>
-        <dt class="col-sm-3">
             @Html.DisplayNameFor(model => model.DueDate)
         </dt>
         <dd class="col-sm-9">
@@ -50,21 +39,13 @@
             @Html.DisplayNameFor(model => model.IsPaid)
         </dt>
         <dd class="col-sm-9">
-            @if (Model.IsPaid)
-            {
-                <span class="badge bg-success">Pagada</span>
-            }
-            else
-            {
-                <span class="badge bg-warning text-dark">Pendiente</span>
-            }
+            @Html.DisplayFor(model => model.IsPaid)
         </dd>
     </dl>
-</div>
-<div>
-    <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
-    @if (!Model.IsPaid && Model.PurchaseId > 0)
-    {
-        <a asp-controller="Purchases" asp-action="Details" asp-route-id="@Model.PurchaseId" class="btn btn-primary">Ir a Compra para Pagar</a>
-    }
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Eliminar" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+    </form>
 </div>
