@@ -15,6 +15,8 @@ namespace PhonePalace.Domain.Entities
         public Product? Product { get; set; }
         [DisplayName("Cantidad")]
         public int Quantity { get; set; }
+        [DisplayName("Recibido")]
+        public int ReceivedQuantity { get; set; }
         [DisplayName("Precio Unitario")]
         [Column(TypeName = "decimal(18, 2)")]
         public decimal UnitPrice { get; set; }

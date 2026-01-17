@@ -51,7 +51,7 @@ namespace PhonePalace.Web.Controllers
         {
             // Regla de negocio: El estado inicial no puede ser Pagada
             accountPayable.IsPaid = false;
-            accountPayable.CreatedDate = DateTime.UtcNow;
+            accountPayable.CreatedDate = DateTime.Now;
 
             if (ModelState.IsValid)
             {

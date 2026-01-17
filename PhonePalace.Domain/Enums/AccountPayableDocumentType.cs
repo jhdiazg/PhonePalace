@@ -6,8 +6,10 @@ namespace PhonePalace.Domain.Enums
     {
         [Display(Name = "Factura")]
         Invoice,
-        [Display(Name = "Remisión")]
-        Remittance,
+        [Display(Name = "Cuenta de Cobro")]
+        Bill,
+        [Display(Name = "Recibo")]
+        Receipt,
         [Display(Name = "Otro")]
         Other
     }

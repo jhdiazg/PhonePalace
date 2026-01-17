@@ -31,15 +31,44 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Compras")]
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(string? searchString, DateTime? startDate, DateTime? endDate, PurchaseStatus? status, int? pageNumber)
         {
+            ViewData["CurrentFilter"] = searchString;
+            ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
+            ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
+            ViewData["Status"] = status;
+
             var purchasesQuery = _context.Purchases
                 .Include(p => p.Supplier)
-                .OrderByDescending(p => p.PurchaseDate)
-                .AsNoTracking();
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                purchasesQuery = purchasesQuery.Where(p => 
+                    (p.Supplier is NaturalPersonSupplier && (((NaturalPersonSupplier)p.Supplier).FirstName + " " + ((NaturalPersonSupplier)p.Supplier).LastName).Contains(searchString)) ||
+                    (p.Supplier is LegalEntitySupplier && ((LegalEntitySupplier)p.Supplier).CompanyName.Contains(searchString)) ||
+                    p.Id.ToString().Contains(searchString));
+            }
+
+            if (startDate.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.PurchaseDate.Date >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.PurchaseDate.Date <= endDate.Value.Date);
+            }
+
+            if (status.HasValue)
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.Status == status.Value);
+            }
+
+            purchasesQuery = purchasesQuery.OrderByDescending(p => p.PurchaseDate);
 
             int pageSize = 10;
-            var paginatedPurchases = await PaginatedList<Purchase>.CreateAsync(purchasesQuery, pageNumber ?? 1, pageSize);
+            var paginatedPurchases = await PaginatedList<Purchase>.CreateAsync(purchasesQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
 
             return View(paginatedPurchases);
         }
@@ -67,9 +96,11 @@ namespace PhonePalace.Web.Controllers
                                 var purchase = new Purchase
                 {
                     SupplierId = model.SupplierId,
-                    PurchaseDate = DateTime.UtcNow,
-                    Status = Domain.Enums.PurchaseStatus.Draft, // Set initial status to Draft
+                    PurchaseDate = DateTime.Now,
+                    Status = PurchaseStatus.Draft, // Set initial status to Draft
                     PaymentMethod = model.PaymentMethod,
+                    SupplierInvoiceNumber = model.SupplierInvoiceNumber,
+                    DocumentType = model.DocumentType,
                     PurchaseDetails = model.Details?.Select(d => 
                     {
                         var taxRate = d.TaxRate;
@@ -131,7 +162,7 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != Domain.Enums.PurchaseStatus.Draft)
+            if (purchase.Status != PurchaseStatus.Draft)
             {
                 TempData["ErrorMessage"] = "Solo se pueden editar compras en estado Borrador.";
                 return RedirectToAction(nameof(Details), new { id });
@@ -145,6 +176,8 @@ namespace PhonePalace.Web.Controllers
                 Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
                 PaymentMethod = purchase.PaymentMethod,
+                SupplierInvoiceNumber = purchase.SupplierInvoiceNumber,
+                DocumentType = purchase.DocumentType,
                 Details = purchase.PurchaseDetails?.Select(d => new PurchaseDetailViewModel
                 {
                     ProductId = d.ProductId,
@@ -182,6 +215,8 @@ namespace PhonePalace.Web.Controllers
 
                     purchase.SupplierId = model.SupplierId;
                     purchase.PaymentMethod = model.PaymentMethod;
+                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber;
+                    purchase.DocumentType = model.DocumentType;
                     purchase.PurchaseDetails = model.Details?.Select(d => 
                     {
                         var taxRate = d.TaxRate;
@@ -234,13 +269,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != Domain.Enums.PurchaseStatus.Draft)
+            if (purchase.Status != PurchaseStatus.Draft)
             {
                 TempData["ErrorMessage"] = "Solo se pueden confirmar órdenes en estado Borrador.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = Domain.Enums.PurchaseStatus.Ordered;
+            purchase.Status = PurchaseStatus.Ordered;
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("Compras", $"Confirmó la orden de compra #{purchase.Id}.");
 
@@ -259,13 +294,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != Domain.Enums.PurchaseStatus.Received)
+            if (purchase.Status != PurchaseStatus.Received)
             {
                 TempData["ErrorMessage"] = "Solo se pueden marcar como facturadas órdenes en estado Recibida.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = Domain.Enums.PurchaseStatus.Billed;
+            purchase.Status = PurchaseStatus.Billed;
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("Compras", $"Marcó como facturada la compra #{purchase.Id}.");
 
@@ -284,13 +319,13 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != Domain.Enums.PurchaseStatus.Billed)
+            if (purchase.Status != PurchaseStatus.Billed)
             {
                 TempData["ErrorMessage"] = "Solo se pueden marcar como pagadas órdenes en estado Facturada.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            purchase.Status = Domain.Enums.PurchaseStatus.Paid;
+            purchase.Status = PurchaseStatus.Paid;
 
             var accountPayable = await _context.AccountPayables.FirstOrDefaultAsync(ap => ap.PurchaseId == id);
             if (accountPayable != null)
@@ -327,13 +362,13 @@ namespace PhonePalace.Web.Controllers
             var purchase = await _context.Purchases.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
             if (purchase == null) return NotFound();
 
-            if (purchase.Status == Domain.Enums.PurchaseStatus.Cancelled)
+            if (purchase.Status == PurchaseStatus.Cancelled)
             {
                 TempData["ErrorMessage"] = "Esta compra ya ha sido cancelada.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            if (purchase.Status == Domain.Enums.PurchaseStatus.Received)
+            if (purchase.Status == PurchaseStatus.Received)
             {
                 // Revertir el stock solo si la compra fue recibida
                 foreach (var detail in purchase.PurchaseDetails ?? new List<PurchaseDetail>())
@@ -343,19 +378,59 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
-            purchase.Status = Domain.Enums.PurchaseStatus.Cancelled;
-            purchase.DeletedDate = DateTime.UtcNow;
+            purchase.Status = PurchaseStatus.Cancelled;
+            purchase.DeletedDate = DateTime.Now;
 
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("Compras", $"Anuló la compra #{purchase.Id}.");
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpGet]
+        [Route("Compras/Recibir/{id}")]
+        public async Task<IActionResult> Receive(int id)
+        {
+            var purchase = await _context.Purchases
+                .Include(p => p.Supplier)
+                .Include(p => p.PurchaseDetails)
+                .ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (purchase == null) return NotFound();
+
+            if (purchase.Status == PurchaseStatus.Received || purchase.Status == PurchaseStatus.Cancelled)
+            {
+                TempData["ErrorMessage"] = "Esta compra no se puede recibir (ya fue completada o cancelada).";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var viewModel = new PurchaseReceiveViewModel
+            {
+                PurchaseId = purchase.Id,
+                SupplierName = purchase.Supplier?.DisplayName ?? "N/A",
+                SupplierInvoiceNumber = purchase.SupplierInvoiceNumber,
+                DocumentType = purchase.DocumentType,
+                Details = purchase.PurchaseDetails.Select(d => new PurchaseReceiveDetailViewModel
+                {
+                    PurchaseDetailId = d.Id,
+                    ProductName = d.Product?.Name ?? "Desconocido",
+                    OrderedQuantity = d.Quantity,
+                    PreviouslyReceivedQuantity = d.ReceivedQuantity,
+                    QuantityToReceive = d.Quantity - d.ReceivedQuantity, // Por defecto sugiere el restante
+                    UnitPrice = d.UnitPrice
+                }).ToList()
+            };
+
+            return View(viewModel);
+        }
+
         [HttpPost]
         [Route("Compras/Recibir/{id}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Receive(int id)
+        public async Task<IActionResult> Receive(int id, PurchaseReceiveViewModel model)
         {
+            if (id != model.PurchaseId) return NotFound();
+
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -369,23 +444,36 @@ namespace PhonePalace.Web.Controllers
                     return NotFound();
                 }
 
-                if (purchase.Status == Domain.Enums.PurchaseStatus.Received)
+                // Actualizar información de factura del proveedor al momento de recibir
+                if (!string.IsNullOrEmpty(model.SupplierInvoiceNumber))
                 {
-                    TempData["ErrorMessage"] = "Esta compra ya ha sido recibida.";
-                    return RedirectToAction(nameof(Details), new { id });
+                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber;
                 }
+                purchase.DocumentType = model.DocumentType;
+
+                decimal receivedAmount = 0;
+                bool anyItemReceived = false;
 
                 // Cargar manualmente los InventoryLevels para cada producto
-                foreach (var detail in purchase.PurchaseDetails ?? new List<PurchaseDetail>())
+                foreach (var itemModel in model.Details)
                 {
-                    if (detail.Product != null)
+                    var detail = purchase.PurchaseDetails.FirstOrDefault(d => d.Id == itemModel.PurchaseDetailId);
+                    if (detail != null && detail.Product != null && itemModel.QuantityToReceive > 0)
                     {
+                        // Validar que no se reciba más de lo ordenado
+                        if (detail.ReceivedQuantity + itemModel.QuantityToReceive > detail.Quantity)
+                        {
+                            throw new InvalidOperationException($"No puede recibir más de lo ordenado para el producto {detail.Product.Name}.");
+                        }
+
+                        anyItemReceived = true;
+                        
                         var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
                         
                         // Calcular Costo Promedio Ponderado
                         var currentStock = inventoryLevels.Sum(i => i.Stock);
                         var currentCost = detail.Product.Cost;
-                        var incomingQuantity = detail.Quantity;
+                        var incomingQuantity = itemModel.QuantityToReceive;
                         var incomingCost = detail.UnitPrice; // Costo entrante sin IVA
 
                         if (currentStock + incomingQuantity > 0)
@@ -398,18 +486,34 @@ namespace PhonePalace.Web.Controllers
                         var inventory = inventoryLevels.FirstOrDefault();
                         if (inventory != null)
                         {
-                            inventory.Stock += detail.Quantity;
-                            inventory.LastUpdated = DateTime.UtcNow;
+                            inventory.Stock += itemModel.QuantityToReceive;
+                            inventory.LastUpdated = DateTime.Now;
                         }
                         else
                         {
-                            _context.Inventories.Add(new Inventory { ProductID = detail.ProductId, Stock = detail.Quantity, LastUpdated = DateTime.UtcNow });
+                            _context.Inventories.Add(new Inventory { ProductID = detail.ProductId, Stock = itemModel.QuantityToReceive, LastUpdated = DateTime.Now });
                         }
+
+                        // Actualizar cantidad recibida en el detalle
+                        detail.ReceivedQuantity += itemModel.QuantityToReceive;
+                        
+                        // Calcular monto de lo recibido para la cuenta por pagar (incluyendo IVA proporcional si aplica)
+                        // Nota: Usamos el TaxRate del detalle para calcular el total de esta recepción
+                        decimal lineTotal = itemModel.QuantityToReceive * detail.UnitPrice;
+                        decimal lineTax = lineTotal * detail.TaxRate / 100;
+                        receivedAmount += lineTotal + lineTax;
                     }
                 }
 
-                // Change the purchase status
-                purchase.Status = Domain.Enums.PurchaseStatus.Received;
+                if (!anyItemReceived)
+                {
+                    TempData["ErrorMessage"] = "Debe recibir al menos un producto.";
+                    return View(model);
+                }
+
+                // Determinar el nuevo estado de la compra
+                bool allFullyReceived = purchase.PurchaseDetails.All(d => d.ReceivedQuantity >= d.Quantity);
+                purchase.Status = allFullyReceived ? PurchaseStatus.Received : PurchaseStatus.PartiallyReceived;
 
                 // Create AccountPayable entry
                 // Generar Cuenta por Pagar si la forma de pago es Crédito o Transferencia
@@ -420,27 +524,28 @@ namespace PhonePalace.Web.Controllers
                     {
                         PurchaseId = purchase.Id,
                         Purchase = purchase,
-                        Amount = purchase.TotalAmount,
-                        DueDate = DateTime.UtcNow.AddDays(30), // Example: Due in 30 days
+                        Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
+                        DueDate = DateTime.Now.AddDays(30), // Example: Due in 30 days
                         IsPaid = false,
-                        DocumentType = AccountPayableDocumentType.Invoice, // Default to Invoice
-                        DocumentNumber = purchase.Id.ToString(), // Use PurchaseId as DocumentNumber for now
-                        CreatedDate = DateTime.UtcNow
+                        DocumentType = model.DocumentType, 
+                        DocumentNumber = !string.IsNullOrEmpty(model.SupplierInvoiceNumber) ? model.SupplierInvoiceNumber : purchase.Id.ToString() + (purchase.Status == PurchaseStatus.PartiallyReceived ? "-P" : ""),
+                        CreatedDate = DateTime.Now
                     };
                     _context.AccountPayables.Add(accountPayable);
                 }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                await _auditService.LogAsync("Compras", $"Recibió la compra #{purchase.Id} (Pago: {purchase.PaymentMethod}) y actualizó el inventario.");
+                
+                string statusMsg = purchase.Status == PurchaseStatus.Received ? "Totalmente Recibida" : "Parcialmente Recibida";
+                await _auditService.LogAsync("Compras", $"Recepción de compra #{purchase.Id} ({statusMsg}). Inventario actualizado.");
 
-                TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido recibida (Pago: {purchase.PaymentMethod}).";
+                TempData["SuccessMessage"] = $"La recepción se procesó correctamente. Estado: {statusMsg}.";
                 return RedirectToAction(nameof(Details), new { id });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // _logger.LogError(ex, "Error al recibir la compra con ID {PurchaseID}", id); // Uncomment if _logger is available
                 TempData["ErrorMessage"] = $"Ocurrió un error inesperado al recibir la compra: {ex.Message}";
                 return RedirectToAction(nameof(Details), new { id });
             }

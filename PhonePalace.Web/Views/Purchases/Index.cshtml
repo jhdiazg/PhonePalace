@@ -12,6 +12,44 @@
     <a asp-action="Create" class="btn btn-primary">Registrar Nueva Compra</a>
 </p>
 
+<div class="card mb-3">
+    <div class="card-body">
+        <form asp-action="Index" method="get">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar (Proveedor/ID)</label>
+                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nombre o ID..." />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha Inicio</label>
+                    <input type="date" name="startDate" value="@ViewData["StartDate"]" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha Fin</label>
+                    <input type="date" name="endDate" value="@ViewData["EndDate"]" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Estado</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        @{
+                            var currentStatus = ViewData["Status"] as PurchaseStatus?;
+                        }
+                        @foreach (var item in Html.GetEnumSelectList<PurchaseStatus>())
+                        {
+                            <option value="@item.Value" selected="@(item.Value == ((int?)currentStatus)?.ToString())">@item.Text</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+                    <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -56,12 +94,20 @@
     }
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex - 1)"
+       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-startDate="@ViewData["StartDate"]"
+       asp-route-endDate="@ViewData["EndDate"]"
+       asp-route-status="@ViewData["Status"]"
        class="btn btn-outline-secondary @prevDisabled">
         Anterior
     </a>
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex + 1)"
+       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-startDate="@ViewData["StartDate"]"
+       asp-route-endDate="@ViewData["EndDate"]"
+       asp-route-status="@ViewData["Status"]"
        class="btn btn-outline-secondary @nextDisabled">
         Siguiente
     </a>

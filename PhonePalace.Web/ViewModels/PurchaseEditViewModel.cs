@@ -14,6 +14,10 @@ namespace PhonePalace.Web.ViewModels
         public decimal IVARate { get; set; }
         [Display(Name = "Forma de Pago")]
         public PurchasePaymentMethod PaymentMethod { get; set; }
+        [Display(Name = "No. Factura Proveedor")]
+        public string? SupplierInvoiceNumber { get; set; }
+        [Display(Name = "Tipo Documento")]
+        public AccountPayableDocumentType DocumentType { get; set; }
         public List<PurchaseDetailViewModel> Details { get; set; } = new List<PurchaseDetailViewModel>();
     }
 }

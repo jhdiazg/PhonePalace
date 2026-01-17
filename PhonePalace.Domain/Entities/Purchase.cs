@@ -26,6 +26,10 @@ namespace PhonePalace.Domain.Entities
         public PurchaseStatus Status { get; set; } // Nuevo campo para el estado de la compra
         [DisplayName("Forma de Pago")]
         public PurchasePaymentMethod PaymentMethod { get; set; }
+        [DisplayName("No. Factura Proveedor")]
+        public string? SupplierInvoiceNumber { get; set; }
+        [DisplayName("Tipo Documento")]
+        public AccountPayableDocumentType DocumentType { get; set; } = AccountPayableDocumentType.Invoice;
     public ICollection<PurchaseDetail> PurchaseDetails { get; set; } = new List<PurchaseDetail>();
         public bool IsDeleted { get; set; }
         public DateTime? DeletedDate { get; set; }

@@ -145,7 +145,7 @@ namespace PhonePalace.Web.Controllers
                 var currentRow = 1;
 
                 // --- Cabeceras ---
-                worksheet.Cell(currentRow, 1).Value = "Fecha y Hora (UTC)";
+                worksheet.Cell(currentRow, 1).Value = "Fecha y Hora";
                 worksheet.Cell(currentRow, 2).Value = "Usuario";
                 worksheet.Cell(currentRow, 3).Value = "Módulo";
                 worksheet.Cell(currentRow, 4).Value = "Descripción";
@@ -156,7 +156,7 @@ namespace PhonePalace.Web.Controllers
                 foreach (var log in auditLogs)
                 {
                     currentRow++;
-                    worksheet.Cell(currentRow, 1).Value = log.Timestamp.ToLocalTime().DateTime;
+                    worksheet.Cell(currentRow, 1).Value = log.Timestamp.DateTime;
                     worksheet.Cell(currentRow, 2).Value = log.UserName;
                     worksheet.Cell(currentRow, 3).Value = log.Origin;
                     worksheet.Cell(currentRow, 4).Value = log.Description;
