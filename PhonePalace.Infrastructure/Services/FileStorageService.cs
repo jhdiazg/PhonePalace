@@ -37,14 +37,14 @@ namespace PhonePalace.Infrastructure.Services
             return $"/{relativePath}";
         }
 
-        public Task DeleteFileAsync(string fileUrl)
+        public Task DeleteFileAsync(string route)
         {
-            if (string.IsNullOrEmpty(fileUrl))
+            if (string.IsNullOrEmpty(route))
             {
                 return Task.CompletedTask;
             }
 
-            var relativePath = fileUrl.TrimStart('/');
+            var relativePath = route.TrimStart('/');
             var filePath = Path.Combine(_env.WebRootPath, relativePath);
 
             if (File.Exists(filePath))
@@ -53,6 +53,12 @@ namespace PhonePalace.Infrastructure.Services
             }
 
             return Task.CompletedTask;
+        }
+
+        public async Task<string> EditFileAsync(IFormFile file, string route, string containerName)
+        {
+            await DeleteFileAsync(route);
+            return await SaveFileAsync(file, containerName);
         }
     }
 }

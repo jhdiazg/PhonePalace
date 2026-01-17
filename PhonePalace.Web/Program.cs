@@ -40,7 +40,16 @@ builder.Services.AddControllersWithViews()
     .AddSessionStateTempDataProvider(); // Configura TempData para que use el estado de sesión en lugar de cookies.
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
-builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+}
+else
+{
+    builder.Services.AddScoped<IFileStorageService, AzureFileStorageService>();
+}
+
 builder.Services.AddScoped<ICashService, CashService>();
 
 builder.Services.AddTransient<IEmailSender, EmailService>();

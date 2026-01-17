@@ -140,6 +140,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Azure.Storage.Blobs": {
+              "target": "Package",
+              "version": "[12.27.0, )"
+            },
             "MailKit": {
               "target": "Package",
               "version": "[4.13.0, )"
