@@ -17,7 +17,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false) // Facilitar login en desarrollo
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => options.SignIn.RequireConfirmedAccount = false) // Facilitar login en desarrollo
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
@@ -43,7 +43,9 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 
 if (builder.Environment.IsDevelopment())
 {
+    // Cambia a AzureFileStorageService si deseas probar la subida a Azure/Azurite en desarrollo
     builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+    // builder.Services.AddScoped<IFileStorageService, AzureFileStorageService>();
 }
 else
 {
@@ -73,10 +75,15 @@ var cultureInfo = new CultureInfo("es-CO");
 // Clonamos el formato de número para poder modificarlo. La cultura original 'es-CO' usa ',' para decimales.
 var numberFormat = (NumberFormatInfo)cultureInfo.NumberFormat.Clone();
 
-// ESTA ES LA LÍNEA CLAVE: Cambiamos el separador decimal a '.' para el PARSEO de números.
-// Esto es fundamental para que el Model Binding de ASP.NET Core pueda entender los valores
-// que envían los formularios web y JavaScript, que usan '.' por estándar internacional.
+// Configuración personalizada de formatos:
+// 1. Separador de miles: Coma (",")
+numberFormat.NumberGroupSeparator = ",";
+numberFormat.CurrencyGroupSeparator = ",";
+// 2. Separador decimal: Punto (".") para compatibilidad técnica
 numberFormat.NumberDecimalSeparator = ".";
+numberFormat.CurrencyDecimalSeparator = ".";
+// 3. Moneda sin decimales
+numberFormat.CurrencyDecimalDigits = 0;
 
 // Asignamos el formato modificado a nuestra cultura personalizada.
 cultureInfo.NumberFormat = numberFormat;

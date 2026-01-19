@@ -13,18 +13,22 @@ namespace PhonePalace.Web.Controllers
     [Authorize(Roles = "Administrador")]
     public class UserManagementController : Controller
     {
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IAuditService _auditService;
+        private readonly IFileStorageService _fileStorageService;
+        private readonly List<string> _definedRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" };
 
         public UserManagementController(
-            UserManager<IdentityUser> userManager,
+            UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
+            IFileStorageService fileStorageService,
             IAuditService auditService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _auditService = auditService;
+            _fileStorageService = fileStorageService;
         }
 
         public async Task<IActionResult> Index()
@@ -51,7 +55,7 @@ namespace PhonePalace.Web.Controllers
         {
             var model = new CreateUserViewModel
             {
-                AvailableRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" }
+                AvailableRoles = _definedRoles
             };
             return View(model);
         }
@@ -62,16 +66,22 @@ namespace PhonePalace.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
-                model.AvailableRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" };
+                model.AvailableRoles = _definedRoles;
                 return View(model);
             }
 
-            var user = new IdentityUser
+            var user = new ApplicationUser
             {
                 UserName = model.Email,
                 Email = model.Email,
                 EmailConfirmed = true // Para simplificar, confirmar email automáticamente
             };
+
+            // Handle profile picture upload
+            if (model.ProfilePictureFile != null)
+            {
+                user.ProfilePictureUrl = await _fileStorageService.SaveFileAsync(model.ProfilePictureFile, "users");
+            }
 
             var result = await _userManager.CreateAsync(user, model.Password);
             if (result.Succeeded)
@@ -93,7 +103,7 @@ namespace PhonePalace.Web.Controllers
                 ModelState.AddModelError("", error.Description);
             }
 
-            model.AvailableRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" };
+            model.AvailableRoles = _definedRoles;
             return View(model);
         }
 
@@ -105,8 +115,7 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            var definedRoles = new List<string> { "Administrador", "Cajero", "Almacenista", "Vendedor" };
-            var roles = await _roleManager.Roles.Where(r => r.Name != null && definedRoles.Contains(r.Name)).ToListAsync();
+            var roles = await _roleManager.Roles.Where(r => r.Name != null && _definedRoles.Contains(r.Name)).ToListAsync();
             var userRoles = await _userManager.GetRolesAsync(user);
 
             var model = new EditUserRolesViewModel

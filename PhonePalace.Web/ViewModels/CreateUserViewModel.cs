@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace PhonePalace.Web.ViewModels
 {
@@ -26,5 +27,8 @@ namespace PhonePalace.Web.ViewModels
 
         [Display(Name = "Roles Disponibles")]
         public List<string> AvailableRoles { get; set; } = new List<string>();
+        
+        [Display(Name = "Foto de Perfil")]
+        public IFormFile? ProfilePictureFile { get; set; }
     }
 }

@@ -28,6 +28,8 @@ D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\Azure.Core.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\Azure.Identity.dll
+D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\Azure.Storage.Blobs.dll
+D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\Azure.Storage.Common.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\BouncyCastle.Cryptography.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\ClosedXML.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\ClosedXML.Parser.dll
@@ -124,6 +126,7 @@ D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.Composition.Runtime.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.Composition.TypedParts.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.Configuration.ConfigurationManager.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
+D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.IO.Hashing.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.IO.Packaging.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.Memory.Data.dll
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\System.Reflection.MetadataLoadContext.dll
@@ -477,3 +480,4 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
+D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

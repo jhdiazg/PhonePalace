@@ -17,7 +17,7 @@ namespace PhonePalace.Infrastructure.Services
         public AzureFileStorageService(IConfiguration configuration)
         {
             // Asegúrate de tener "AzureStorage" en tu appsettings.json o variables de entorno
-            _connectionString = configuration.GetConnectionString("AzureStorage");
+            _connectionString = configuration.GetConnectionString("AzureStorage") ?? throw new InvalidOperationException("AzureStorage connection string is not configured.");
         }
 
         public async Task<string> SaveFileAsync(IFormFile file, string containerName)
