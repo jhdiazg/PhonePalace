@@ -18,5 +18,11 @@ namespace PhonePalace.Domain.Entities
     [Required]
     [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
     public decimal UnitPrice { get; set; }
+
+    [StringLength(50)]
+    public string? IMEI { get; set; }
+
+    [StringLength(50)]
+    public string? Serial { get; set; }
     }
 }

@@ -4,7 +4,6 @@
 
 @{
     ViewData["Title"] = "Registrar Nueva Venta";
-    var taxRate = 0.19m; // 19% IVA
 }
 
 <form asp-action="Create" id="saleForm" novalidate>
@@ -36,7 +35,7 @@
                         </div>
                         <div class="col-md-6 form-group mt-3">
                             <label asp-for="SaleDate" class="control-label"></label>
-                            <input asp-for="SaleDate" class="form-control" />
+                            <input asp-for="SaleDate" class="form-control" readonly />
                             <span asp-validation-for="SaleDate" class="text-danger"></span>
                         </div>
                     </div>
@@ -49,7 +48,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row align-items-end">
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label for="product-select">Producto</label>
                             <select id="product-select" name="Products" class="form-control">
                                 <option value="">-- Seleccione un Producto --</option>
@@ -60,11 +59,23 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-2 form-group">
+                            <label for="price-input">Precio</label>
+                            <input type="number" id="price-input" class="form-control" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-2 form-group">
                             <label for="quantity-input">Cantidad</label>
                             <input type="number" id="quantity-input" class="form-control" value="1" min="1">
                         </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-2 form-group" id="imei-group" style="display:none;">
+                            <label for="imei-input">IMEI <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" id="imei-input" class="form-control">
+                        </div>
+                        <div class="col-md-2 form-group" id="serial-group" style="display:none;">
+                            <label for="serial-input">Serial <small class="text-muted">(Opcional)</small></label>
+                            <input type="text" id="serial-input" class="form-control">
+                        </div>
+                        <div class="col-md-2 form-group">
                             <button type="button" id="add-product-btn" class="btn btn-info w-100">Agregar</button>
                         </div>
                     </div>
@@ -75,6 +86,7 @@
                                     <th>Producto</th>
                                     <th>Cantidad</th>
                                     <th>Precio Unit.</th>
+                                    <th>Identificador</th>
                                     <th>Subtotal</th>
                                     <th>Acción</th>
                                 </tr>
@@ -149,7 +161,7 @@
                             <span id="subtotal-display" class="fw-bold">$0.00</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            IVA (@((taxRate * 100).ToString("F0"))%)
+                            IVA (@(((decimal)(ViewBag.TaxRate ?? 0.19m) * 100).ToString("F0"))%)
                             <span id="tax-display" class="fw-bold">$0.00</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center fs-5 fw-bold">
@@ -178,7 +190,7 @@
     <script>
         $(document).ready(function () {
             // Data from the server
-            const taxRate = @taxRate;
+            const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0.19m);
 
             // State
             let products = [];
@@ -199,7 +211,8 @@
             var allProductsDict = {
                 @foreach (var p in ViewBag.AllProducts)
                 {
-                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price },</text>
+                    var type = p is PhonePalace.Domain.Entities.CellPhone ? "CellPhone" : "Accessory";
+                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price, cost: @p.Cost, type: '@type' },</text>
                 }
             };
 
@@ -212,9 +225,10 @@
                         products.push({
                             id: prod.id,
                             name: prod.name,
-                            price: prod.price,
-                            billWithIVA: prod.billWithIVA,
-                            quantity: d.Quantity
+                            price: d.UnitPrice || prod.price,
+                            quantity: d.Quantity,
+                            imei: d.IMEI,
+                            serial: d.Serial
                         });
                     }
                 });
@@ -227,14 +241,52 @@
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
 
+            // --- DYNAMIC FIELDS LOGIC ---
+            $('#product-select').on('change', function() {
+                const productId = $(this).val();
+                const imeiGroup = $('#imei-group');
+                const serialGroup = $('#serial-group');
+                const priceInput = $('#price-input');
+                
+                imeiGroup.hide();
+                serialGroup.hide();
+
+                if (productId && allProductsDict[productId]) {
+                    const type = allProductsDict[productId].type;
+                    if (type === 'CellPhone') imeiGroup.show();
+                    else imeiGroup.hide(); // Accesorios u otros usan Serial si se desea, o ajustar lógica
+                    
+                    if (type !== 'CellPhone') serialGroup.show();
+
+                    // Set default price
+                    priceInput.val(allProductsDict[productId].price);
+                }
+            });
+
             // --- PRODUCT LOGIC ---
             $('#add-product-btn').on('click', function () {
                 const productId = $('#product-select').val();
+                const price = parseFloat($('#price-input').val());
                 const quantity = parseInt($('#quantity-input').val(), 10);
+                const imei = $('#imei-input').val();
+                const serial = $('#serial-input').val();
 
-                if (!productId || quantity <= 0) {
-                    alert("Por favor, seleccione un producto y una cantidad válida.");
+                if (!productId || isNaN(price) || quantity <= 0) {
+                    alert("Por favor, seleccione un producto, un precio válido y una cantidad.");
                     return;
+                }
+
+                // Validación de Precio (Mínimo Costo, Máximo Doble del Costo)
+                const productInfo = allProductsDict[productId];
+                if (productInfo) {
+                    if (price < productInfo.cost) {
+                        alert(`El precio no puede ser menor al costo ($${formatCurrency(productInfo.cost)}).`);
+                        return;
+                    }
+                    if (price > productInfo.cost * 3) {
+                        alert(`El precio no puede ser mayor al triple del costo ($${formatCurrency(productInfo.cost * 3)}).`);
+                        return;
+                    }
                 }
 
                 fetch(`/api/products/${productId}`)
@@ -251,14 +303,18 @@
                                 id: productData.id,
                                 name: productData.name,
                                 quantity: quantity,
-                                price: productData.price,
-                                billWithIVA: productData.billWithIVA
+                                price: price, // Usar el precio ingresado por el usuario
+                                imei: imei,
+                                serial: serial
                             });
                         }
                         renderProducts();
                         updateTotals();
                         $('#product-select').val('').trigger('change');
                         $('#quantity-input').val(1);
+                        $('#price-input').val('');
+                        $('#imei-input').val('');
+                        $('#serial-input').val('');
                     })
                     .catch(error => {
                         console.error("Error al obtener datos del producto:", error);
@@ -271,11 +327,13 @@
                 tbody.empty();
                 products.forEach((p, index) => {
                     const subtotal = p.quantity * p.price;
+                    const identifier = p.imei ? `IMEI: ${p.imei}` : (p.serial ? `SN: ${p.serial}` : '-');
                     const row = `
                         <tr data-product-id="${p.id}">
                             <td>${p.name}</td>
                             <td>${p.quantity}</td>
                             <td>${formatCurrency(p.price)}</td>
+                            <td><small>${identifier}</small></td>
                             <td>${formatCurrency(subtotal)}</td>
                             <td><button type="button" class="btn btn-danger btn-sm remove-product-btn" data-index="${index}">&times;</button></td>
                         </tr>`;
@@ -340,11 +398,12 @@
 
             // --- TOTALS CALCULATION ---
             function updateTotals() {
-                let subtotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
-                let subtotalForVAT = products.filter(p => p.billWithIVA).reduce((acc, p) => acc + (p.quantity * p.price), 0);
-
-                const tax = subtotalForVAT * taxRate;
-                const total = subtotal + tax;
+                // El precio del producto ya incluye IVA, por lo tanto la suma es el Total
+                let total = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                
+                let subtotal = total / (1 + taxRate);
+                let tax = total - subtotal;
+                
                 const totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
                 const balance = total - totalPaid;
 
@@ -379,6 +438,9 @@
                 products.forEach((p, index) => {
                     hiddenContainer.append(`<input type="hidden" name="Details[${index}].ProductID" value="${p.id}" />`);
                     hiddenContainer.append(`<input type="hidden" name="Details[${index}].Quantity" value="${p.quantity}" />`);
+                    hiddenContainer.append(`<input type="hidden" name="Details[${index}].UnitPrice" value="${p.price}" />`);
+                    if(p.imei) hiddenContainer.append(`<input type="hidden" name="Details[${index}].IMEI" value="${p.imei}" />`);
+                    if(p.serial) hiddenContainer.append(`<input type="hidden" name="Details[${index}].Serial" value="${p.serial}" />`);
                 });
 
                 console.log("Payments:", payments);
@@ -388,10 +450,7 @@
                 }
 
                 // Ajustar dinámicamente el monto del último pago al balance
-                let subtotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
-                let subtotalForVAT = products.filter(p => p.billWithIVA).reduce((acc, p) => acc + (p.quantity * p.price), 0);
-                const tax = subtotalForVAT * taxRate;
-                const total = subtotal + tax;
+                let total = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
                 let totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
                 let balance = total - totalPaid;
 

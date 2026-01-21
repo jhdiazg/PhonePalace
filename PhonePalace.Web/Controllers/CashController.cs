@@ -13,9 +13,9 @@ namespace PhonePalace.Web.Controllers
     public class CashController : Controller
     {
         private readonly ICashService _cashService;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public CashController(ICashService cashService, UserManager<IdentityUser> userManager)
+        public CashController(ICashService cashService, UserManager<ApplicationUser> userManager)
         {
             _cashService = cashService;
             _userManager = userManager;

@@ -12,7 +12,7 @@ namespace PhonePalace.Infrastructure.Data
         public static async Task SeedRolesAndAdminAsync(IServiceProvider serviceProvider)
         {
             // --- Obtener los servicios necesarios ---
-            var userManager = serviceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             // No se puede usar ILogger<DbSeeder> porque DbSeeder es una clase estática.
             // En su lugar, usamos ILoggerFactory para crear un logger con un nombre de categoría específico.
@@ -42,7 +42,7 @@ namespace PhonePalace.Infrastructure.Data
             var adminUser = await userManager.FindByEmailAsync("admin@phonepalace.com");
             if (adminUser == null)
             {
-                var newAdminUser = new IdentityUser
+                var newAdminUser = new ApplicationUser
                 {
                     UserName = "admin@phonepalace.com",
                     Email = "admin@phonepalace.com",

@@ -1,127 +1,105 @@
 ﻿@model PhonePalace.Web.ViewModels.DashboardViewModel
-
 @{
     ViewData["Title"] = "Dashboard";
 }
 
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">@ViewData["Title"]</h1>
-    </div>
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Dashboard</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item active">Resumen General</li>
+    </ol>
 
-    <!-- Banner Principal -->
     <div class="row">
-        <div class="col-12 mb-4">
-            <div class="text-center">
-                <img src="~/images/main-banner.png" class="img-fluid rounded shadow-sm" alt="Promoción Principal" style="max-height: 280px; max-width: 900px; width: 100%; object-fit: cover;" />
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila de Tarjetas de Estadísticas -->
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-primary text-white mb-4">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">@Html.DisplayNameFor(m => m.TotalClients)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalClients</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-people-fill fa-2x text-gray-300"></i></div>
-                    </div>
+                    <h4 class="mb-0">@Model.TotalClients</h4>
+                    <div>Clientes Activos</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Clients" asp-action="Index">Ver Detalles</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-warning text-white mb-4">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">@Html.DisplayNameFor(m => m.TotalProducts)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalProducts</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-box-seam-fill fa-2x text-gray-300"></i></div>
-                    </div>
+                    <h4 class="mb-0">@Model.TotalProducts</h4>
+                    <div>Productos Activos</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Products" asp-action="Index">Ver Detalles</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-success text-white mb-4">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">@Html.DisplayNameFor(m => m.TotalInventoryValue)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.TotalInventoryValue.ToString("C")</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-currency-dollar fa-2x text-gray-300"></i></div>
-                    </div>
+                    <h4 class="mb-0">@Model.CurrentMonthSales.ToString("C")</h4>
+                    <div>Ventas del Mes</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Sales" asp-action="Index">Ver Detalles</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
+        <div class="col-xl-3 col-md-6">
+            <div class="card bg-danger text-white mb-4">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">@Html.DisplayNameFor(m => m.CurrentMonthSales)</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.CurrentMonthSales.ToString("C")</div>
-                        </div>
-                        <div class="col-auto"><i class="bi bi-calendar-check-fill fa-2x text-gray-300"></i></div>
-                    </div>
+                    <h4 class="mb-0">@Model.TotalInventoryValue.ToString("C")</h4>
+                    <div>Valor Inventario</div>
+                </div>
+                <div class="card-footer d-flex align-items-center justify-content-between">
+                    <a class="small text-white stretched-link" asp-controller="Inventory" asp-action="Index">Ver Detalles</a>
+                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Fila de Contenido: Bajo Stock -->
     <div class="row">
-        <div class="col-lg-12 mb-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Productos con Bajo Stock (Top 10)</h6>
+        <div class="col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    Productos con Bajo Stock
                 </div>
                 <div class="card-body">
-                    @if (Model.LowStockProducts.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered" width="100%" cellspacing="0">
-                                <thead><tr><th>Producto</th><th>Stock Actual</th><th>Nivel de Reorden</th></tr></thead>
-                                <tbody>
-                                    @foreach (var product in Model.LowStockProducts)
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Stock Actual</th>
+                                    <th>Nivel Reorden</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (Model.LowStockProducts != null && Model.LowStockProducts.Any())
+                                {
+                                    foreach (var item in Model.LowStockProducts)
                                     {
                                         <tr>
-                                            <td>@product.ProductName</td>
-                                            <td><span class="badge bg-danger">@product.CurrentStock</span></td>
-                                            <td>@product.ReorderLevel</td>
+                                            <td>@item.ProductName</td>
+                                            <td class="text-danger fw-bold">@item.CurrentStock</td>
+                                            <td>@item.ReorderLevel</td>
                                         </tr>
                                     }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else
-                    {
-                        <p>No hay productos con bajo stock en este momento.</p>
-                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-center">No hay alertas de stock bajo.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- CSS Personalizado para las tarjetas -->
-<style>
-    .card .border-left-primary { border-left: .25rem solid #4e73df !important; }
-    .card .border-left-success { border-left: .25rem solid #1cc88a !important; }
-    .card .border-left-info { border-left: .25rem solid #36b9cc !important; }
-    .card .border-left-warning { border-left: .25rem solid #f6c23e !important; }
-    .text-gray-300 { color: #dddfeb !important; }
-    .text-gray-800 { color: #5a5c69 !important; }
-    .font-weight-bold { font-weight: 700 !important; }
-    .text-xs { font-size: .7rem; }
-    .fa-2x { font-size: 2em; }
-</style>

@@ -480,4 +480,3 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

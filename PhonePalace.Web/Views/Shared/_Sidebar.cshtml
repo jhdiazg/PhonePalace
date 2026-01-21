@@ -1,5 +1,6 @@
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<IdentityUser> SignInManager
+ @using Microsoft.AspNetCore.Identity
+@using PhonePalace.Domain.Entities
+@inject SignInManager<ApplicationUser> SignInManager
 @using PhonePalace.Web.Helpers
 
 @{
@@ -11,7 +12,7 @@
 
 <div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
     <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-        <img src="~/images/logo.png" alt="PhonePalace Logo" width="40" height="40" class="me-2 rounded-circle">
+        <img src="~/images/logo.png" alt="PhonePalace Logo" width="40" height="40" class="me-2 border border-white">
         <span class="fs-4">PhonePalace</span>
     </a>
     <hr>
@@ -38,6 +39,12 @@
             <a asp-controller="Sales" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
                 <i class="bi bi-cash-coin me-2"></i>
                 Ventas
+            </a>
+        </li>
+        <li class="nav-item">
+            <a asp-controller="AccountReceivables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountReceivables")">
+                <i class="bi bi-wallet2 me-2"></i>
+                Cuentas por Cobrar
             </a>
         </li>
         <li class="nav-item">
@@ -173,4 +180,8 @@
     </ul>
     <hr>
     <partial name="_LoginPartial" />
+    <hr>
+    <div class="text-center">
+        <img src="~/images/Logo_jahudi.png" alt="Jahudi Software Logo" width="40" height="40" class="border border-white">
+    </div>
 </div>

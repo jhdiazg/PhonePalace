@@ -1,0 +1,56 @@
+@model PhonePalace.Web.ViewModels.LoanCreateViewModel
+
+@{
+    ViewData["Title"] = "Registrar Préstamo";
+}
+
+<h1>Registrar Préstamo (Egreso de Caja)</h1>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="form-group mb-3">
+                <label asp-for="ClientID" class="control-label">Cliente / Beneficiario</label>
+                <select asp-for="ClientID" class="form-control" asp-items="ViewBag.Clients">
+                    <option value="">-- Seleccione --</option>
+                </select>
+                <span asp-validation-for="ClientID" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Amount" class="control-label">Monto a Prestar</label>
+                <input asp-for="Amount" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+                <small class="text-muted">Este dinero saldrá de la caja actual.</small>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Description" class="control-label">Descripción / Motivo</label>
+                <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="Date" class="control-label">Fecha</label>
+                <input asp-for="Date" class="form-control" type="date" readonly />
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary">Registrar Préstamo</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            $('select').select2();
+        });
+    </script>
+}

@@ -16,9 +16,9 @@ namespace PhonePalace.Web.Controllers
     public class QuotesController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public QuotesController(ApplicationDbContext context, UserManager<IdentityUser> userManager)
+        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _userManager = userManager;
@@ -278,5 +278,3 @@ namespace PhonePalace.Web.Controllers
         }
     }
 }
-
-

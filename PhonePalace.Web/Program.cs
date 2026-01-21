@@ -6,7 +6,6 @@ using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
 using System.Globalization;
-using PhonePalace.Web.Areas.Identity.Data;
 
 
 var builder = WebApplication.CreateBuilder(args);

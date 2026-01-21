@@ -41,6 +41,8 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
         public DbSet<AccountPayable> AccountPayables { get; set; }
+        public DbSet<AccountReceivable> AccountReceivables { get; set; }
+        public DbSet<AccountReceivablePayment> AccountReceivablePayments { get; set; }
         public DbSet<Bank> Banks { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleDetail> SaleDetails { get; set; }
