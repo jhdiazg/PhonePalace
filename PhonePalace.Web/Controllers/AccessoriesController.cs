@@ -1,4 +1,4 @@
-﻿using PhonePalace.Web.Helpers;
+﻿﻿﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,16 +31,17 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Accessories
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
         {
+            ViewData["PageSize"] = pageSize ?? 10;
+
             var accessoriesQuery = _context.Accessories
                 .Include(a => a.Images)
                 .Include(a => a.Category)
                 .Include(a => a.Brand)
                 .AsNoTracking();
 
-            int pageSize = 10;
-            return View(await PaginatedList<Accessory>.CreateAsync(accessoriesQuery, pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<Accessory>.CreateAsync(accessoriesQuery, pageNumber ?? 1, pageSize ?? 10));
         }
 
         // GET: Accessories/Details/5
@@ -81,14 +82,14 @@ namespace PhonePalace.Web.Controllers
             {
                 var accessory = new Accessory
                 {
-                    Name = viewModel.Name,
-                    Description = viewModel.Description,
+                    Name = viewModel.Name.ToUpper(),
+                    Description = viewModel.Description?.ToUpper(),
                     Price = viewModel.Price,
                     Cost = viewModel.Cost,
-                    SKU = viewModel.SKU,
+                    SKU = viewModel.SKU?.ToUpper(),
                     CategoryID = viewModel.CategoryID,
                     BrandID = viewModel.BrandID,
-                    Color = viewModel.Color,
+                    Color = viewModel.Color?.ToUpper(),
                     IsActive = viewModel.IsActive,
                     ProductCondition = viewModel.ProductCondition
                 };
@@ -143,7 +144,7 @@ namespace PhonePalace.Web.Controllers
                 Color = accessory.Color ?? string.Empty,
                 IsActive = accessory.IsActive,
                 ProductCondition = accessory.ProductCondition,
-                Images = new List<ProductImage>(accessory.Images)
+                Images = accessory.Images.ToList()
             };
 
             await PopulateDropdowns(accessory.CategoryID, accessory.BrandID, accessory.ProductCondition);
@@ -170,18 +171,18 @@ namespace PhonePalace.Web.Controllers
 
                     if (accessory == null) return NotFound();
 
-                    accessory.Name = viewModel.Name;
-                    accessory.Description = viewModel.Description;
+                    accessory.Name = viewModel.Name.ToUpper();
+                    accessory.Description = viewModel.Description?.ToUpper();
                     accessory.Price = viewModel.Price;
                     accessory.Cost = viewModel.Cost;
-                    accessory.SKU = viewModel.SKU;
+                    accessory.SKU = viewModel.SKU?.ToUpper();
                     accessory.CategoryID = viewModel.CategoryID;
                     accessory.BrandID = viewModel.BrandID;
-                    accessory.Color = viewModel.Color;
+                    accessory.Color = viewModel.Color?.ToUpper();
                     accessory.IsActive = viewModel.IsActive;
                     accessory.ProductCondition = viewModel.ProductCondition;
-                    accessory.Material = viewModel.Material;
-                    accessory.Compatibility = viewModel.Compatibility;
+                    accessory.Material = viewModel.Material?.ToUpper();
+                    accessory.Compatibility = viewModel.Compatibility?.ToUpper();
 
                     if (viewModel.NewImageFile != null)
                     {

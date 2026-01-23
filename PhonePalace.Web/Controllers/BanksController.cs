@@ -60,6 +60,10 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
+                // if (bank.Name != null)
+                {
+                    bank.Name = bank.Name.ToUpper();
+                }
                 _context.Add(bank);
                 await _context.SaveChangesAsync();
                 await _auditService.LogAsync("Bancos", $"Creó el banco '{bank.Name}' (ID: {bank.BankID}).");
@@ -98,6 +102,10 @@ namespace PhonePalace.Web.Controllers
             {
                 try
                 {
+                    if (!string.IsNullOrEmpty(bank.Name))
+                    {
+                        bank.Name = bank.Name.ToUpper();
+                    }
                     _context.Update(bank);
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Bancos", $"Editó el banco '{bank.Name}' (ID: {bank.BankID}).");

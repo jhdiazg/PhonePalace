@@ -24,8 +24,10 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Suppliers
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
         {
+            ViewData["PageSize"] = pageSize ?? 10;
+
             var suppliersQuery = _context.Suppliers
                 .AsNoTracking()
                 .Select(s => new SupplierIndexViewModel
@@ -39,8 +41,7 @@ namespace PhonePalace.Web.Controllers
                     IsActive = s.IsActive
                 });
 
-            int pageSize = 10;
-            return View(await PaginatedList<SupplierIndexViewModel>.CreateAsync(suppliersQuery, pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<SupplierIndexViewModel>.CreateAsync(suppliersQuery, pageNumber ?? 1, pageSize ?? 10));
         }
 
         // GET: Suppliers/Details/5
@@ -89,10 +90,10 @@ namespace PhonePalace.Web.Controllers
                 }
                 newSupplier = new NaturalPersonSupplier
                 {
-                    FirstName = viewModel.FirstName!,
-                    LastName = viewModel.LastName!,
+                    FirstName = viewModel.FirstName!.ToUpper(),
+                    LastName = viewModel.LastName!.ToUpper(),
                     DocumentType = viewModel.DocumentType!.Value,
-                    DocumentNumber = viewModel.DocumentNumber!
+                    DocumentNumber = viewModel.DocumentNumber!.ToUpper()
                 };
             }
             else if (viewModel.SupplierType == SupplierTypeSelection.LegalEntity)
@@ -105,8 +106,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 newSupplier = new LegalEntitySupplier
                 {
-                    CompanyName = viewModel.CompanyName!,
-                    NIT = viewModel.NIT!
+                    CompanyName = viewModel.CompanyName!.ToUpper(),
+                    NIT = viewModel.NIT!.ToUpper()
                 };
             }
             else
@@ -120,7 +121,7 @@ namespace PhonePalace.Web.Controllers
             newSupplier.PhoneNumber = viewModel.PhoneNumber;
             newSupplier.DepartmentID = viewModel.DepartmentID;
             newSupplier.MunicipalityID = viewModel.MunicipalityID;
-            newSupplier.StreetAddress = viewModel.StreetAddress;
+            newSupplier.StreetAddress = viewModel.StreetAddress?.ToUpper();
             newSupplier.IsActive = true;
 
             _context.Add(newSupplier);
@@ -197,15 +198,15 @@ namespace PhonePalace.Web.Controllers
                 var supplierToUpdate = await _context.NaturalPersonSuppliers.FindAsync(id);
                 if (supplierToUpdate == null) return NotFound();
 
-                supplierToUpdate.FirstName = viewModel.FirstName;
-                supplierToUpdate.LastName = viewModel.LastName;
+                supplierToUpdate.FirstName = viewModel.FirstName?.ToUpper() ?? string.Empty;
+                supplierToUpdate.LastName = viewModel.LastName?.ToUpper() ?? string.Empty;
                 supplierToUpdate.DocumentType = viewModel.DocumentType;
-                supplierToUpdate.DocumentNumber = viewModel.DocumentNumber;
+                supplierToUpdate.DocumentNumber = viewModel.DocumentNumber?.ToUpper() ?? string.Empty;
                 supplierToUpdate.Email = viewModel.Email ?? string.Empty;
                 supplierToUpdate.PhoneNumber = viewModel.PhoneNumber ?? string.Empty;
                 supplierToUpdate.DepartmentID = viewModel.DepartmentID;
                 supplierToUpdate.MunicipalityID = viewModel.MunicipalityID;
-                supplierToUpdate.StreetAddress = viewModel.StreetAddress;
+                supplierToUpdate.StreetAddress = viewModel.StreetAddress?.ToUpper();
                 supplierToUpdate.IsActive = viewModel.IsActive;
 
                 try
@@ -245,13 +246,13 @@ namespace PhonePalace.Web.Controllers
                     var supplierToUpdate = await _context.LegalEntitySuppliers.FindAsync(id);
                     if (supplierToUpdate == null) return NotFound();
 
-                    supplierToUpdate.CompanyName = viewModel.CompanyName ?? string.Empty;
-                    supplierToUpdate.NIT = viewModel.NIT ?? string.Empty;
+                    supplierToUpdate.CompanyName = viewModel.CompanyName?.ToUpper() ?? string.Empty;
+                    supplierToUpdate.NIT = viewModel.NIT?.ToUpper() ?? string.Empty;
                     supplierToUpdate.Email = viewModel.Email ?? string.Empty;
                     supplierToUpdate.PhoneNumber = viewModel.PhoneNumber ?? string.Empty;
                     supplierToUpdate.DepartmentID = viewModel.DepartmentID;
                     supplierToUpdate.MunicipalityID = viewModel.MunicipalityID;
-                    supplierToUpdate.StreetAddress = viewModel.StreetAddress;
+                    supplierToUpdate.StreetAddress = viewModel.StreetAddress?.ToUpper();
 
                     supplierToUpdate.IsActive = viewModel.IsActive;
 
@@ -327,7 +328,7 @@ namespace PhonePalace.Web.Controllers
         private async Task PopulateDropdowns(string? departmentId = null, string? municipalityId = null)
         {
             var departments = await _context.Departments.AsNoTracking().OrderBy(d => d.Name).ToListAsync();
-            ViewData["DepartmentID"] = (object)new SelectList(departments, "DepartmentID", "Name", departmentId ?? string.Empty);
+            ViewData["DepartmentID"] = new SelectList(departments, "DepartmentID", "Name", departmentId);
 
             if (!string.IsNullOrEmpty(departmentId))
             {
@@ -336,11 +337,11 @@ namespace PhonePalace.Web.Controllers
                     .AsNoTracking()
                     .OrderBy(m => m.Name)
                     .ToListAsync();
-                ViewData["MunicipalityID"] = (object)new SelectList(municipalities, "MunicipalityID", "Name", municipalityId ?? string.Empty);
+                ViewData["MunicipalityID"] = new SelectList(municipalities, "MunicipalityID", "Name", municipalityId);
             }
             else
             {
-                ViewData["MunicipalityID"] = (object)new SelectList(new List<SelectListItem> { new SelectListItem { Text = "Seleccione un departamento", Value = "" } }, "Value", "Text");
+                ViewData["MunicipalityID"] = new SelectList(new List<SelectListItem> { new SelectListItem { Text = "Seleccione un departamento", Value = "" } }, "Value", "Text");
             }
         }
     }

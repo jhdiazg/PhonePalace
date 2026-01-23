@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿﻿﻿﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -64,6 +64,7 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
+                category.Name = (category.Name ?? string.Empty).ToUpper();
                 _context.Add(category);
                 await _context.SaveChangesAsync();
                 await _auditService.LogAsync("Categorías", $"Se creó la categoría '{category.Name}' (ID: {category.CategoryID}).");
@@ -104,6 +105,8 @@ namespace PhonePalace.Web.Controllers
             {
                 try
                 {
+                    category.Name = (category.Name ?? string.Empty).ToUpper();
+                    category.Description = category.Description?.ToUpper();
                     _context.Update(category);
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Categorías", $"Se editó la categoría '{category.Name}' (ID: {category.CategoryID}).");

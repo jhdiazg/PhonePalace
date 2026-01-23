@@ -31,12 +31,13 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Compras")]
-        public async Task<IActionResult> Index(string? searchString, DateTime? startDate, DateTime? endDate, PurchaseStatus? status, int? pageNumber)
+        public async Task<IActionResult> Index(string? searchString, DateTime? startDate, DateTime? endDate, PurchaseStatus? status, int? pageNumber, int? pageSize)
         {
             ViewData["CurrentFilter"] = searchString;
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
             ViewData["Status"] = status;
+            ViewData["PageSize"] = pageSize ?? 10;
 
             var purchasesQuery = _context.Purchases
                 .Include(p => p.Supplier)
@@ -67,8 +68,7 @@ namespace PhonePalace.Web.Controllers
 
             purchasesQuery = purchasesQuery.OrderByDescending(p => p.PurchaseDate);
 
-            int pageSize = 10;
-            var paginatedPurchases = await PaginatedList<Purchase>.CreateAsync(purchasesQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
+            var paginatedPurchases = await PaginatedList<Purchase>.CreateAsync(purchasesQuery.AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
 
             return View(paginatedPurchases);
         }
@@ -99,7 +99,7 @@ namespace PhonePalace.Web.Controllers
                     PurchaseDate = DateTime.Now,
                     Status = PurchaseStatus.Draft, // Set initial status to Draft
                     PaymentMethod = model.PaymentMethod,
-                    SupplierInvoiceNumber = model.SupplierInvoiceNumber,
+                    SupplierInvoiceNumber = model.SupplierInvoiceNumber?.ToUpper(),
                     DocumentType = model.DocumentType,
                     PurchaseDetails = model.Details?.Select(d => 
                     {
@@ -215,7 +215,7 @@ namespace PhonePalace.Web.Controllers
 
                     purchase.SupplierId = model.SupplierId;
                     purchase.PaymentMethod = model.PaymentMethod;
-                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber;
+                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber?.ToUpper();
                     purchase.DocumentType = model.DocumentType;
                     purchase.PurchaseDetails = model.Details?.Select(d => 
                     {
@@ -447,7 +447,7 @@ namespace PhonePalace.Web.Controllers
                 // Actualizar información de factura del proveedor al momento de recibir
                 if (!string.IsNullOrEmpty(model.SupplierInvoiceNumber))
                 {
-                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber;
+                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber.ToUpper();
                 }
                 purchase.DocumentType = model.DocumentType;
 

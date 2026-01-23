@@ -10,6 +10,20 @@
 <p>
     <a asp-action="Create" class="btn btn-primary">Registrar Nuevo Accesorio</a>
 </p>
+<div class="row mb-3">
+    <div class="col-md-6">
+        <form asp-action="Index" method="get" class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0">Mostrar:</label>
+            <select name="pageSize" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                @{ int pageSize = (int)(ViewData["PageSize"] ?? 10); }
+                <option value="10" selected="@(pageSize == 10)">10</option>
+                <option value="20" selected="@(pageSize == 20)">20</option>
+                <option value="50" selected="@(pageSize == 50)">50</option>
+                <option value="100" selected="@(pageSize == 100)">100</option>
+            </select>
+        </form>
+    </div>
+</div>
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -73,12 +87,14 @@
     }
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex - 1)"
+       asp-route-pageSize="@ViewData["PageSize"]"
        class="btn btn-outline-secondary @prevDisabled">
         Anterior
     </a>
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex + 1)"
+       asp-route-pageSize="@ViewData["PageSize"]"
        class="btn btn-outline-secondary @nextDisabled">
         Siguiente
     </a>

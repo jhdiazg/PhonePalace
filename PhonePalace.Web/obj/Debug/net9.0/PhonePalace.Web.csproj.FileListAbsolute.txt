@@ -405,7 +405,6 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\a3ygkwa5zy-{0}-2z0ns9
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\nezrqnk58p-{0}-muycvpuwrr-muycvpuwrr.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v0zgfp0y55-{0}-87fc7y1x7t-87fc7y1x7t.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\yfc7ypekbg-{0}-mlv21k5csn-mlv21k5csn.gz
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v4bo1rkmam-{0}-oo6jbvaul4-oo6jbvaul4.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\ric45qga7u-{0}-61n19gt1b8-61n19gt1b8.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\p1wah9oy63-{0}-xtxxf3hu2r-xtxxf3hu2r.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\qhc1uttex2-{0}-t1cqhe9u97-t1cqhe9u97.gz
@@ -480,3 +479,4 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
+D:\PhonePalace\phonepalace.web\obj\Debug\net9.0\compressed\v4bo1rkmam-{0}-winz5n96v6-winz5n96v6.gz

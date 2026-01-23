@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
@@ -19,13 +20,16 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: /Products (MVC View)
-        public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? pageNumber)
+        public async Task<IActionResult> Index(string sortOrder, string currentFilter, string searchString, int? categoryId, int? pageNumber, int? pageSize)
         {
             ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["PriceSortParm"] = sortOrder == "Price" ? "price_desc" : "Price";
             ViewData["TypeSortParm"] = sortOrder == "Type" ? "type_desc" : "Type";
             ViewData["BrandSortParm"] = sortOrder == "Brand" ? "brand_desc" : "Brand";
+            ViewData["PageSize"] = pageSize ?? 10;
+            ViewData["CategoryID"] = new SelectList(_context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).AsNoTracking(), "CategoryID", "Name", categoryId);
+            ViewData["CurrentCategory"] = categoryId;
 
             if (searchString != null)
             {
@@ -40,6 +44,11 @@ namespace PhonePalace.Web.Controllers
 
             var productsQuery = _context.Products
                 .AsQueryable(); // Start with IQueryable
+
+            if (categoryId.HasValue)
+            {
+                productsQuery = productsQuery.Where(p => p.CategoryID == categoryId);
+            }
 
             var cellPhonesQuery = productsQuery.OfType<CellPhone>()
                 .Include(cp => cp.Model)
@@ -105,8 +114,7 @@ namespace PhonePalace.Web.Controllers
                 _ => combinedQuery.OrderBy(p => p.Name),
             };
 
-            int pageSize = 10;
-            var paginatedProducts = await PaginatedList<ProductIndexViewModel>.CreateAsync(combinedQuery.AsNoTracking(), pageNumber ?? 1, pageSize);
+            var paginatedProducts = await PaginatedList<ProductIndexViewModel>.CreateAsync(combinedQuery.AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
 
             return View(paginatedProducts);
         }

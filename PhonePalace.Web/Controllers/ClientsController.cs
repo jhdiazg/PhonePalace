@@ -24,7 +24,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Clients
-    public IActionResult Index(int? pageNumber)
+        public async Task<IActionResult> Index(int? pageNumber)
         {
             var clientsQuery = _context.Clients
                 .AsNoTracking()
@@ -32,21 +32,16 @@ namespace PhonePalace.Web.Controllers
                 {
                     ClientID = c.ClientID,
                     ClientType = c is NaturalPerson ? "Persona Natural" : "Persona Jurídica",
-                    DisplayName = c.DisplayName,
-                    Document = c is NaturalPerson ? ((NaturalPerson)c).DocumentNumber : ((LegalEntity)c).NIT,
+                    DisplayName = c is NaturalPerson ? ((NaturalPerson)c).FirstName + " " + ((NaturalPerson)c).LastName : (c is LegalEntity ? ((LegalEntity)c).CompanyName : ""),
+                    Document = c is NaturalPerson ? ((NaturalPerson)c).DocumentNumber ?? "" : (c is LegalEntity ? ((LegalEntity)c).NIT ?? "" : ""),
                     Email = c.Email,
                     PhoneNumber = c.PhoneNumber,
                     IsActive = c.IsActive
                 })
-                .AsEnumerable()
                 .OrderBy(c => c.IsActive)
                 .ThenBy(c => c.DisplayName);
-
             int pageSize = 10;
-            var clientList = clientsQuery.ToList();
-            var pageIndex = pageNumber ?? 1;
-            var pagedClients = clientList.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToList();
-            var paginated = new PaginatedList<ClientIndexViewModel>(pagedClients, clientList.Count, pageIndex, pageSize);
+            var paginated = await PaginatedList<ClientIndexViewModel>.CreateAsync(clientsQuery, pageNumber ?? 1, pageSize);
             return View(paginated);
         }
 
@@ -96,10 +91,10 @@ namespace PhonePalace.Web.Controllers
                 }
                 newClient = new NaturalPerson
                 {
-                    FirstName = viewModel.FirstName!,
-                    LastName = viewModel.LastName!,
+                    FirstName = viewModel.FirstName!.ToUpper(),
+                    LastName = viewModel.LastName!.ToUpper(),
                     DocumentType = viewModel.DocumentType!.Value,
-                    DocumentNumber = viewModel.DocumentNumber!
+                    DocumentNumber = viewModel.DocumentNumber!.ToUpper()
                 };
             }
             else if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
@@ -112,8 +107,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 newClient = new LegalEntity
                 {
-                    CompanyName = viewModel.CompanyName!,
-                    NIT = viewModel.NIT!
+                    CompanyName = viewModel.CompanyName!.ToUpper(),
+                    NIT = viewModel.NIT!.ToUpper()
                 };
             }
             else
@@ -129,7 +124,7 @@ namespace PhonePalace.Web.Controllers
             newClient.PhoneNumber = viewModel.PhoneNumber;
             newClient.DepartmentID = viewModel.DepartmentID;
             newClient.MunicipalityID = viewModel.MunicipalityID;
-            newClient.StreetAddress = viewModel.StreetAddress;
+            newClient.StreetAddress = viewModel.StreetAddress?.ToUpper();
             newClient.IsActive = true;
 
             _context.Add(newClient);
@@ -207,15 +202,15 @@ namespace PhonePalace.Web.Controllers
                 var clientToUpdate = await _context.NaturalPersons.FindAsync(id); // Simplificado
                 if (clientToUpdate == null) return NotFound();
 
-                clientToUpdate.FirstName = viewModel.FirstName;
-                clientToUpdate.LastName = viewModel.LastName;
+                clientToUpdate.FirstName = viewModel.FirstName?.ToUpper() ?? string.Empty;
+                clientToUpdate.LastName = viewModel.LastName?.ToUpper() ?? string.Empty;
                 clientToUpdate.DocumentType = viewModel.DocumentType;
-                clientToUpdate.DocumentNumber = viewModel.DocumentNumber;
+                clientToUpdate.DocumentNumber = viewModel.DocumentNumber?.ToUpper() ?? string.Empty;
                 clientToUpdate.Email = viewModel.Email;
                 clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                 clientToUpdate.DepartmentID = viewModel.DepartmentID;
                 clientToUpdate.MunicipalityID = viewModel.MunicipalityID;
-                clientToUpdate.StreetAddress = viewModel.StreetAddress; // Corregido
+                clientToUpdate.StreetAddress = viewModel.StreetAddress?.ToUpper(); // Corregido
                 clientToUpdate.IsActive = viewModel.IsActive;
 
                 try
@@ -256,13 +251,13 @@ namespace PhonePalace.Web.Controllers
                     var clientToUpdate = await _context.LegalEntities.FindAsync(id);
                     if (clientToUpdate == null) return NotFound();
 
-                    clientToUpdate.CompanyName = viewModel.CompanyName;
-                    clientToUpdate.NIT = viewModel.NIT;
+                    clientToUpdate.CompanyName = (viewModel.CompanyName ?? string.Empty).ToUpper();
+                    clientToUpdate.NIT = (viewModel.NIT ?? string.Empty).ToUpper();
                     clientToUpdate.Email = viewModel.Email;
                     clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                     clientToUpdate.DepartmentID = viewModel.DepartmentID;
                     clientToUpdate.MunicipalityID = viewModel.MunicipalityID;
-                    clientToUpdate.StreetAddress = viewModel.StreetAddress;
+                    clientToUpdate.StreetAddress = viewModel.StreetAddress?.ToUpper();
 
                     clientToUpdate.IsActive = viewModel.IsActive;
 

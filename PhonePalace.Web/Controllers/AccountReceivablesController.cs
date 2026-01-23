@@ -5,6 +5,7 @@ using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Web.ViewModels;
+using PhonePalace.Web.Helpers;
 using System.Security.Claims;
 
 namespace PhonePalace.Web.Controllers
@@ -22,8 +23,10 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? clientName, bool showPaid = false)
+        public async Task<IActionResult> Index(string? clientName, bool showPaid = false, int? pageNumber = null, int? pageSize = null)
         {
+            ViewData["PageSize"] = pageSize ?? 10;
+
             var query = _context.AccountReceivables
                 .Include(ar => ar.Client)
                 .AsQueryable();
@@ -38,12 +41,12 @@ namespace PhonePalace.Web.Controllers
                 query = query.Where(ar => ar.Client.DisplayName.Contains(clientName));
             }
 
-            var list = await query.OrderByDescending(ar => ar.Date).ToListAsync();
+            // Calcular totales antes de paginar
+            ViewBag.TotalReceivable = await query.Where(x => !x.IsPaid).SumAsync(x => x.Balance);
+
+            var list = await PaginatedList<AccountReceivable>.CreateAsync(query.OrderByDescending(ar => ar.Date).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
             ViewBag.ShowPaid = showPaid;
             ViewBag.ClientName = clientName;
-            
-            // Calcular totales
-            ViewBag.TotalReceivable = list.Where(x => !x.IsPaid).Sum(x => x.Balance);
 
             return View(list);
         }
@@ -69,7 +72,7 @@ namespace PhonePalace.Web.Controllers
                 }
                 else
                 {
-                    string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                     if (string.IsNullOrEmpty(userId))
                     {
                         return Unauthorized();
@@ -97,7 +100,7 @@ namespace PhonePalace.Web.Controllers
                         TotalAmount = model.Amount,
                         Balance = model.Amount,
                         Type = "Prestamo",
-                        Description = model.Description,
+                        Description = model.Description?.ToUpper(),
                         IsPaid = false
                     };
 
@@ -147,6 +150,10 @@ namespace PhonePalace.Web.Controllers
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
 
             // 1. Registrar Ingreso en Caja
             await _cashService.RegisterIncomeAsync(amount, $"Abono a CxC #{ar.AccountReceivableID} ({ar.Type})", userId, null);
@@ -158,7 +165,7 @@ namespace PhonePalace.Web.Controllers
                 AccountReceivable = ar,
                 Date = DateTime.Now,
                 Amount = amount,
-                Note = note
+                Note = note?.ToUpper()
             };
             _context.AccountReceivablePayments.Add(payment);
 

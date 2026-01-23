@@ -26,7 +26,7 @@ namespace PhonePalace.Web.Controllers
 
     [HttpGet]
     [Route("")]
-    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string? clientName)
+    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string? clientName, int? pageNumber, int? pageSize)
         {
             // Validaciones de fechas
             bool datesAdjusted = false;
@@ -56,6 +56,8 @@ namespace PhonePalace.Web.Controllers
                 });
             }
 
+            ViewData["PageSize"] = pageSize ?? 10;
+
             // Por defecto, mostrar solo ventas del día actual
             if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(clientName))
             {
@@ -83,10 +85,10 @@ namespace PhonePalace.Web.Controllers
                 salesQuery = salesQuery.Where(s => s.Client.DisplayName.Contains(clientName));
             }
 
-            var sales = await salesQuery.OrderByDescending(s => s.SaleDate).ToListAsync();
+            // Calcular total de la consulta antes de paginar
+            decimal total = await salesQuery.SumAsync(s => s.Invoice.Total);
 
-            // Calcular total de la consulta
-            decimal total = sales.Sum(s => s.Invoice?.Total ?? 0);
+            var sales = await PaginatedList<Sale>.CreateAsync(salesQuery.OrderByDescending(s => s.SaleDate).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
 
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
@@ -208,6 +210,9 @@ namespace PhonePalace.Web.Controllers
                 return View(viewModel);
             }
 
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
             // Calcular totales (El precio unitario YA INCLUYE IVA)
             decimal total = 0;
             if (viewModel.Details != null)
@@ -309,8 +314,8 @@ namespace PhonePalace.Web.Controllers
                         Quantity = detailVM.Quantity,
                         UnitPrice = detailVM.UnitPrice, // Usar el precio validado
                         Sale = sale,
-                        IMEI = detailVM.IMEI,
-                        Serial = detailVM.Serial
+                        IMEI = detailVM.IMEI?.ToUpper(),
+                        Serial = detailVM.Serial?.ToUpper()
                     };
                     sale.Details.Add(detail);
                 }
@@ -355,7 +360,15 @@ namespace PhonePalace.Web.Controllers
             }
             await _context.SaveChangesAsync();
 
+            await transaction.CommitAsync();
             return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                ModelState.AddModelError("", $"Error al procesar la venta: {ex.Message}");
+                return View(viewModel);
+            }
         }
 
         [HttpGet]

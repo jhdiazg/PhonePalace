@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using System.Linq;
+﻿﻿﻿﻿﻿﻿using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -82,7 +82,7 @@ namespace PhonePalace.Web.Controllers
             {
                 var model = new Model
                 {
-                    Name = viewModel.Name,
+                    Name = viewModel.Name.ToUpper(),
                     BrandID = viewModel.BrandID
                 };
                 _context.Add(model);
@@ -137,7 +137,7 @@ namespace PhonePalace.Web.Controllers
                     var modelToUpdate = await _context.Models.FindAsync(id);
                     if (modelToUpdate == null) return NotFound();
 
-                    modelToUpdate.Name = viewModel.Name;
+                    modelToUpdate.Name = viewModel.Name.ToUpper();
                     modelToUpdate.BrandID = viewModel.BrandID;
                     modelToUpdate.IsActive = viewModel.IsActive;
 

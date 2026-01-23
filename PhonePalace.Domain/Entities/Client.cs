@@ -32,6 +32,7 @@ namespace PhonePalace.Domain.Entities
         public virtual Municipality? Municipality { get; set; }
 
         // Propiedad de borrado lógico
+        [Display(Name = "Activo")]
         public bool IsActive { get; set; } = true;
 
         [NotMapped]

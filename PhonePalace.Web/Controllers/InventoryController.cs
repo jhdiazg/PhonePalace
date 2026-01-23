@@ -1,4 +1,5 @@
-﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.Helpers;
@@ -18,9 +19,26 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Inventario")]
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(string? searchString, int? categoryId, int? pageNumber, int? pageSize)
         {
-            var inventoryReportQuery = _context.Inventories
+            ViewData["PageSize"] = pageSize ?? 10;
+            ViewData["CurrentFilter"] = searchString;
+            ViewData["CategoryID"] = new SelectList(_context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).AsNoTracking(), "CategoryID", "Name", categoryId);
+            ViewData["CurrentCategory"] = categoryId;
+
+            var inventoryQuery = _context.Inventories.AsQueryable();
+
+            if (categoryId.HasValue)
+            {
+                inventoryQuery = inventoryQuery.Where(i => i.Product.CategoryID == categoryId);
+            }
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                inventoryQuery = inventoryQuery.Where(i => i.Product.Name.Contains(searchString) || (i.Product.SKU != null && i.Product.SKU.Contains(searchString)) || (i.Product.Code != null && i.Product.Code.Contains(searchString)));
+            }
+
+            var inventoryReportQuery = inventoryQuery
                 .Include(i => i.Product)
                 .Select(i => new PhonePalace.Web.ViewModels.InventoryReportItemViewModel
                 {
@@ -39,8 +57,7 @@ namespace PhonePalace.Web.Controllers
                 .OrderBy(item => item.ProductName)
                 .AsNoTracking();
 
-            int pageSize = 15;
-            var paginatedList = await PaginatedList<PhonePalace.Web.ViewModels.InventoryReportItemViewModel>.CreateAsync(inventoryReportQuery, pageNumber ?? 1, pageSize);
+            var paginatedList = await PaginatedList<PhonePalace.Web.ViewModels.InventoryReportItemViewModel>.CreateAsync(inventoryReportQuery, pageNumber ?? 1, pageSize ?? 10);
             return View(paginatedList);
         }
     }

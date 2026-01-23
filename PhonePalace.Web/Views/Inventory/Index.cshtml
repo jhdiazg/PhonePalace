@@ -7,6 +7,23 @@
 
 <h1>Gestión de Stock</h1>
 
+<form asp-action="Index" method="get" class="mb-4">
+    <div class="input-group">
+        <span class="input-group-text">Mostrar</span>
+        <select name="pageSize" class="form-select" style="max-width: 100px;" onchange="this.form.submit()">
+            @{ int pageSize = (int)(ViewData["PageSize"] ?? 10); }
+            <option value="10" selected="@(pageSize == 10)">10</option>
+            <option value="20" selected="@(pageSize == 20)">20</option>
+            <option value="50" selected="@(pageSize == 50)">50</option>
+            <option value="100" selected="@(pageSize == 100)">100</option>
+        </select>
+        <select name="categoryId" class="form-select" asp-items="ViewBag.CategoryID" onchange="this.form.submit()"><option value="">Todas las Categorías</option></select>
+        <input type="text" name="searchString" class="form-control" placeholder="Buscar por nombre, SKU o código..." value="@ViewData["CurrentFilter"]" />
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
+    </div>
+</form>
+
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -55,12 +72,18 @@
     }
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex - 1)"
+       asp-route-pageSize="@ViewData["PageSize"]"
+       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-categoryId="@ViewData["CurrentCategory"]"
        class="btn btn-secondary @prevDisabled">
         Anterior
     </a>
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex + 1)"
+       asp-route-pageSize="@ViewData["PageSize"]"
+       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-categoryId="@ViewData["CurrentCategory"]"
        class="btn btn-secondary @nextDisabled">
         Siguiente
     </a>

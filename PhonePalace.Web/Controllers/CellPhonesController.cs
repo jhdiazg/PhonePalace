@@ -1,4 +1,4 @@
-﻿﻿using PhonePalace.Web.Helpers;
+﻿﻿﻿﻿﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,8 +31,10 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: CellPhones
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
         {
+            ViewData["PageSize"] = pageSize ?? 10;
+
             var cellPhones = _context.CellPhones
                 .Include(c => c.Images)
                 .Include(c => c.Category)
@@ -40,8 +42,7 @@ namespace PhonePalace.Web.Controllers
                 .ThenInclude(m => m.Brand)
                 .AsNoTracking();
 
-            int pageSize = 10;
-            return View(await PaginatedList<CellPhone>.CreateAsync(cellPhones, pageNumber ?? 1, pageSize));
+            return View(await PaginatedList<CellPhone>.CreateAsync(cellPhones, pageNumber ?? 1, pageSize ?? 10));
         }
 
         // GET: CellPhones/Details/5
@@ -83,14 +84,14 @@ namespace PhonePalace.Web.Controllers
             {
                 var cellPhone = new CellPhone
                 {
-                    Name = viewModel.Name,
-                    Description = viewModel.Description,
+                    Name = viewModel.Name.ToUpper(),
+                    Description = viewModel.Description?.ToUpper(),
                     Price = viewModel.Price,
                     Cost = viewModel.Cost,
-                    SKU = viewModel.SKU,
+                    SKU = viewModel.SKU?.ToUpper(),
                     CategoryID = viewModel.CategoryID,
                     ModelID = viewModel.ModelID,
-                    Color = viewModel.Color,
+                    Color = viewModel.Color?.ToUpper(),
                     StorageGB = viewModel.StorageGB,
                     RamGB = viewModel.RamGB,
                     IsActive = viewModel.IsActive
@@ -182,14 +183,14 @@ namespace PhonePalace.Web.Controllers
                     if (cellPhone == null) return NotFound();
 
                     // Mapear propiedades
-                    cellPhone.Name = viewModel.Name;
-                    cellPhone.Description = viewModel.Description;
+                    cellPhone.Name = viewModel.Name.ToUpper();
+                    cellPhone.Description = viewModel.Description?.ToUpper();
                     cellPhone.Price = viewModel.Price;
                     cellPhone.Cost = viewModel.Cost;
-                    cellPhone.SKU = viewModel.SKU;
+                    cellPhone.SKU = viewModel.SKU?.ToUpper();
                     cellPhone.CategoryID = viewModel.CategoryID;
                     cellPhone.ModelID = viewModel.ModelID;
-                    cellPhone.Color = viewModel.Color!;
+                    cellPhone.Color = viewModel.Color?.ToUpper()!;
                     cellPhone.StorageGB = viewModel.StorageGB;
                     cellPhone.RamGB = viewModel.RamGB;
                     cellPhone.IsActive = viewModel.IsActive;

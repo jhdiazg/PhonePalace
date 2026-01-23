@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Domain.Entities;
+using PhonePalace.Domain.Enums;
+using PhonePalace.Web.Helpers;
 using PhonePalace.Web.ViewModels;
 using System.Security.Claims;
 using System.Threading.Tasks;
@@ -130,7 +132,7 @@ namespace PhonePalace.Web.Controllers
 
             try
             {
-                await _cashService.RegisterIncomeAsync(model.Amount, model.Description, userId);
+                await _cashService.RegisterIncomeAsync(model.Amount, (model.Description ?? string.Empty).ToUpper(), userId);
                 TempData["Success"] = "Ingreso registrado exitosamente.";
                 return RedirectToAction(nameof(Index));
             }
@@ -144,15 +146,17 @@ namespace PhonePalace.Web.Controllers
         [HttpGet]
         public IActionResult Expense()
         {
+            ViewBag.ExpenseTypes = EnumHelper.ToSelectList<ExpenseType>();
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Expense(CashMovementViewModel model)
+        public async Task<IActionResult> Expense(CashMovementViewModel model, ExpenseType expenseType)
         {
             if (!ModelState.IsValid)
             {
+                ViewBag.ExpenseTypes = EnumHelper.ToSelectList<ExpenseType>();
                 return View(model);
             }
 
@@ -165,13 +169,16 @@ namespace PhonePalace.Web.Controllers
 
             try
             {
-                await _cashService.RegisterExpenseAsync(model.Amount, model.Description, userId);
+                var typeName = EnumHelper.GetDisplayName(expenseType);
+                var fullDescription = $"{typeName}: {model.Description ?? string.Empty}".Trim();
+                await _cashService.RegisterExpenseAsync(model.Amount, fullDescription.ToUpper(), userId);
                 TempData["Success"] = "Egreso registrado exitosamente.";
                 return RedirectToAction(nameof(Index));
             }
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError("", ex.Message);
+                ViewBag.ExpenseTypes = EnumHelper.ToSelectList<ExpenseType>();
                 return View(model);
             }
         }

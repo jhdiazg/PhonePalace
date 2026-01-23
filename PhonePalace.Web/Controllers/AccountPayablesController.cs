@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Domain.Interfaces;
+using PhonePalace.Web.Helpers;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
@@ -20,10 +21,17 @@ namespace PhonePalace.Web.Controllers
             _auditService = auditService;
         }
 
-        public async Task<IActionResult> Index()
-        {   
-            var applicationDbContext = _context.AccountPayables.Include(a => a.Purchase).ThenInclude(p => p.Supplier);
-            return View(await applicationDbContext.ToListAsync());
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
+        {
+            ViewData["PageSize"] = pageSize ?? 10;
+
+            var accountPayablesQuery = _context.AccountPayables
+                .AsNoTracking() // Improves performance for read-only queries
+                .Include(a => a.Purchase!)
+                .ThenInclude(p => p!.Supplier);
+
+            var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderByDescending(a => a.CreatedDate), pageNumber ?? 1, pageSize ?? 10);
+            return View(accountPayables);
         }
 
         public async Task<IActionResult> Details(int? id)
@@ -32,7 +40,7 @@ namespace PhonePalace.Web.Controllers
 
             var accountPayable = await _context.AccountPayables
                 .Include(a => a.Purchase)
-                .ThenInclude(p => p.Supplier)
+                // .ThenInclude(p => p!.Supplier)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (accountPayable == null) return NotFound();
@@ -52,6 +60,7 @@ namespace PhonePalace.Web.Controllers
             // Regla de negocio: El estado inicial no puede ser Pagada
             accountPayable.IsPaid = false;
             accountPayable.CreatedDate = DateTime.Now;
+            accountPayable.DocumentNumber = accountPayable.DocumentNumber?.ToUpper();
 
             if (ModelState.IsValid)
             {
@@ -82,6 +91,7 @@ namespace PhonePalace.Web.Controllers
             {
                 try
                 {
+                    accountPayable.DocumentNumber = accountPayable.DocumentNumber?.ToUpper();
                     _context.Update(accountPayable);
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Cuentas por Pagar", $"Editó la cuenta por pagar #{accountPayable.Id}.");

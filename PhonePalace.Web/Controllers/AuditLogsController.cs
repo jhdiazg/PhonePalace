@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Authorization;
+﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -24,7 +24,7 @@ namespace PhonePalace.Web.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index(string? selectedModule, string? searchUser, DateTime? startDate, DateTime? endDate, int? page)
+        public async Task<IActionResult> Index(string? selectedModule, string? searchUser, DateTime? startDate, DateTime? endDate, int? page, int? pageSize)
         {
             // Validaciones de fechas
             bool datesAdjusted = false;
@@ -52,13 +52,15 @@ namespace PhonePalace.Web.Controllers
                     searchUser,
                     startDate = startDate?.ToString("yyyy-MM-dd"),
                     endDate = endDate?.ToString("yyyy-MM-dd"),
-                    page
+                    page,
+                    pageSize
                 });
             }
 
             // Define la página actual y el tamaño de la página
             var pageNumber = page ?? 1;
-            var pageSize = 15; // Puedes ajustar este número según tus necesidades
+            ViewData["PageSize"] = pageSize ?? 10;
+            var limit = pageSize ?? 10;
 
             var query = _context.AuditLogs.AsQueryable();
 
@@ -94,7 +96,7 @@ namespace PhonePalace.Web.Controllers
 
             var viewModel = new AuditLogIndexViewModel
             {
-                AuditLogs = await PaginatedList<AuditLog>.CreateAsync(query.OrderByDescending(log => log.Timestamp), pageNumber, pageSize),
+                AuditLogs = await PaginatedList<AuditLog>.CreateAsync(query.OrderByDescending(log => log.Timestamp), pageNumber, limit),
                 ModuleList = moduleList,
                 SelectedModule = selectedModule,
                 SearchUser = searchUser,

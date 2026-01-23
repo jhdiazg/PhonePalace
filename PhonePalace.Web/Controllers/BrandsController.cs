@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using System;
+﻿﻿﻿﻿﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -60,6 +60,7 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
+                brand.Name = (brand.Name ?? string.Empty).ToUpper();
                 _context.Add(brand);
                 await _context.SaveChangesAsync();
                 await _auditService.LogAsync("Marcas", $"Creó la marca '{brand.Name}' (ID: {brand.BrandID}).");
@@ -98,6 +99,7 @@ namespace PhonePalace.Web.Controllers
             {
                 try
                 {
+                    brand.Name = (brand.Name ?? string.Empty).ToUpper();
                     _context.Update(brand);
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Marcas", $"Editó la marca '{brand.Name}' (ID: {brand.BrandID}).");
