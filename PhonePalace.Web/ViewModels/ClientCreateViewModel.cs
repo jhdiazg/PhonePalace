@@ -32,8 +32,15 @@ namespace PhonePalace.Web.ViewModels
         [Display(Name = "Razón Social")]
         public string? CompanyName { get; set; }
         [Display(Name = "NIT")]
-        public string? NIT { get; set; }
+        [StringLength(9)]
+        [RegularExpression("^[0-9]+$", ErrorMessage = "El NIT debe contener solo números.")]
+        public string? NitNumber { get; set; }
 
+        [Display(Name = "Dígito Verificación")]
+        [StringLength(1)]
+        [RegularExpression("^[0-9]$", ErrorMessage = "El dígito de verificación debe ser un solo número.")]
+        public string? VerificationDigit { get; set; }
+        
         // --- Propiedades Comunes ---
         [EmailAddress]
         [Display(Name = "Correo Electrónico")]
@@ -65,8 +72,10 @@ namespace PhonePalace.Web.ViewModels
             {
                 if (string.IsNullOrWhiteSpace(CompanyName))
                     yield return new ValidationResult("La razón social es obligatoria.", new[] { nameof(CompanyName) });
-                if (string.IsNullOrWhiteSpace(NIT))
-                    yield return new ValidationResult("El NIT es obligatorio.", new[] { nameof(NIT) });
+                if (string.IsNullOrWhiteSpace(NitNumber))
+                    yield return new ValidationResult("El número de NIT es obligatorio.", new[] { nameof(NitNumber) });
+                if (string.IsNullOrWhiteSpace(VerificationDigit))
+                    yield return new ValidationResult("El dígito de verificación es obligatorio.", new[] { nameof(VerificationDigit) });
             }
         }
     }

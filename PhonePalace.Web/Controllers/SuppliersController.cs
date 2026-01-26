@@ -98,16 +98,32 @@ namespace PhonePalace.Web.Controllers
             }
             else if (viewModel.SupplierType == SupplierTypeSelection.LegalEntity)
             {
-                if (await _context.LegalEntitySuppliers.AnyAsync(s => s.NIT == viewModel.NIT!))
+                if (!string.IsNullOrEmpty(viewModel.NitNumber) && !string.IsNullOrEmpty(viewModel.VerificationDigit))
                 {
-                    ModelState.AddModelError("NIT", "Este NIT ya está registrado.");
+                    var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(viewModel.NitNumber);
+                    if (calculatedDv < 0 || calculatedDv.ToString() != viewModel.VerificationDigit)
+                    {
+                        ModelState.AddModelError("VerificationDigit", "El dígito de verificación no es válido para el NIT proporcionado.");
+                    }
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
+                    return View(viewModel);
+                }
+
+                var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
+                if (await _context.LegalEntitySuppliers.AnyAsync(s => s.NIT == fullNit))
+                {
+                    ModelState.AddModelError("NitNumber", "Este NIT ya está registrado.");
                     await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
                     return View(viewModel);
                 }
                 newSupplier = new LegalEntitySupplier
                 {
                     CompanyName = viewModel.CompanyName!.ToUpper(),
-                    NIT = viewModel.NIT!.ToUpper()
+                    NIT = fullNit.ToUpper()
                 };
             }
             else
@@ -162,11 +178,13 @@ namespace PhonePalace.Web.Controllers
 
             if (supplier is LegalEntitySupplier legalEntity)
             {
+                var nitParts = legalEntity.NIT?.Split('-');
                 var viewModel = new LegalEntitySupplierEditViewModel
                 {
                     SupplierID = legalEntity.SupplierID,
                     CompanyName = legalEntity.CompanyName,
-                    NIT = legalEntity.NIT,
+                    NitNumber = nitParts?.Length > 0 ? nitParts[0] : legalEntity.NIT,
+                    VerificationDigit = nitParts?.Length > 1 ? nitParts[1] : null,
                     Email = legalEntity.Email ?? string.Empty,
                     PhoneNumber = legalEntity.PhoneNumber ?? string.Empty,
                     DepartmentID = legalEntity.DepartmentID,
@@ -234,10 +252,22 @@ namespace PhonePalace.Web.Controllers
         {
             if (id != viewModel.SupplierID) return NotFound();
 
-            if (await _context.LegalEntitySuppliers.AnyAsync(s => s.NIT == viewModel.NIT && s.SupplierID != id))
+            if (!string.IsNullOrEmpty(viewModel.NitNumber) && !string.IsNullOrEmpty(viewModel.VerificationDigit))
             {
-                ModelState.AddModelError("NIT", "Este NIT ya está registrado para otro proveedor.");
+                var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(viewModel.NitNumber);
+                if (calculatedDv < 0 || calculatedDv.ToString() != viewModel.VerificationDigit)
+                {
+                    ModelState.AddModelError("VerificationDigit", "El dígito de verificación no es válido para el NIT proporcionado.");
+                }
             }
+
+            var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
+
+            if (await _context.LegalEntitySuppliers.AnyAsync(s => s.NIT == fullNit && s.SupplierID != id))
+            {
+                ModelState.AddModelError("NitNumber", "Este NIT ya está registrado para otro proveedor.");
+            }
+
 
             if (ModelState.IsValid)
             {
@@ -247,7 +277,7 @@ namespace PhonePalace.Web.Controllers
                     if (supplierToUpdate == null) return NotFound();
 
                     supplierToUpdate.CompanyName = viewModel.CompanyName?.ToUpper() ?? string.Empty;
-                    supplierToUpdate.NIT = viewModel.NIT?.ToUpper() ?? string.Empty;
+                    supplierToUpdate.NIT = fullNit.ToUpper();
                     supplierToUpdate.Email = viewModel.Email ?? string.Empty;
                     supplierToUpdate.PhoneNumber = viewModel.PhoneNumber ?? string.Empty;
                     supplierToUpdate.DepartmentID = viewModel.DepartmentID;

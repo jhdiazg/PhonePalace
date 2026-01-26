@@ -11,11 +11,16 @@ namespace PhonePalace.Web.ViewModels
         [Display(Name = "Razón Social")]
         public string? CompanyName { get; set; }
 
-        [Required]
-        [StringLength(20)]
-        [Display(Name = "NIT")]
-        public string? NIT { get; set; }
+        [Required(ErrorMessage = "El número de NIT es obligatorio.")]
+        [RegularExpression("^[0-9]+$", ErrorMessage = "El NIT debe contener solo números.")]
+        [Display(Name = "Número de NIT")]
+        public string? NitNumber { get; set; }
 
+        [Required(ErrorMessage = "El dígito de verificación es obligatorio.")]
+        [RegularExpression("^[0-9]$", ErrorMessage = "El dígito de verificación debe ser un solo número.")]
+        [Display(Name = "Dígito Verificación")]
+        public string? VerificationDigit { get; set; }
+        
         [EmailAddress]
         [StringLength(100)]
         [Display(Name = "Correo Electrónico")]

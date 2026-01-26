@@ -73,6 +73,18 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ClientCreateViewModel viewModel)
         {
+            if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
+            {
+                if (!string.IsNullOrEmpty(viewModel.NitNumber) && !string.IsNullOrEmpty(viewModel.VerificationDigit))
+                {
+                    var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(viewModel.NitNumber);
+                    if (calculatedDv < 0 || calculatedDv.ToString() != viewModel.VerificationDigit)
+                    {
+                        ModelState.AddModelError("VerificationDigit", "El dígito de verificación no es válido para el NIT proporcionado.");
+                    }
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID); // Corregido
@@ -99,16 +111,17 @@ namespace PhonePalace.Web.Controllers
             }
             else if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
             {
-                if (await _context.LegalEntities.AnyAsync(c => c.NIT == viewModel.NIT!))
+                var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
+                if (await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit))
                 {
-                    ModelState.AddModelError("NIT", "Este NIT ya está registrado.");
+                    ModelState.AddModelError("NitNumber", "Este NIT ya está registrado.");
                     await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
                     return View(viewModel);
                 }
                 newClient = new LegalEntity
                 {
                     CompanyName = viewModel.CompanyName!.ToUpper(),
-                    NIT = viewModel.NIT!.ToUpper()
+                    NIT = fullNit.ToUpper()
                 };
             }
             else
@@ -165,11 +178,13 @@ namespace PhonePalace.Web.Controllers
 
             if (client is LegalEntity legalEntity)
             {
+                var nitParts = legalEntity.NIT?.Split('-');
                 var viewModel = new LegalEntityEditViewModel
                 {
                     ClientID = legalEntity.ClientID,
                     CompanyName = legalEntity.CompanyName,
-                    NIT = legalEntity.NIT,
+                    NitNumber = nitParts?.Length > 0 ? nitParts[0] : legalEntity.NIT,
+                    VerificationDigit = nitParts?.Length > 1 ? nitParts[1] : null,
                     Email = legalEntity.Email,
                     PhoneNumber = legalEntity.PhoneNumber,
                     DepartmentID = legalEntity.DepartmentID,
@@ -238,11 +253,23 @@ namespace PhonePalace.Web.Controllers
         {
             if (id != viewModel.ClientID) return NotFound();
 
-            // Validar que el RUC sea único, excluyendo al cliente actual.
-            if (await _context.LegalEntities.AnyAsync(c => c.NIT == viewModel.NIT && c.ClientID != id))
+            if (!string.IsNullOrEmpty(viewModel.NitNumber) && !string.IsNullOrEmpty(viewModel.VerificationDigit))
             {
-                ModelState.AddModelError("NIT", "Este NIT ya está registrado para otro cliente.");
+                var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(viewModel.NitNumber);
+                if (calculatedDv < 0 || calculatedDv.ToString() != viewModel.VerificationDigit)
+                {
+                    ModelState.AddModelError("VerificationDigit", "El dígito de verificación no es válido para el NIT proporcionado.");
+                }
             }
+
+            var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
+
+            // Validar que el NIT sea único, excluyendo al cliente actual.
+            if (await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit && c.ClientID != id))
+            {
+                ModelState.AddModelError("NitNumber", "Este NIT ya está registrado para otro cliente.");
+            }
+
 
             if (ModelState.IsValid)
             {
@@ -252,7 +279,7 @@ namespace PhonePalace.Web.Controllers
                     if (clientToUpdate == null) return NotFound();
 
                     clientToUpdate.CompanyName = (viewModel.CompanyName ?? string.Empty).ToUpper();
-                    clientToUpdate.NIT = (viewModel.NIT ?? string.Empty).ToUpper();
+                    clientToUpdate.NIT = fullNit.ToUpper();
                     clientToUpdate.Email = viewModel.Email;
                     clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                     clientToUpdate.DepartmentID = viewModel.DepartmentID;

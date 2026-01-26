@@ -27,7 +27,12 @@ namespace PhonePalace.Web.ViewModels
         public string? CompanyName { get; set; }
 
         [Display(Name = "NIT")]
-        public string? NIT { get; set; }
+        [RegularExpression("^[0-9]+$", ErrorMessage = "El NIT debe contener solo números.")]
+        public string? NitNumber { get; set; }
+
+        [Display(Name = "Dígito Verificación")]
+        [RegularExpression("^[0-9]$", ErrorMessage = "El dígito de verificación debe ser un solo número.")]
+        public string? VerificationDigit { get; set; }
 
         // Common Properties
         [EmailAddress]
