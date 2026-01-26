@@ -188,7 +188,8 @@ namespace PhonePalace.Infrastructure.Services
             }
 
             var totalMovements = await _context.CashMovements
-                .Where(cm => cm.CashRegisterID == cashRegister.CashRegisterID)
+                .Where(cm => cm.CashRegisterID == cashRegister.CashRegisterID &&
+                       (cm.MovementType == CashMovementType.Income || cm.MovementType == CashMovementType.Expense))
                 .SumAsync(cm => cm.MovementType == CashMovementType.Income ? cm.Amount : -cm.Amount);
 
             return cashRegister.OpeningAmount + totalMovements;

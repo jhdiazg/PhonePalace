@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Localization;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
+using PhonePalace.Infrastructure.Configuration;
 using System.Globalization;
 
 
@@ -30,6 +31,9 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true; // Marcar la cookie de sesión como esencial para el funcionamiento.
 });
 // --- FIN: Configuración de Sesión ---
+
+// Configuración de Plemsi API
+builder.Services.Configure<PlemsiConfig>(builder.Configuration.GetSection("Plemsi"));
 
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>

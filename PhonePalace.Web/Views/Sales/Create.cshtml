@@ -1,9 +1,18 @@
 @model PhonePalace.Web.ViewModels.SaleCreateViewModel
 @using PhonePalace.Domain.Enums
 @using System.Text.Json
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Registrar Nueva Venta";
+}
+
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["Warning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 <form asp-action="Create" id="saleForm" novalidate>
@@ -21,21 +30,21 @@
                     <div class="row">
                         <div class="col-md-6 form-group">
                             <label asp-for="ClientID" class="control-label"></label>
-                            <select name="ClientID" class="form-control" asp-items="Model.Clients">
+                            <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
                                 <option value="">-- Seleccione un Cliente --</option>
                             </select>
                             <span asp-validation-for="ClientID" class="text-danger"></span>
                         </div>
                         <div class="col-md-6 form-group">
                             <label asp-for="SaleChannel" class="control-label"></label>
-                            <select name="SaleChannel" class="form-control" asp-items="Model.SaleChannels">
+                            <select asp-for="SaleChannel" class="form-control" asp-items="Model.SaleChannels">
                                 <option value="">-- Seleccione un Canal de Venta --</option>
                             </select>
                             <span asp-validation-for="SaleChannel" class="text-danger"></span>
                         </div>
                         <div class="col-md-6 form-group mt-3">
                             <label asp-for="SaleDate" class="control-label"></label>
-                            <input asp-for="SaleDate" class="form-control" readonly />
+                            <input asp-for="SaleDate" class="form-control" readonly type="date" />
                             <span asp-validation-for="SaleDate" class="text-danger"></span>
                         </div>
                     </div>
@@ -236,8 +245,32 @@
                 updateTotals();
             }
 
+            // Diccionario de métodos de pago para inicialización rápida
+            var paymentMethodEnum = {
+                @foreach(var val in Enum.GetValues(typeof(PaymentMethod)))
+                {
+                    <text>'@val.ToString()': '@EnumHelper.GetDisplayName((Enum)val)',</text>
+                }
+            };
+
+            // Inicializa pagos si vienen del modelo (en caso de error de validación)
+            var initialPayments = @Html.Raw(Json.Serialize(Model.Payments ?? new List<PhonePalace.Web.ViewModels.PaymentViewModel>()));
+            if (initialPayments && initialPayments.length > 0) {
+                initialPayments.forEach(function(p) {
+                    payments.push({
+                        method: p.PaymentMethod,
+                        methodText: paymentMethodEnum[p.PaymentMethod] || p.PaymentMethod,
+                        amount: p.Amount,
+                        reference: p.ReferenceNumber
+                    });
+                });
+                renderPayments(); 
+                // updateTotals() es llamado dentro de renderPayments()
+            }
+
             // Initialize Select2
             $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
+            $('#SaleChannel').select2({ placeholder: "-- Seleccione un Canal de Venta --", width: '100%' });
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
 
@@ -423,13 +456,11 @@
 
             // --- FORM SUBMISSION ---
             $('#saleForm').on('submit', function (e) {
-                console.log("Submit button clicked");
                 e.preventDefault();
 
                 const hiddenContainer = $('#hidden-inputs-container');
                 hiddenContainer.empty();
 
-                console.log("Products:", products);
                 if (products.length === 0) {
                     alert("Debe agregar al menos un producto a la venta.");
                     return;
@@ -443,32 +474,36 @@
                     if(p.serial) hiddenContainer.append(`<input type="hidden" name="Details[${index}].Serial" value="${p.serial}" />`);
                 });
 
-                console.log("Payments:", payments);
-                if (payments.length === 0) {
+                // Create a deep copy for manipulation to avoid altering the UI state on failed submission
+                let finalPayments = JSON.parse(JSON.stringify(payments));
+
+                if (finalPayments.length === 0) {
                     alert("Debe agregar al menos un método de pago a la venta.");
                     return;
                 }
 
                 // Ajustar dinámicamente el monto del último pago al balance
                 let total = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
-                let totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
+                let totalPaid = finalPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
                 let balance = total - totalPaid;
 
-                if (Math.abs(balance) > 0.01 && payments.length > 0) {
-                    payments[payments.length - 1].amount += balance;
-                    totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
-                    balance = total - totalPaid;
+                if (Math.abs(balance) > 0.01 && finalPayments.length > 0) {
+                    finalPayments[finalPayments.length - 1].amount += balance;
                 }
 
-                payments.filter(p => p.amount > 0).forEach((p, index) => {
+                // Filter out payments that are now zero or less and re-validate
+                finalPayments = finalPayments.filter(p => p.amount > 0.001);
+                if (finalPayments.length === 0) {
+                    alert("El total de los pagos es cero o negativo después del ajuste. Por favor, revise los montos de pago.");
+                    return;
+                }
+
+                finalPayments.forEach((p, index) => {
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].PaymentMethod" value="${p.method}" />`);
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].Amount" value="${p.amount}" />`);
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].ReferenceNumber" value="${p.reference || ''}" />`);
                 });
 
-                hiddenContainer.append('<input type="hidden" name="HasProducts" value="true" />');
-
-                console.log("Submitting form...");
                 this.submit();
             });
 

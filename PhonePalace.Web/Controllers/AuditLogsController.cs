@@ -1,10 +1,10 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Authorization;
+﻿﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Domain.Entities;
-using PhonePalace.Web.Models;
+using PhonePalace.Web.ViewModels;
 using System;
 using System.Linq;
 using System.Threading.Tasks;

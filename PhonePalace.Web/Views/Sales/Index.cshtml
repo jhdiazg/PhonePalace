@@ -1,4 +1,5 @@
 @model IEnumerable<PhonePalace.Domain.Entities.Sale>
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Ventas";
@@ -78,7 +79,7 @@
                             <td>@item.SaleID</td>
                             <td>@item.Client.DisplayName</td>
                             <td>@item.SaleDate.ToString("dd/MM/yyyy")</td>
-                            <td>@item.Invoice?.SaleChannel.ToString()</td>
+                            <td>@(item.Invoice != null ? EnumHelper.GetDisplayName(item.Invoice.SaleChannel) : "")</td>
                             <td>@String.Format("{0:C}", item.Invoice?.Total)</td>
                             <td class="text-end">
                                 <a asp-action="Details" asp-route-id="@item.SaleID" class="btn btn-sm btn-info">Detalles</a>

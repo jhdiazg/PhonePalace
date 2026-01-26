@@ -61,8 +61,18 @@ namespace PhonePalace.Web.Controllers
             // Por defecto, mostrar solo ventas del día actual
             if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(clientName))
             {
-                startDate = DateTime.Now.Date;
-                endDate = DateTime.Now.Date;
+                // Si hay una caja abierta, mostrar ventas de esa fecha de apertura por defecto
+                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                if (currentCash != null)
+                {
+                    startDate = currentCash.OpeningDate.Date;
+                    endDate = currentCash.OpeningDate.Date;
+                }
+                else
+                {
+                    startDate = DateTime.Now.Date;
+                    endDate = DateTime.Now.Date;
+                }
             }
 
             var salesQuery = _context.Sales
@@ -126,13 +136,22 @@ namespace PhonePalace.Web.Controllers
     [Route("Create")]
     public async Task<IActionResult> Create()
         {
+            // Validar que la caja esté abierta antes de permitir registrar venta
+            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+            if (currentCash == null)
+            {
+                TempData["Error"] = "La caja está cerrada. Debe abrirla para registrar ventas.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var viewModel = new ViewModels.SaleCreateViewModel();
             
             // Pre-llenar fecha con la fecha de apertura de caja
-            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-            if (currentCash != null)
+            viewModel.SaleDate = currentCash.OpeningDate;
+
+            if (currentCash.OpeningDate.Date != DateTime.Now.Date)
             {
-                viewModel.SaleDate = currentCash.OpeningDate;
+                TempData["Warning"] = $"ATENCIÓN: La caja tiene fecha de apertura del {currentCash.OpeningDate:dd/MM/yyyy}, que es diferente a la fecha actual. La venta quedará registrada con la fecha de la caja.";
             }
 
             // Inicializa dropdowns
@@ -196,14 +215,42 @@ namespace PhonePalace.Web.Controllers
             // Debug: Log payments
             TempData["Info"] = $"Payments: {string.Join(", ", viewModel.Payments?.Select(p => $"{p.PaymentMethod}:{p.Amount}") ?? new string[0])}";
 
-            if (!ModelState.IsValid || viewModel.ClientID == null)
+            if (viewModel.ClientID == null)
             {
                 ModelState.AddModelError("ClientID", "Debe seleccionar un cliente.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(viewModel);
+            }
+
+            // Validar que haya productos en la venta
+            if (viewModel.Details == null || !viewModel.Details.Any())
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un producto a la venta.");
+                return View(viewModel);
+            }
+
+            // Validar Stock Disponible antes de procesar
+            foreach (var detailVM in viewModel.Details)
+            {
+                var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detailVM.ProductID);
+                var product = await _context.Products.FindAsync(detailVM.ProductID);
+                
+                if (inventory == null || inventory.Stock < detailVM.Quantity)
+                {
+                    ModelState.AddModelError("", $"Stock insuficiente para el producto '{product?.Name ?? "Desconocido"}'. Disponible: {inventory?.Stock ?? 0}, Solicitado: {detailVM.Quantity}");
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
                 return View(viewModel);
             }
 
             // Obtener el cliente
-            var client = await _context.Clients.FindAsync(viewModel.ClientID.Value);
+            var client = await _context.Clients.FindAsync(viewModel.ClientID!.Value);
             if (client == null)
             {
                 ModelState.AddModelError("ClientID", "Cliente no encontrado.");
@@ -325,7 +372,11 @@ namespace PhonePalace.Web.Controllers
             await _context.SaveChangesAsync();
 
             // --- INICIO: Generar Cuenta por Cobrar si hay saldo ---
-            decimal totalPaid = viewModel.Payments?.Sum(p => p.Amount) ?? 0;
+            // Excluir pagos de tipo "Credit" (Crédito) del cálculo de lo pagado, 
+            // para que se genere la cuenta por cobrar por ese monto.
+            decimal totalPaid = viewModel.Payments?
+                .Where(p => p.PaymentMethod != PaymentMethod.Credit.ToString())
+                .Sum(p => p.Amount) ?? 0;
             decimal balance = total - totalPaid;
 
             if (balance > 0.01m)
@@ -352,10 +403,15 @@ namespace PhonePalace.Web.Controllers
             foreach (var detail in sale.Details)
             {
                 var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
-                if (inventory != null && inventory.Stock >= detail.Quantity)
+                if (inventory != null)
                 {
                     inventory.Stock -= detail.Quantity;
                     _context.Update(inventory);
+                }
+                else
+                {
+                    // Esto no debería ocurrir gracias a la validación previa, pero es bueno tenerlo controlado
+                    throw new Exception($"Error crítico: No se encontró inventario para el producto {detail.ProductID} al finalizar la venta.");
                 }
             }
             await _context.SaveChangesAsync();
