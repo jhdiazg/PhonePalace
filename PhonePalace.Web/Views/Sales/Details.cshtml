@@ -1,4 +1,5 @@
 @model PhonePalace.Domain.Entities.Sale
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Detalles de Venta";
@@ -97,7 +98,7 @@
                         @foreach (var payment in Model.Invoice.Payments)
                         {
                             <tr>
-                                <td>@payment.PaymentMethod.ToString()</td>
+                                <td>@EnumHelper.GetDisplayName(payment.PaymentMethod)</td>
                                 <td>@String.Format("{0:C}", payment.Amount)</td>
                                 <td>@(payment.ReferenceNumber ?? "N/A")</td>
                             </tr>

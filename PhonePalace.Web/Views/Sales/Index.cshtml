@@ -26,17 +26,25 @@
     </div>
 }
 
+
+
 <div class="card shadow-sm mb-4">
+    
     <div class="card-header">
         <h5 class="mb-0">Filtros</h5>
     </div>
     <div class="card-body">
         <form asp-action="Index" method="get" class="row g-3 align-items-end">
-            <div class="col-md-3">
+            @* --- INICIO: Integración del selector de tamaño de página --- *@
+            <div class="col-md-2">
+                <partial name="_PageSizeSelector" model='(int?)ViewData["PageSize"]' />
+            </div>
+            @* --- FIN: Integración del selector de tamaño de página --- *@       
+            <div class="col-md-2">
                 <label class="form-label">Fecha Inicio</label>
                 <input type="date" name="startDate" value="@ViewData["StartDate"]" class="form-control" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Fecha Fin</label>
                 <input type="date" name="endDate" value="@ViewData["EndDate"]" class="form-control" />
             </div>

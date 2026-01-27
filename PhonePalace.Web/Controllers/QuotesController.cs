@@ -10,6 +10,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -17,11 +20,15 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IConfiguration config, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
             _userManager = userManager;
+            _config = config;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // GET: Quotes
@@ -49,6 +56,10 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
+            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+            ViewBag.TaxRate = taxRate;
+
             return View(quote);
         }
 
@@ -62,6 +73,7 @@ namespace PhonePalace.Web.Controllers
                 QuoteDate = DateTime.Today,
                 ExpirationDate = DateTime.Today.AddDays(7)
             };
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -70,6 +82,11 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(QuoteCreateViewModel viewModel)
         {
+            if (viewModel.Details == null || !viewModel.Details.Any())
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un producto a la cotización.");
+            }
+
             if (ModelState.IsValid)
             {
                 var client = await _context.Clients.FindAsync(viewModel.ClientID);
@@ -78,6 +95,7 @@ namespace PhonePalace.Web.Controllers
                     ModelState.AddModelError("", $"Cliente con ID {viewModel.ClientID} no encontrado.");
                     viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
                     viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+                    ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
                     return View(viewModel);
                 }
 
@@ -100,6 +118,7 @@ namespace PhonePalace.Web.Controllers
                         // Re-populate SelectLists before returning view
                         viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
                         viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+                        ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
                         return View(viewModel);
                     }
 
@@ -113,10 +132,14 @@ namespace PhonePalace.Web.Controllers
                     });
                 }
 
-                // Calculate Total (Subtotal + Tax) - Assuming 0 tax for now
-                quote.Subtotal = quote.Details.Sum(d => d.Quantity * d.UnitPrice);
-                quote.Tax = 0; // Implement tax calculation if needed
-                quote.Total = quote.Subtotal + quote.Tax;
+                // Calculate Total (Subtotal + Tax)
+                var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+                if (taxRate > 1) taxRate /= 100;
+
+                // Asumimos que el precio unitario ya incluye IVA (igual que en Ventas)
+                quote.Total = quote.Details.Sum(d => d.Quantity * d.UnitPrice);
+                quote.Subtotal = quote.Total / (1 + taxRate);
+                quote.Tax = quote.Total - quote.Subtotal;
 
                 _context.Add(quote);
                 await _context.SaveChangesAsync();
@@ -134,6 +157,7 @@ namespace PhonePalace.Web.Controllers
 
             viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
             viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -145,21 +169,42 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            var quote = await _context.Quotes.FindAsync(id);
+            var quote = await _context.Quotes
+                .Include(q => q.Details)
+                .FirstOrDefaultAsync(q => q.QuoteID == id);
+
             if (quote == null)
             {
                 return NotFound();
             }
-            ViewData["ClientID"] = new SelectList(_context.Clients, "ClientID", "DisplayName", quote.ClientID);
-            return View(quote);
+
+            var viewModel = new QuoteEditViewModel
+            {
+                QuoteID = quote.QuoteID,
+                ClientID = quote.ClientID,
+                QuoteDate = quote.QuoteDate,
+                ExpirationDate = quote.ExpirationDate,
+                Status = quote.Status,
+                Details = quote.Details.Select(d => new QuoteDetailViewModel 
+                {
+                    ProductID = d.ProductID,
+                    Quantity = d.Quantity,
+                    UnitPrice = d.UnitPrice
+                }).ToList(),
+                Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", quote.ClientID),
+                Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name")
+            };
+
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            return View(viewModel);
         }
 
         // POST: Quotes/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("QuoteID,QuoteDate,ClientID,Total")] Quote quote)
+        public async Task<IActionResult> Edit(int id, QuoteEditViewModel viewModel)
         {
-            if (id != quote.QuoteID)
+            if (id != viewModel.QuoteID)
             {
                 return NotFound();
             }
@@ -168,12 +213,49 @@ namespace PhonePalace.Web.Controllers
             {
                 try
                 {
+                    var quote = await _context.Quotes.Include(q => q.Details).FirstOrDefaultAsync(q => q.QuoteID == id);
+                    if (quote == null) return NotFound();
+
+                    quote.ClientID = viewModel.ClientID;
+                    quote.QuoteDate = viewModel.QuoteDate;
+                    quote.ExpirationDate = viewModel.ExpirationDate;
+
+                    // Actualizar detalles: Limpiar existentes y agregar nuevos
+                    quote.Details.Clear();
+                    if (viewModel.Details != null)
+                    {
+                        foreach (var detail in viewModel.Details)
+                        {
+                            var product = await _context.Products.FindAsync(detail.ProductID);
+                            if (product != null)
+                            {
+                                quote.Details.Add(new QuoteDetail
+                                {
+                                    QuoteID = quote.QuoteID,
+                                    Quote = quote,
+                                    ProductID = detail.ProductID,
+                                    Quantity = detail.Quantity,
+                                    UnitPrice = detail.UnitPrice,
+                                    Product = product
+                                });
+                            }
+                        }
+                    }
+
+                    // Recalcular totales
+                    var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+                    if (taxRate > 1) taxRate /= 100;
+
+                    quote.Total = quote.Details.Sum(d => d.Quantity * d.UnitPrice);
+                    quote.Subtotal = quote.Total / (1 + taxRate);
+                    quote.Tax = quote.Total - quote.Subtotal;
+
                     _context.Update(quote);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!QuoteExists(quote.QuoteID))
+                    if (!QuoteExists(viewModel.QuoteID))
                     {
                         return NotFound();
                     }
@@ -184,8 +266,11 @@ namespace PhonePalace.Web.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["ClientID"] = new SelectList(_context.Clients, "ClientID", "DisplayName", quote.ClientID);
-            return View(quote);
+            
+            viewModel.Clients = new SelectList(await _context.Clients.ToListAsync(), "ClientID", "DisplayName", viewModel.ClientID);
+            viewModel.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            return View(viewModel);
         }
 
         // GET: Quotes/Delete/5
@@ -275,6 +360,35 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
             return Json(new { price = product.Price });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GeneratePdf(int id)
+        {
+            var quote = await _context.Quotes
+                .Include(q => q.Client)
+                .Include(q => q.Details)
+                .ThenInclude(qd => qd.Product)
+                .FirstOrDefaultAsync(m => m.QuoteID == id);
+
+            if (quote == null)
+            {
+                return NotFound();
+            }
+
+            string wwwRootPath = _webHostEnvironment.WebRootPath;
+            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_pdf.jpg");
+            byte[] logoBytes = Array.Empty<byte>();
+
+            if (System.IO.File.Exists(logoPath))
+            {
+                logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
+            }
+
+            var pdfGenerator = new PhonePalace.Web.Documents.QuotePdfDocument(quote, logoBytes);
+            var pdfBytes = pdfGenerator.GeneratePdf();
+
+            return File(pdfBytes, "application/pdf", $"Cotizacion-{id}.pdf");
         }
     }
 }

@@ -1,194 +1,206 @@
 @model PhonePalace.Web.ViewModels.QuoteCreateViewModel
 
 @{
-    ViewData["Title"] = "Crear Nueva Cotización";
+    ViewData["Title"] = "Crear Cotización";
 }
 
 <h1>@ViewData["Title"]</h1>
-<hr />
 
-<form asp-action="Create">
+<form asp-action="Create" id="quoteForm">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div id="hidden-inputs-container"></div>
 
     <div class="row">
-        <div class="col-md-4 mb-3">
-            <label asp-for="ClientID" class="form-label"></label>
-            <select asp-for="ClientID" class="form-select" asp-items="Model.Clients">
-                <option value="">-- Seleccione un Cliente --</option>
-            </select>
-            <span asp-validation-for="ClientID" class="text-danger"></span>
+        <div class="col-md-6">
+            <div class="form-group mb-3">
+                <label asp-for="ClientID" class="control-label">Cliente</label>
+                <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
+                    <option value="">-- Seleccione un Cliente --</option>
+                </select>
+                <span asp-validation-for="ClientID" class="text-danger"></span>
+            </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="QuoteDate" class="form-label"></label>
-            <input asp-for="QuoteDate" class="form-control" />
-            <span asp-validation-for="QuoteDate" class="text-danger"></span>
+        <div class="col-md-3">
+            <div class="form-group mb-3">
+                <label asp-for="QuoteDate" class="control-label">Fecha</label>
+                <input asp-for="QuoteDate" class="form-control" type="date" />
+                <span asp-validation-for="QuoteDate" class="text-danger"></span>
+            </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <label asp-for="ExpirationDate" class="form-label"></label>
-            <input asp-for="ExpirationDate" class="form-control" />
-            <span asp-validation-for="ExpirationDate" class="text-danger"></span>
+        <div class="col-md-3">
+            <div class="form-group mb-3">
+                <label asp-for="ExpirationDate" class="control-label">Vencimiento</label>
+                <input asp-for="ExpirationDate" class="form-control" type="date" />
+                <span asp-validation-for="ExpirationDate" class="text-danger"></span>
+            </div>
         </div>
     </div>
 
-    <h4 class="mt-4">Detalles de la Cotización</h4>
-    <hr />
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Productos</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-5 form-group mb-3">
+                    <label for="product-select">Producto</label>
+                    <select id="product-select" class="form-control">
+                        <option value="">-- Seleccione un Producto --</option>
+                        @foreach (var product in ViewBag.AllProducts)
+                        {
+                            <option value="@product.ProductID" data-price="@product.Price">@product.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 form-group mb-3">
+                    <label for="price-input">Precio Unit.</label>
+                    <input type="number" id="price-input" class="form-control" min="0" step="0.01" />
+                </div>
+                <div class="col-md-2 form-group mb-3">
+                    <label for="quantity-input">Cantidad</label>
+                    <input type="number" id="quantity-input" class="form-control" value="1" min="1" />
+                </div>
+                <div class="col-md-2 form-group mb-3">
+                    <button type="button" id="add-product-btn" class="btn btn-success w-100">Agregar</button>
+                </div>
+            </div>
 
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th style="width: 100px;">Cantidad</th>
-                <th style="width: 150px;">Precio Unit.</th>
-                <th style="width: 150px;">Subtotal</th>
-                <th style="width: 50px;"></th>
-            </tr>
-        </thead>
-        <tbody id="quote-details-body">
-            @* Las filas de detalles se agregarán aquí dinámicamente *@
-        </tbody>
-        <tfoot>
-            <tr>
-                <th colspan="2"></th>
-                <th class="text-end">Total:</th>
-                <th id="grand-total" class="fw-bold"></th>
-                <th></th>
-            </tr>
-        </tfoot>
-    </table>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unit.</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-details-body">
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold">Total:</td>
+                            <td id="total-display" class="fw-bold">$0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    <button type="button" id="add-product-btn" class="btn btn-success mb-3">
-        <i class="bi bi-plus-circle"></i> Añadir Producto
-    </button>
-
-    <div class="form-group mt-4">
-        <input type="submit" value="Crear Cotización" class="btn btn-primary" />
+    <div class="form-group">
+        <input type="submit" value="Guardar Cotización" class="btn btn-primary" />
         <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
     </div>
 </form>
 
-<!-- Plantilla para nuevas filas de detalles (oculta) -->
-<table class="d-none">
-    <tbody id="detail-row-template">
-        <tr>
-            <td>
-                <input type="text" class="form-control product-name-display" data-name="ProductName" readonly />
-            </td>
-            <td>
-                <input type="number" value="1" min="1" class="form-control quantity-input" data-name="Quantity" />
-            </td>
-            <td>
-                <input type="number" step="0.01" class="form-control price-input" data-name="UnitPrice" />
-            </td>
-            <td>
-                <input type="text" class="form-control subtotal-display" readonly />
-            </td>
-            <td>
-                <button type="button" class="btn btn-danger btn-sm delete-row-btn">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </td>
-        </tr>
-    </tbody>
-</table>
-
-
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const addProductBtn = document.getElementById('add-product-btn');
-            const detailsBody = document.getElementById('quote-details-body');
-            const template = document.getElementById('detail-row-template').querySelector('tr');
-            const grandTotalEl = document.getElementById('grand-total');
+        $(document).ready(function () {
+            // Inicializar Select2
+            $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
+            $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
 
-            const currencyFormatter = new Intl.NumberFormat('es-DO', {
-                style: 'currency',
-                currency: 'DOP'
+            let products = [];
+
+            // Actualizar precio al seleccionar producto
+            $('#product-select').on('change', function () {
+                var selectedOption = $(this).find('option:selected');
+                var price = selectedOption.data('price');
+                if (price) {
+                    $('#price-input').val(price);
+                } else {
+                    $('#price-input').val('');
+                }
             });
 
-            function formatCurrency(value) {
-                return currencyFormatter.format(value || 0);
-            }
+            // Agregar producto
+            $('#add-product-btn').click(function () {
+                var productId = $('#product-select').val();
+                var productName = $('#product-select option:selected').text();
+                var price = parseFloat($('#price-input').val());
+                var quantity = parseInt($('#quantity-input').val());
 
-            addProductBtn.addEventListener('click', addProductRow);
+                if (!productId || isNaN(price) || isNaN(quantity) || quantity <= 0) {
+                    alert('Por favor seleccione un producto y verifique precio y cantidad.');
+                    return;
+                }
 
-            function addProductRow() {
-                const newRow = template.cloneNode(true);
-                detailsBody.appendChild(newRow);
-                attachRowEventListeners(newRow);
-                reindexRows();
-            }
-
-            function reindexRows() {
-                const rows = detailsBody.querySelectorAll('tr');
-                rows.forEach((row, index) => {
-                    row.querySelectorAll('input, select').forEach(input => {
-                        const propertyName = input.dataset.name;
-                        if (propertyName) {
-                            input.name = `Details[${index}].${propertyName}`;
-                        }
+                // Verificar si ya existe
+                var existing = products.find(p => p.productId === productId);
+                if (existing) {
+                    existing.quantity += quantity;
+                    // existing.price = price; // Opcional: actualizar precio
+                } else {
+                    products.push({
+                        productId: productId,
+                        productName: productName,
+                        price: price,
+                        quantity: quantity
                     });
+                }
+
+                renderTable();
+                
+                // Reset inputs
+                $('#product-select').val('').trigger('change');
+                $('#quantity-input').val(1);
+                $('#price-input').val('');
+            });
+
+            // Eliminar producto
+            $(document).on('click', '.remove-btn', function () {
+                var index = $(this).data('index');
+                products.splice(index, 1);
+                renderTable();
+            });
+
+            function renderTable() {
+                var tbody = $('#product-details-body');
+                tbody.empty();
+                var total = 0;
+
+                products.forEach(function (p, index) {
+                    var subtotal = p.price * p.quantity;
+                    total += subtotal;
+
+                    var row = `<tr>
+                        <td>${p.productName}</td>
+                        <td>${p.quantity}</td>
+                        <td>${formatCurrency(p.price)}</td>
+                        <td>${formatCurrency(subtotal)}</td>
+                        <td><button type="button" class="btn btn-danger btn-sm remove-btn" data-index="${index}">Eliminar</button></td>
+                    </tr>`;
+                    tbody.append(row);
                 });
-                updateGrandTotal();
+
+                $('#total-display').text(formatCurrency(total));
             }
 
-            function attachRowEventListeners(row) {
-                row.querySelector('.delete-row-btn').addEventListener('click', function () {
-                    row.remove();
-                    reindexRows();
-                });
-
-                const productSelect = row.querySelector('.product-select');
-                const priceInput = row.querySelector('.price-input');
-                const quantityInput = row.querySelector('.quantity-input');
-
-                productSelect.addEventListener('change', function () {
-                    const productId = this.value;
-                    if (productId) {
-                        fetch(`@Url.Action("GetProductPrice", "Quotes")?productId=${productId}`)
-                            .then(response => {
-                                if (!response.ok) throw new Error('Network response was not ok');
-                                return response.json();
-                            })
-                            .then(data => {
-                                priceInput.value = data.price.toFixed(2);
-                                updateSubtotal(row);
-                            })
-                            .catch(error => console.error('Error al obtener el precio:', error));
-                    } else {
-                        priceInput.value = '';
-                        updateSubtotal(row);
-                    }
-                });
-
-                quantityInput.addEventListener('input', () => updateSubtotal(row));
-                priceInput.addEventListener('input', () => updateSubtotal(row));
+            function formatCurrency(value) {
+                return '$' + value.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
             }
 
-            function updateSubtotal(row) {
-                const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
-                const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                const subtotal = quantity * price;
-                row.querySelector('.subtotal-display').value = formatCurrency(subtotal);
-                updateGrandTotal();
-            }
+            // Submit form
+            $('#quoteForm').submit(function (e) {
+                var container = $('#hidden-inputs-container');
+                container.empty();
 
-            function updateGrandTotal() {
-                let grandTotal = 0;
-                const rows = detailsBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const quantity = parseFloat(row.querySelector('.quantity-input').value) || 0;
-                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                    grandTotal += quantity * price;
+                if (products.length === 0) {
+                    e.preventDefault();
+                    alert('Debe agregar al menos un producto a la cotización.');
+                    return false;
+                }
+
+                products.forEach(function (p, index) {
+                    container.append(`<input type="hidden" name="Details[${index}].ProductID" value="${p.productId}" />`);
+                    container.append(`<input type="hidden" name="Details[${index}].Quantity" value="${p.quantity}" />`);
+                    container.append(`<input type="hidden" name="Details[${index}].UnitPrice" value="${p.price}" />`);
                 });
-                grandTotalEl.textContent = formatCurrency(grandTotal);
-            }
-
-            // Añadir una fila inicial al cargar la página
-            addProductRow();
-            updateGrandTotal(); // Inicializa el total
+            });
         });
     </script>
 }

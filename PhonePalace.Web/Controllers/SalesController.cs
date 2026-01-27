@@ -92,7 +92,12 @@ namespace PhonePalace.Web.Controllers
 
             if (!string.IsNullOrEmpty(clientName))
             {
-                salesQuery = salesQuery.Where(s => s.Client.DisplayName.Contains(clientName));
+                salesQuery = salesQuery.Where(s => 
+                    (s.Client is NaturalPerson && (
+                        ((NaturalPerson)s.Client).FirstName.Contains(clientName) || 
+                        ((NaturalPerson)s.Client).LastName.Contains(clientName) ||
+                        (((NaturalPerson)s.Client).FirstName + " " + ((NaturalPerson)s.Client).LastName).Contains(clientName))) ||
+                    (s.Client is LegalEntity && ((LegalEntity)s.Client).CompanyName.Contains(clientName)));
             }
 
             // Calcular total de la consulta antes de paginar

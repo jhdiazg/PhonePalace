@@ -33,6 +33,26 @@ namespace PhonePalace.Web.Controllers
         [Route("Compras")]
         public async Task<IActionResult> Index(string? searchString, DateTime? startDate, DateTime? endDate, PurchaseStatus? status, int? pageNumber, int? pageSize)
         {
+            // 1. Validaciones de fechas (Servidor)
+            bool datesAdjusted = false;
+            if (startDate.HasValue && startDate.Value.Date > DateTime.Now.Date)
+            {
+                startDate = DateTime.Now.Date;
+                datesAdjusted = true;
+            }
+            if (endDate.HasValue && startDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            {
+                endDate = startDate;
+                datesAdjusted = true;
+            }
+
+            if (datesAdjusted)
+            {
+                TempData["Info"] = "Las fechas han sido ajustadas para cumplir con las validaciones.";
+                return RedirectToAction("Index", new { searchString, startDate = startDate?.ToString("yyyy-MM-dd"), endDate = endDate?.ToString("yyyy-MM-dd"), status, pageNumber, pageSize });
+            }
+
+            ViewData["SearchString"] = searchString;
             ViewData["CurrentFilter"] = searchString;
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
@@ -43,12 +63,33 @@ namespace PhonePalace.Web.Controllers
                 .Include(p => p.Supplier)
                 .AsQueryable();
 
+            // Valores por defecto: Si no hay filtros, usar fecha actual
+            if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(searchString) && !status.HasValue)
+            {
+                startDate = DateTime.Now.Date;
+                endDate = DateTime.Now.Date;
+                ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
+                ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
+            }
+
             if (!string.IsNullOrEmpty(searchString))
             {
+                searchString = searchString.Trim();
+                bool isNumeric = int.TryParse(searchString, out int searchId);
+
                 purchasesQuery = purchasesQuery.Where(p => 
-                    (p.Supplier is NaturalPersonSupplier && (((NaturalPersonSupplier)p.Supplier).FirstName + " " + ((NaturalPersonSupplier)p.Supplier).LastName).Contains(searchString)) ||
-                    (p.Supplier is LegalEntitySupplier && ((LegalEntitySupplier)p.Supplier).CompanyName.Contains(searchString)) ||
-                    p.Id.ToString().Contains(searchString));
+                    (isNumeric && p.Id == searchId) ||
+                    p.Id.ToString().Contains(searchString) ||
+                    (p.Supplier is NaturalPersonSupplier && (
+                        ((NaturalPersonSupplier)p.Supplier).FirstName.Contains(searchString) || 
+                        ((NaturalPersonSupplier)p.Supplier).LastName.Contains(searchString) ||
+                        ((NaturalPersonSupplier)p.Supplier).DocumentNumber.Contains(searchString) ||
+                        (((NaturalPersonSupplier)p.Supplier).FirstName + " " + ((NaturalPersonSupplier)p.Supplier).LastName).Contains(searchString))) ||
+                    (p.Supplier is LegalEntitySupplier && (
+                        ((LegalEntitySupplier)p.Supplier).CompanyName.Contains(searchString) ||
+                        ((LegalEntitySupplier)p.Supplier).NIT.Contains(searchString))) ||
+                    (p.SupplierInvoiceNumber != null && p.SupplierInvoiceNumber.Contains(searchString))
+                );
             }
 
             if (startDate.HasValue)

@@ -1,0 +1,17 @@
+@model int?
+
+@{
+    var currentPageSize = Model ?? 10;
+    var sizeOptions = new[] { 10, 25, 50, 100 };
+}
+
+<div class="d-flex align-items-center">
+    <label for="pageSize" class="me-2 mb-0 text-nowrap">Mostrar</label>
+    <select id="pageSize" name="pageSize" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+        @foreach (var size in sizeOptions)
+        {
+            <option value="@size" selected="@(currentPageSize == size)">@size</option>
+        }
+    </select>
+    <span class="ms-2">registros</span>
+</div>

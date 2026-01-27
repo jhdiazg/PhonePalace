@@ -7,6 +7,7 @@ using PhonePalace.Domain.Interfaces;
 using PhonePalace.Web.ViewModels;
 using PhonePalace.Web.Helpers;
 using System.Security.Claims;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -15,11 +16,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
+        private readonly IAuditService _auditService;
 
-        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService)
+        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService, IAuditService auditService)
         {
             _context = context;
             _cashService = cashService;
+            _auditService = auditService;
         }
 
         [HttpGet]
@@ -125,12 +128,14 @@ namespace PhonePalace.Web.Controllers
 
             if (ar == null) return NotFound();
 
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+
             return View(ar);
         }
 
         [HttpPost("AddPayment")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPayment(int id, decimal amount, string note)
+        public async Task<IActionResult> AddPayment(int id, decimal amount, string note, PaymentMethod paymentMethod)
         {
             var ar = await _context.AccountReceivables.FindAsync(id);
             if (ar == null) return NotFound();
@@ -141,31 +146,35 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // Validar caja
-            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-            if (currentCash == null)
-            {
-                TempData["Error"] = "Debe abrir la caja para recibir abonos.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized();
             }
 
-            // 1. Registrar Ingreso en Caja
-            await _cashService.RegisterIncomeAsync(amount, $"Abono a CxC #{ar.AccountReceivableID} ({ar.Type})", userId, null);
+            // 1. Validar caja y Registrar Ingreso solo si es Efectivo
+            if (paymentMethod == PaymentMethod.Cash)
+            {
+                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                if (currentCash == null)
+                {
+                    TempData["Error"] = "Debe abrir la caja para recibir abonos en efectivo.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+                await _cashService.RegisterIncomeAsync(amount, $"Abono a CxC #{ar.AccountReceivableID} ({ar.Type})", userId, null);
+            }
 
             // 2. Registrar Pago en Historial
+            string methodDesc = EnumHelper.GetDisplayName(paymentMethod);
+            string finalNote = string.IsNullOrEmpty(note) ? $"[{methodDesc}]" : $"[{methodDesc}] {note.ToUpper()}";
+
             var payment = new AccountReceivablePayment
             {
                 AccountReceivableID = ar.AccountReceivableID,
                 AccountReceivable = ar,
                 Date = DateTime.Now,
                 Amount = amount,
-                Note = note?.ToUpper()
+                Note = finalNote
             };
             _context.AccountReceivablePayments.Add(payment);
 
@@ -178,6 +187,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("CuentasPorCobrar", $"Registró abono de {amount:C} a la cuenta #{id}. Nuevo saldo: {ar.Balance:C}");
             TempData["Success"] = "Abono registrado correctamente.";
 
             return RedirectToAction(nameof(Details), new { id });
@@ -187,7 +197,10 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            var ar = await _context.AccountReceivables.Include(x => x.Payments).FirstOrDefaultAsync(x => x.AccountReceivableID == id);
+            var ar = await _context.AccountReceivables
+                .Include(x => x.Payments)
+                .Include(x => x.Client)
+                .FirstOrDefaultAsync(x => x.AccountReceivableID == id);
             if (ar == null) return NotFound();
 
             if (ar.Payments.Any() || ar.Balance < ar.TotalAmount)
@@ -201,6 +214,7 @@ namespace PhonePalace.Web.Controllers
             
             _context.AccountReceivables.Remove(ar);
             await _context.SaveChangesAsync();
+            await _auditService.LogAsync("CuentasPorCobrar", $"Eliminó la cuenta por cobrar #{id} del cliente {ar.Client.DisplayName}.");
             TempData["Success"] = "Registro eliminado.";
 
             return RedirectToAction(nameof(Index));

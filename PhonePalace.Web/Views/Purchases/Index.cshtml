@@ -13,20 +13,28 @@
 </p>
 
 <div class="card mb-3">
+    <div class="card-header">
+        <h5 class="mb-0">Filtros</h5>
+    </div>
     <div class="card-body">
         <form asp-action="Index" method="get">
             <div class="row g-3">
-                <div class="col-md-3">
+                @* --- INICIO: Integración del selector de tamaño de página --- *@
+                <div class="col-md-2">
+                    <partial name="_PageSizeSelector" model='(int?)ViewData["PageSize"]' />
+                </div>
+                @* --- FIN: Integración del selector de tamaño de página --- *@
+                <div class="col-md-2">
                     <label class="form-label">Buscar (Proveedor/ID)</label>
-                    <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Nombre o ID..." />
+                    <input type="text" name="searchString" value="@(ViewData["SearchString"] ?? ViewData["CurrentFilter"])" class="form-control" placeholder="Nombre o ID..." />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Fecha Inicio</label>
-                    <input type="date" name="startDate" value="@ViewData["StartDate"]" class="form-control" />
+                    <input type="date" name="startDate" value="@(ViewData["StartDate"] ?? DateTime.Now.ToString("yyyy-MM-dd"))" class="form-control" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Fecha Fin</label>
-                    <input type="date" name="endDate" value="@ViewData["EndDate"]" class="form-control" />
+                    <input type="date" name="endDate" value="@(ViewData["EndDate"] ?? DateTime.Now.ToString("yyyy-MM-dd"))" class="form-control" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Estado</label>
@@ -41,7 +49,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary me-2">Filtrar</button>
                     <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
                 </div>
@@ -94,7 +102,7 @@
     }
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex - 1)"
-       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-searchString="@(ViewData["SearchString"] ?? ViewData["CurrentFilter"])"
        asp-route-startDate="@ViewData["StartDate"]"
        asp-route-endDate="@ViewData["EndDate"]"
        asp-route-status="@ViewData["Status"]"
@@ -104,7 +112,7 @@
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
     <a asp-action="Index"
        asp-route-pageNumber="@(Model.PageIndex + 1)"
-       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-searchString="@(ViewData["SearchString"] ?? ViewData["CurrentFilter"])"
        asp-route-startDate="@ViewData["StartDate"]"
        asp-route-endDate="@ViewData["EndDate"]"
        asp-route-status="@ViewData["Status"]"
@@ -112,3 +120,17 @@
         Siguiente
     </a>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelector('form').addEventListener('submit', function (e) {
+            var startDate = document.querySelector('input[name="startDate"]').value;
+            var endDate = document.querySelector('input[name="endDate"]').value;
+
+            if (startDate && endDate && startDate > endDate) {
+                e.preventDefault();
+                alert('La fecha final no puede ser menor a la fecha inicial.');
+            }
+        });
+    </script>
+}

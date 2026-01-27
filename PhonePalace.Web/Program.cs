@@ -44,16 +44,10 @@ builder.Services.AddControllersWithViews()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
-if (builder.Environment.IsDevelopment())
-{
-    // Cambia a AzureFileStorageService si deseas probar la subida a Azure/Azurite en desarrollo
-    builder.Services.AddScoped<IFileStorageService, FileStorageService>();
-    // builder.Services.AddScoped<IFileStorageService, AzureFileStorageService>();
-}
-else
-{
-    builder.Services.AddScoped<IFileStorageService, AzureFileStorageService>();
-}
+// Configuración de almacenamiento para VPS
+// Se utiliza FileStorageService tanto en desarrollo como en producción para guardar
+// las imágenes localmente en el servidor (wwwroot), asegurando que sean visibles en el VPS.
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 builder.Services.AddScoped<ICashService, CashService>();
 
