@@ -111,5 +111,8 @@
 }
 
 <div class="mt-4">
+    <a asp-action="GenerateInvoicePdf" asp-route-id="@Model.SaleID" class="btn btn-primary me-2" target="_blank">
+        <i class="bi bi-file-pdf"></i> Descargar Remisión PDF
+    </a>
     <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
 </div>

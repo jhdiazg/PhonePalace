@@ -1,12 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
+using PhonePalace.Infrastructure.Configuration;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.Helpers;
+using PhonePalace.Web.Documents;
 using System.Security.Claims;
+using QuestPDF.Fluent;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -16,12 +20,16 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
         private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly CompanySettings _companySettings;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IConfiguration config)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
         {
             _context = context;
             _cashService = cashService;
             _config = config;
+            _webHostEnvironment = webHostEnvironment;
+            _companySettings = companySettings.Value;
         }
 
     [HttpGet]
@@ -481,6 +489,57 @@ namespace PhonePalace.Web.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        [Route("GenerarFactura/{id}")]
+        public async Task<IActionResult> GenerateInvoicePdf(int id)
+        {
+            // 1. Obtener la Venta con todos sus detalles y la Factura asociada
+            var sale = await _context.Sales
+                .Include(s => s.Invoice)
+                    .ThenInclude(i => i.Client) // Cargar el cliente asociado a la factura
+                .Include(s => s.Invoice)
+                    .ThenInclude(i => i.Payments)
+                .Include(s => s.Details)
+                    .ThenInclude(sd => sd.Product)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.SaleID == id);
+
+            if (sale == null || sale.Invoice == null)
+            {
+                return NotFound();
+            }
+
+            // 2. Mapeo en memoria: Como Sale.Details tiene los productos, se los pasamos a Invoice.Details
+            // para que el generador de PDF tenga qué imprimir.
+            if (sale.Invoice.Details == null || !sale.Invoice.Details.Any())
+            {
+                sale.Invoice.Details = sale.Details.Select(d => new InvoiceDetail
+                {
+                    ProductID = d.ProductID,
+                    Product = d.Product,
+                    Quantity = d.Quantity,
+                    UnitPrice = d.UnitPrice
+                }).ToList();
+            }
+
+            // 3. Obtener Logo
+            string wwwRootPath = _webHostEnvironment.WebRootPath;
+            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_fact.png");
+            byte[] logoBytes = Array.Empty<byte>();
+
+            if (System.IO.File.Exists(logoPath))
+            {
+                logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
+            }
+
+            string sellerName = sale.Invoice.UserId ?? "N/A";
+            // 4. Generar PDF usando la configuración centralizada (_companySettings)
+            var document = new InvoicePdfDocument(sale.Invoice, logoBytes, _companySettings, sellerName);
+            var pdfBytes = document.GeneratePdf();
+
+            return File(pdfBytes, "application/pdf", $"Factura-{sale.Invoice.InvoiceID}.pdf");
         }
     }
 }

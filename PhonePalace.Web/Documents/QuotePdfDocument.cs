@@ -35,7 +35,7 @@ namespace PhonePalace.Web.Documents
 
         void ComposeHeader(IContainer container)
         {
-            var titleStyle = TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium);
+            var titleStyle = TextStyle.Default.FontSize(16).SemiBold().FontColor(Colors.Blue.Medium);
 
             container.Row(row =>
             {
@@ -82,8 +82,8 @@ namespace PhonePalace.Web.Documents
 
                 column.Item().PaddingTop(10).AlignRight().Text(text =>
                 {
-                    text.Span("Total: ").SemiBold().FontSize(14);
-                    text.Span($"{Model.Total:C}").FontSize(14);
+                    text.Span("Total: ").SemiBold().FontSize(10);
+                    text.Span($"{Model.Total:C}").FontSize(10);
                 });
             });
         }

@@ -24,9 +24,26 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Clients
-        public async Task<IActionResult> Index(int? pageNumber)
+        public async Task<IActionResult> Index(string searchString, int? pageNumber, int? pageSize)
         {
-            var clientsQuery = _context.Clients
+            ViewData["CurrentFilter"] = searchString;
+            ViewData["PageSize"] = pageSize ?? 10;
+
+            var clientsQuery = _context.Clients.AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                clientsQuery = clientsQuery.Where(c =>
+                    (c is NaturalPerson && (
+                        ((NaturalPerson)c).FirstName.Contains(searchString) ||
+                        ((NaturalPerson)c).LastName.Contains(searchString) ||
+                        ((NaturalPerson)c).DocumentNumber.Contains(searchString))) ||
+                    (c is LegalEntity && (
+                        ((LegalEntity)c).CompanyName.Contains(searchString) ||
+                        ((LegalEntity)c).NIT.Contains(searchString))));
+            }
+
+            var viewModelQuery = clientsQuery
                 .AsNoTracking()
                 .Select(c => new ClientIndexViewModel
                 {
@@ -40,8 +57,8 @@ namespace PhonePalace.Web.Controllers
                 })
                 .OrderBy(c => c.IsActive)
                 .ThenBy(c => c.DisplayName);
-            int pageSize = 10;
-            var paginated = await PaginatedList<ClientIndexViewModel>.CreateAsync(clientsQuery, pageNumber ?? 1, pageSize);
+            
+            var paginated = await PaginatedList<ClientIndexViewModel>.CreateAsync(viewModelQuery, pageNumber ?? 1, pageSize ?? 10);
             return View(paginated);
         }
 

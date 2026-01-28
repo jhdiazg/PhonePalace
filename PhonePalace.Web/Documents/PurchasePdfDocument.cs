@@ -28,7 +28,7 @@ namespace PhonePalace.Web.Documents
                     page.Size(PageSizes.A4);
                     page.Margin(2, Unit.Centimetre);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(12));
+                    page.DefaultTextStyle(x => x.FontSize(8));
 
                     page.Header().Element(ComposeHeader);
                     page.Content().Element(ComposeContent);
@@ -49,7 +49,7 @@ namespace PhonePalace.Web.Documents
 
         private void ComposeHeader(IContainer container)
         {
-            var titleStyle = TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium);
+            var titleStyle = TextStyle.Default.FontSize(16).SemiBold().FontColor(Colors.Blue.Medium);
 
             container.Row(row =>
             {

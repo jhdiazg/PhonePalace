@@ -480,3 +480,4 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\ref\PhonePalace.Web.dll
 D:\PhonePalace\phonepalace.web\obj\Debug\net9.0\compressed\v4bo1rkmam-{0}-winz5n96v6-winz5n96v6.gz
+D:\PhonePalace\phonepalace.web\obj\Debug\net9.0\compressed\vqxncioay9-{0}-5ipweew5fc-5ipweew5fc.gz

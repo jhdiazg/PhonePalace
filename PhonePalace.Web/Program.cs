@@ -34,6 +34,7 @@ builder.Services.AddSession(options =>
 
 // Configuración de Plemsi API
 builder.Services.Configure<PlemsiConfig>(builder.Configuration.GetSection("Plemsi"));
+builder.Services.Configure<CompanySettings>(builder.Configuration.GetSection("CompanySettings"));
 
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
