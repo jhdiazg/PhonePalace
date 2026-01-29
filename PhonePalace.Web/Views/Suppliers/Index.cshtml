@@ -1,72 +1,77 @@
-@using PhonePalace.Web.Helpers
-@model PaginatedList<PhonePalace.Web.ViewModels.SupplierIndexViewModel>
+@model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Web.ViewModels.SupplierIndexViewModel>
 
 @{
     ViewData["Title"] = "Proveedores";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1>Proveedores</h1>
 
 <p>
-    <a asp-action="Create" class="btn btn-primary">Crear Nuevo Proveedor</a>
+    <a asp-action="Create" class="btn btn-primary">Nuevo Proveedor</a>
 </p>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Nombre / Razón Social</th>
-                        <th>Documento</th>
-                        <th>Correo Electrónico</th>
-                        <th>Teléfono</th>
-                        <th>Activo</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-            @foreach (var item in Model) {
-                    <tr class="@(item.IsActive ? "" : "table-danger")">
-                        <td>
-                            @if (item.SupplierType == "Persona Natural") { <span class="badge bg-primary">@item.SupplierType</span> }
-                            else { <span class="badge bg-success">@item.SupplierType</span> }
-                        </td>
-                        <td>@Html.DisplayFor(modelItem => item.DisplayName)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Document)</td>
-                        <td>@Html.DisplayFor(modelItem => item.Email)</td>
-                        <td>@Html.DisplayFor(modelItem => item.PhoneNumber)</td>
-                        <td>
-                            <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
-                        </td>
-                        <td class="text-end">
-                            <a asp-action="Edit" asp-route-id="@item.SupplierID" class="btn btn-sm btn-warning">Editar</a> 
-                            <a asp-action="Details" asp-route-id="@item.SupplierID" class="btn btn-sm btn-info">Detalles</a> 
-                            <a asp-action="Delete" asp-route-id="@item.SupplierID" class="btn btn-sm btn-danger">Eliminar</a>
-                        </td>
-                    </tr>
-            }
-                </tbody>
-            </table>
-        </div>
+<form asp-action="Index" method="get">
+    <div class="form-actions no-color">
+        <p>
+            Buscar: <input type="text" name="searchString" value="@ViewData["CurrentFilter"]" class="form-control d-inline-block w-auto" />
+            <input type="submit" value="Buscar" class="btn btn-secondary" /> |
+            <a asp-action="Index">Ver Todos</a>
+        </p>
     </div>
-</div>
+</form>
 
-<div class="d-flex justify-content-center align-items-center mt-3">
-    @{
-        var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
-        var nextDisabled = !Model.HasNextPage ? "disabled" : "";
-    }
-    <a asp-action="Index"
-       asp-route-pageNumber="@(Model.PageIndex - 1)"
-       class="btn btn-outline-secondary @prevDisabled">
-        Anterior
-    </a>
-    <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
-    <a asp-action="Index"
-       asp-route-pageNumber="@(Model.PageIndex + 1)"
-       class="btn btn-outline-secondary @nextDisabled">
-        Siguiente
-    </a>
-</div>
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Nombre / Razón Social</th>
+            <th>Documento / NIT</th>
+            <th>Tipo</th>
+            <th>Email</th>
+            <th>Teléfono</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.DisplayName)</td>
+                <td>@Html.DisplayFor(modelItem => item.Document)</td>
+                <td>@Html.DisplayFor(modelItem => item.SupplierType)</td>
+                <td>@Html.DisplayFor(modelItem => item.Email)</td>
+                <td>@Html.DisplayFor(modelItem => item.PhoneNumber)</td>
+                <td>
+                    @if (item.IsActive)
+                    {
+                        <span class="badge bg-success">Activo</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Inactivo</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.SupplierID" class="btn btn-sm btn-warning">Editar</a>
+                    <a asp-action="Details" asp-route-id="@item.SupplierID" class="btn btn-sm btn-info">Detalles</a>
+                    <a asp-action="Delete" asp-route-id="@item.SupplierID" class="btn btn-sm btn-danger">Eliminar</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@{
+    var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+    var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+}
+
+<a asp-action="Index"
+   asp-route-pageNumber="@(Model.PageIndex - 1)"
+   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   class="btn btn-default @prevDisabled">Anterior</a>
+
+<a asp-action="Index"
+   asp-route-pageNumber="@(Model.PageIndex + 1)"
+   asp-route-currentFilter="@ViewData["CurrentFilter"]"
+   class="btn btn-default @nextDisabled">Siguiente</a>

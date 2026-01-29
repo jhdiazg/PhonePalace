@@ -16,11 +16,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ICashService _cashService;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAuditService _auditService;
 
-        public CashController(ICashService cashService, UserManager<ApplicationUser> userManager)
+        public CashController(ICashService cashService, UserManager<ApplicationUser> userManager, IAuditService auditService)
         {
             _cashService = cashService;
             _userManager = userManager;
+            _auditService = auditService;
         }
 
         public async Task<IActionResult> Index()
@@ -62,7 +64,7 @@ namespace PhonePalace.Web.Controllers
 
             try
             {
-                await _cashService.OpenCashRegisterAsync(model.OpeningAmount, userId);
+                await _cashService.OpenCashRegisterAsync(model.OpeningBalance, userId);
                 TempData["Success"] = "Caja abierta exitosamente.";
                 return RedirectToAction(nameof(Index));
             }
@@ -74,9 +76,10 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult Close()
+        public async Task<IActionResult> Close()
         {
-            return View();
+            var currentBalance = await _cashService.GetCurrentBalanceAsync();
+            return View(new CashCloseViewModel { SystemBalance = currentBalance });
         }
 
         [HttpPost]
@@ -85,6 +88,7 @@ namespace PhonePalace.Web.Controllers
         {
             if (!ModelState.IsValid)
             {
+                model.SystemBalance = await _cashService.GetCurrentBalanceAsync();
                 return View(model);
             }
 
@@ -97,7 +101,17 @@ namespace PhonePalace.Web.Controllers
 
             try
             {
+                // Recalcular diferencia para el log de auditoría
+                var systemBalance = await _cashService.GetCurrentBalanceAsync();
+                var diff = model.ClosingAmount - systemBalance;
+                string diffText = diff == 0 ? "Cuadre Perfecto" : (diff > 0 ? $"SOBRANTE {diff:C}" : $"FALTANTE {diff:C}");
+
                 await _cashService.CloseCashRegisterAsync(model.ClosingAmount, userId);
+
+                string auditMessage = $"Cierre de caja con monto final: {model.ClosingAmount:C} - {diffText}";
+
+                await _auditService.LogAsync("Caja", auditMessage);
+
                 TempData["Success"] = "Caja cerrada exitosamente.";
                 return RedirectToAction(nameof(Index));
             }

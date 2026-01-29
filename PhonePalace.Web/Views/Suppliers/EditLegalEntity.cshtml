@@ -1,0 +1,70 @@
+@model PhonePalace.Web.ViewModels.LegalEntitySupplierEditViewModel
+
+@{
+    ViewData["Title"] = "Editar Proveedor (Jurídico)";
+}
+
+<h1>Editar Proveedor</h1>
+<h4>Persona Jurídica</h4>
+<hr />
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="EditLegalEntity">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="SupplierID" />
+
+            <div class="form-group mb-3">
+                <label asp-for="CompanyName" class="control-label"></label>
+                <input asp-for="CompanyName" class="form-control" />
+                <span asp-validation-for="CompanyName" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-9 form-group mb-3">
+                    <label asp-for="NitNumber" class="control-label"></label>
+                    <input asp-for="NitNumber" class="form-control" />
+                    <span asp-validation-for="NitNumber" class="text-danger"></span>
+                </div>
+                <div class="col-md-3 form-group mb-3">
+                    <label asp-for="VerificationDigit" class="control-label"></label>
+                    <input asp-for="VerificationDigit" class="form-control" />
+                    <span asp-validation-for="VerificationDigit" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="Email" class="control-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="PhoneNumber" class="control-label"></label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+            </div>
+
+            <!-- Reutilizamos la lógica de dirección si tienes un partial, o la incluimos directamente -->
+            <!-- Aquí asumo que se incluyen los campos de dirección manualmente como en Create -->
+            @await Html.PartialAsync("_AddressEditPartial", Model)
+
+            <div class="form-group form-check mb-3">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="IsActive" /> @Html.DisplayNameFor(model => model.IsActive)
+                </label>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Guardar" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/cascading-dropdowns.js"></script>
+}

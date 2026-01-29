@@ -73,7 +73,12 @@ namespace PhonePalace.Web.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                // Buscar el usuario por email para obtener el UserName correcto, 
+                // ya que PasswordSignInAsync espera el UserName, no necesariamente el Email.
+                var user = await _signInManager.UserManager.FindByEmailAsync(Input.Email);
+                var userName = user?.UserName ?? Input.Email;
+
+                var result = await _signInManager.PasswordSignInAsync(userName, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");

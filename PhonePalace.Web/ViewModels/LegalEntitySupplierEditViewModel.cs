@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PhonePalace.Web.ViewModels
 {
-    public class LegalEntitySupplierEditViewModel
+    public class LegalEntitySupplierEditViewModel : IAddressViewModel
     {
         public int SupplierID { get; set; }
 

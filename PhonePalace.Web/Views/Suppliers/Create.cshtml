@@ -4,202 +4,132 @@
     ViewData["Title"] = "Crear Proveedor";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1>Crear Proveedor</h1>
 
 <hr />
 <div class="row">
     <div class="col-md-8">
         <form asp-action="Create">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            
-            <div class="mb-3">
+
+            <div class="form-group mb-3">
                 <label asp-for="SupplierType" class="control-label"></label>
-                <select asp-for="SupplierType" class="form-select" id="SupplierTypeSelection">
-                    <option value="">Seleccione un tipo</option>
-                    <option value="NaturalPerson">Persona Natural</option>
-                    <option value="LegalEntity">Persona Jurídica</option>
-                </select>
+                <select asp-for="SupplierType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Web.ViewModels.SupplierTypeSelection>()" id="SupplierType"></select>
                 <span asp-validation-for="SupplierType" class="text-danger"></span>
             </div>
 
-            <div id="NaturalPersonFields" style="display:none;">
+            <!-- Campos Persona Natural -->
+            <div id="naturalPersonFields">
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="FirstName" class="control-label"></label>
-                            <input asp-for="FirstName" class="form-control" />
-                            <span asp-validation-for="FirstName" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label asp-for="FirstName" class="control-label"></label>
+                        <input asp-for="FirstName" class="form-control" />
+                        <span asp-validation-for="FirstName" class="text-danger"></span>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="LastName" class="control-label"></label>
-                            <input asp-for="LastName" class="form-control" />
-                            <span asp-validation-for="LastName" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label asp-for="LastName" class="control-label"></label>
+                        <input asp-for="LastName" class="form-control" />
+                        <span asp-validation-for="LastName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="DocumentType" class="control-label"></label>
-                            <select asp-for="DocumentType" class="form-select" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.DocumentType>()"></select>
-                            <span asp-validation-for="DocumentType" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label asp-for="DocumentType" class="control-label"></label>
+                        <select asp-for="DocumentType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.DocumentType>()"></select>
+                        <span asp-validation-for="DocumentType" class="text-danger"></span>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="DocumentNumber" class="control-label"></label>
-                            <input asp-for="DocumentNumber" class="form-control" />
-                            <span asp-validation-for="DocumentNumber" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label asp-for="DocumentNumber" class="control-label"></label>
+                        <input asp-for="DocumentNumber" class="form-control" />
+                        <span asp-validation-for="DocumentNumber" class="text-danger"></span>
                     </div>
                 </div>
             </div>
 
-            <div id="LegalEntityFields" style="display:none;">
+            <!-- Campos Persona Jurídica -->
+            <div id="legalEntityFields" style="display:none;">
+                <div class="form-group mb-3">
+                    <label asp-for="CompanyName" class="control-label"></label>
+                    <input asp-for="CompanyName" class="form-control" />
+                    <span asp-validation-for="CompanyName" class="text-danger"></span>
+                </div>
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="CompanyName" class="control-label"></label>
-                            <input asp-for="CompanyName" class="form-control" />
-                            <span asp-validation-for="CompanyName" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-9 form-group mb-3">
+                        <label asp-for="NitNumber" class="control-label"></label>
+                        <input asp-for="NitNumber" class="form-control" />
+                        <span asp-validation-for="NitNumber" class="text-danger"></span>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label asp-for="NitNumber" class="control-label"></label>
-                            <input asp-for="NitNumber" class="form-control" />
-                            <span asp-validation-for="NitNumber" class="text-danger"></span>
-                        </div>
+                    <div class="col-md-3 form-group mb-3">
+                        <label asp-for="VerificationDigit" class="control-label"></label>
+                        <input asp-for="VerificationDigit" class="form-control" />
+                        <span asp-validation-for="VerificationDigit" class="text-danger"></span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Campos Comunes -->
+            <div class="row">
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="Email" class="control-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="PhoneNumber" class="control-label"></label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                 </div>
             </div>
 
             <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label asp-for="Email" class="control-label"></label>
-                        <input asp-for="Email" class="form-control" />
-                        <span asp-validation-for="Email" class="text-danger"></span>
-                    </div>
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="DepartmentID" class="control-label"></label>
+                    <select asp-for="DepartmentID" class="form-control" asp-items="ViewBag.DepartmentID">
+                        <option value="">-- Seleccione Departamento --</option>
+                    </select>
+                    <span asp-validation-for="DepartmentID" class="text-danger"></span>
                 </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label asp-for="PhoneNumber" class="control-label"></label>
-                        <input asp-for="PhoneNumber" class="form-control" />
-                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label asp-for="DepartmentID" class="control-label"></label>
-                        <select asp-for="DepartmentID" class="form-control" asp-items="ViewBag.DepartmentID"></select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label asp-for="MunicipalityID" class="control-label"></label>
-                        <select asp-for="MunicipalityID" class="form-control" asp-items="ViewBag.MunicipalityID"></select>
-                    </div>
+                <div class="col-md-6 form-group mb-3">
+                    <label asp-for="MunicipalityID" class="control-label"></label>
+                    <select asp-for="MunicipalityID" class="form-control" asp-items="ViewBag.MunicipalityID">
+                        <option value="">-- Seleccione Municipio --</option>
+                    </select>
+                    <span asp-validation-for="MunicipalityID" class="text-danger"></span>
                 </div>
             </div>
 
-            <div class="mb-3">
+            <div class="form-group mb-3">
                 <label asp-for="StreetAddress" class="control-label"></label>
                 <input asp-for="StreetAddress" class="form-control" />
                 <span asp-validation-for="StreetAddress" class="text-danger"></span>
             </div>
 
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+            <div class="form-group mt-4">
+                <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
             </div>
         </form>
     </div>
 </div>
 
-<div>
-    <a asp-action="Index" class="btn btn-primary">Volver a la Lista</a>
-</div>
-
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/js/cascading-dropdowns.js"></script>
     <script>
         $(document).ready(function () {
-            // Initial state based on model if editing
-            var initialSupplierType = $('#SupplierTypeSelection').val();
-            if (initialSupplierType === 'NaturalPerson') {
-                $('#NaturalPersonFields').show();
-                $('#LegalEntityFields').hide();
-            } else if (initialSupplierType === 'LegalEntity') {
-                $('#NaturalPersonFields').hide();
-                $('#LegalEntityFields').show();
-            } else {
-                $('#NaturalPersonFields').hide();
-                $('#LegalEntityFields').hide();
-            }
-
-            $('#SupplierTypeSelection').change(function () {
-                var selection = $(this).val();
-                if (selection === 'NaturalPerson') {
-                    $('#NaturalPersonFields').show();
-                    $('#LegalEntityFields').hide();
-                } else if (selection === 'LegalEntity') {
-                    $('#NaturalPersonFields').hide();
-                    $('#LegalEntityFields').show();
-                } else {
-                    $('#NaturalPersonFields').hide();
-                    $('#LegalEntityFields').hide();
-                }
-            });
-
-            // Function to load municipalities
-            function loadMunicipalities(departmentId, selectedMunicipalityId) {
-                $('#MunicipalityID').empty(); // Clear existing options
-                $('#MunicipalityID').append($('<option></option>').val("").text("Cargando municipios..."));
-
-                if (departmentId) {
-                    $.ajax({
-                        url: '@Url.Action("GetMunicipalities", "Suppliers")',
-                        type: "GET",
-                        dataType: "JSON",
-                        data: { departmentId: departmentId },
-                        success: function (municipalities) {
-                            $('#MunicipalityID').empty();
-                            $('#MunicipalityID').append($('<option></option>').val("").text("Seleccione un municipio"));
-                            $.each(municipalities, function (i, municipality) {
-                                $('#MunicipalityID').append($('<option></option>').val(municipality.value).text(municipality.text));
-                            });
-                            if (selectedMunicipalityId) {
-                                $('#MunicipalityID').val(selectedMunicipalityId);
-                            }
-                        },
-                        error: function () {
-                            $('#MunicipalityID').empty();
-                            $('#MunicipalityID').append($('<option></option>').val("").text("Error al cargar municipios"));
-                        }
-                    });
-                } else {
-                    $('#MunicipalityID').empty();
-                    $('#MunicipalityID').append($('<option></option>').val("").text("Seleccione un departamento"));
+            function toggleFields() {
+                var type = $("#SupplierType").val();
+                if (type == "0") { // NaturalPerson
+                    $("#naturalPersonFields").show();
+                    $("#legalEntityFields").hide();
+                } else { // LegalEntity
+                    $("#naturalPersonFields").hide();
+                    $("#legalEntityFields").show();
                 }
             }
 
-            // Event listener for DepartmentID change
-            $('#DepartmentID').change(function () {
-                var departmentId = $(this).val();
-                loadMunicipalities(departmentId);
-            });
-
-            // Initial load for municipalities if a department is already selected (e.g., on validation error)
-            var initialDepartmentId = $('#DepartmentID').val();
-            var initialMunicipalityId = '@Model.MunicipalityID'; // Get initial municipality from model
-            if (initialDepartmentId) {
-                loadMunicipalities(initialDepartmentId, initialMunicipalityId);
-            }
+            $("#SupplierType").change(toggleFields);
+            toggleFields(); // Run on load
         });
     </script>
 }

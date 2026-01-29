@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -50,9 +50,11 @@ namespace PhonePalace.Web.Controllers
                     TotalPurchases = _context.PurchaseDetails
                         .Where(pd => pd.ProductId == i.ProductID && pd.Purchase != null && pd.Purchase.Status == Domain.Enums.PurchaseStatus.Received)
                         .Sum(pd => pd.Quantity),
-                    TotalSales = _context.InvoiceDetails
-                        .Where(id => id.ProductID == i.ProductID && id.Invoice != null && id.Invoice.Status == Domain.Enums.InvoiceStatus.Completed)
-                        .Sum(id => id.Quantity)
+                    TotalSales = _context.Sales
+                        .Where(s => !s.IsDeleted)
+                        .SelectMany(s => s.Details)
+                        .Where(sd => sd.ProductID == i.ProductID)
+                        .Sum(sd => sd.Quantity)
                 })
                 .OrderBy(item => item.ProductName)
                 .AsNoTracking();

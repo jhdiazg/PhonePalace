@@ -8,6 +8,7 @@
     var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks", "UserManagement");
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
     var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash");
+    var isReportsActive = ActiveRoute.IsIn(ViewContext, "Reports");
 }
 
 <div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
@@ -54,11 +55,22 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="Reportes" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reportes")">
+            <a href="#reports-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isReportsActive ? "" : "collapsed")" aria-expanded="@isReportsActive.ToString().ToLower()">
                 <i class="bi bi-bar-chart-line-fill me-2"></i>
                 Reportes
             </a>
+            <div class="collapse @(isReportsActive ? "show" : "")" id="reports-submenu">
+                <ul class="nav flex-column ms-4">
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="SalesByPaymentMethod" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reports")">
+                            <i class="bi bi-credit-card-2-front me-2"></i>
+                            Ventas por Forma de Pago
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
+
         <li class="nav-item">
             <a href="#local-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isLocalActive ? "" : "collapsed")" aria-expanded="@isLocalActive.ToString().ToLower()">
                 <i class="bi bi-shop me-2"></i>

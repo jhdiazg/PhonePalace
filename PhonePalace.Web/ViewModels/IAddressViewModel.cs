@@ -1,4 +1,6 @@
-﻿namespace PhonePalace.Web.ViewModels
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace PhonePalace.Web.ViewModels
 {
     public interface IAddressViewModel
     {

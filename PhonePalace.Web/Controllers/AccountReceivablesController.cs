@@ -26,7 +26,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? clientName, bool showPaid = false, int? pageNumber = null, int? pageSize = null)
+        public async Task<IActionResult> Index(string? clientName, string status = "Pending", int? pageNumber = null, int? pageSize = null)
         {
             ViewData["PageSize"] = pageSize ?? 10;
 
@@ -34,21 +34,40 @@ namespace PhonePalace.Web.Controllers
                 .Include(ar => ar.Client)
                 .AsQueryable();
 
-            if (!showPaid)
+            switch (status)
             {
-                query = query.Where(ar => !ar.IsPaid);
+                case "Paid":
+                    query = query.Where(ar => ar.IsPaid);
+                    break;
+                case "All":
+                    break;
+                case "Pending":
+                default:
+                    query = query.Where(ar => !ar.IsPaid);
+                    break;
             }
 
             if (!string.IsNullOrEmpty(clientName))
             {
-                query = query.Where(ar => ar.Client.DisplayName.Contains(clientName));
+                query = query.Where(ar => 
+                    (ar.Client is NaturalPerson && (
+                        ((NaturalPerson)ar.Client).FirstName.Contains(clientName) || 
+                        ((NaturalPerson)ar.Client).LastName.Contains(clientName) ||
+                        (((NaturalPerson)ar.Client).FirstName + " " + ((NaturalPerson)ar.Client).LastName).Contains(clientName))) ||
+                    (ar.Client is LegalEntity && ((LegalEntity)ar.Client).CompanyName.Contains(clientName)));
             }
 
             // Calcular totales antes de paginar
-            ViewBag.TotalReceivable = await query.Where(x => !x.IsPaid).SumAsync(x => x.Balance);
+            ViewBag.TotalReceivable = await query.SumAsync(x => x.Balance);
 
             var list = await PaginatedList<AccountReceivable>.CreateAsync(query.OrderByDescending(ar => ar.Date).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
-            ViewBag.ShowPaid = showPaid;
+            ViewBag.StatusList = new List<SelectListItem>
+            {
+                new SelectListItem { Text = "Pendientes", Value = "Pending", Selected = status == "Pending" },
+                new SelectListItem { Text = "Pagadas", Value = "Paid", Selected = status == "Paid" },
+                new SelectListItem { Text = "Todas", Value = "All", Selected = status == "All" }
+            };
+            ViewBag.CurrentStatus = status;
             ViewBag.ClientName = clientName;
 
             return View(list);
@@ -58,63 +77,66 @@ namespace PhonePalace.Web.Controllers
         public IActionResult Create()
         {
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
             return View(new LoanCreateViewModel { Date = DateTime.Now, Description = string.Empty });
         }
 
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(LoanCreateViewModel model)
+        public async Task<IActionResult> Create(LoanCreateViewModel model, PaymentMethod disbursementMethod)
         {
             if (ModelState.IsValid)
             {
-                // Validar caja abierta para el egreso
-                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                if (currentCash == null)
+                // Validar caja abierta SOLO si el desembolso es en Efectivo
+                if (disbursementMethod == PaymentMethod.Cash)
                 {
-                    ModelState.AddModelError("", "Debe abrir la caja antes de registrar un préstamo (salida de dinero).");
-                }
-                else
-                {
-                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    if (string.IsNullOrEmpty(userId))
+                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                    if (currentCash == null)
                     {
-                        return Unauthorized();
-                    }
-
-                    // 1. Registrar Egreso de Caja
-                    // Asumimos que ICashService tiene un método para registrar gastos/egresos.
-                    // Si no existe en la interfaz, deberás agregarlo: Task RegisterExpenseAsync(decimal amount, string description, string userId);
-                    await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
-
-                    // 2. Obtener el cliente
-                    var client = await _context.Clients.FindAsync(model.ClientID);
-                    if (client == null)
-                    {
-                        ModelState.AddModelError("", "Cliente no encontrado.");
+                        ModelState.AddModelError("", "Debe abrir la caja antes de registrar un préstamo en efectivo.");
+                        ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
+                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
                         return View(model);
                     }
 
-                    // 3. Crear Cuenta por Cobrar
-                    var ar = new AccountReceivable
-                    {
-                        ClientID = model.ClientID,
-                        Client = client,
-                        Date = model.Date,
-                        TotalAmount = model.Amount,
-                        Balance = model.Amount,
-                        Type = "Prestamo",
-                        Description = model.Description?.ToUpper(),
-                        IsPaid = false
-                    };
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-                    _context.AccountReceivables.Add(ar);
-                    await _context.SaveChangesAsync();
-
-                    return RedirectToAction(nameof(Index));
+                    // 1. Registrar Egreso de Caja
+                    await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
                 }
+
+                // 2. Obtener el cliente
+                var client = await _context.Clients.FindAsync(model.ClientID);
+                if (client == null)
+                {
+                    ModelState.AddModelError("", "Cliente no encontrado.");
+                    ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
+                    ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                    return View(model);
+                }
+
+                // 3. Crear Cuenta por Cobrar
+                var ar = new AccountReceivable
+                {
+                    ClientID = model.ClientID,
+                    Client = client,
+                    Date = model.Date,
+                    TotalAmount = model.Amount,
+                    Balance = model.Amount,
+                    Type = "Prestamo",
+                    Description = $"{model.Description?.ToUpper()} ({EnumHelper.GetDisplayName(disbursementMethod)})",
+                    IsPaid = false
+                };
+
+                _context.AccountReceivables.Add(ar);
+                await _context.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Index));
             }
 
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
             return View(model);
         }
 

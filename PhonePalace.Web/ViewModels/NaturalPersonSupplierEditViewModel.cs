@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PhonePalace.Web.ViewModels
 {
-    public class NaturalPersonSupplierEditViewModel
+    public class NaturalPersonSupplierEditViewModel : IAddressViewModel
     {
         public int SupplierID { get; set; }
 

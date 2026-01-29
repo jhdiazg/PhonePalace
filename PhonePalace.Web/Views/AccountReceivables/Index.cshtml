@@ -1,4 +1,5 @@
-@model IEnumerable<PhonePalace.Domain.Entities.AccountReceivable>
+@model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Domain.Entities.AccountReceivable>
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Cuentas por Cobrar";
@@ -25,12 +26,8 @@
                 <input type="text" name="clientName" value="@ViewBag.ClientName" class="form-control" placeholder="Buscar..." />
             </div>
             <div class="col-md-3">
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="showPaid" value="true" id="showPaid" @(ViewBag.ShowPaid ? "checked" : "")>
-                    <label class="form-check-label" for="showPaid">
-                        Mostrar Pagadas
-                    </label>
-                </div>
+                <label class="form-label">Estado</label>
+                <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
             </div>
             <div class="col-md-2">
                 <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
@@ -49,6 +46,7 @@
                 <th>Descripción</th>
                 <th>Monto Original</th>
                 <th>Saldo Pendiente</th>
+                <th>Días Mora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -65,6 +63,17 @@
                     <td>@item.Description</td>
                     <td>@item.TotalAmount.ToString("C")</td>
                     <td class="fw-bold text-danger">@item.Balance.ToString("C")</td>
+                    <td>
+                        @if (!item.IsPaid)
+                        {
+                            var days = (DateTime.Now.Date - item.Date.Date).Days;
+                            <span class="@(days > 30 ? "text-danger fw-bold" : "")">@days días</span>
+                        }
+                        else
+                        {
+                            <span>-</span>
+                        }
+                    </td>
                     <td>
                         @if (item.IsPaid)
                         {
@@ -84,4 +93,27 @@
             }
         </tbody>
     </table>
+</div>
+
+@{
+    var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
+    var nextDisabled = !Model.HasNextPage ? "disabled" : "";
+}
+
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div>
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex - 1)"
+           asp-route-clientName="@ViewBag.ClientName"
+           asp-route-status="@ViewBag.CurrentStatus"
+           class="btn btn-outline-secondary @prevDisabled">Anterior</a>
+        <a asp-action="Index"
+           asp-route-pageNumber="@(Model.PageIndex + 1)"
+           asp-route-clientName="@ViewBag.ClientName"
+           asp-route-status="@ViewBag.CurrentStatus"
+           class="btn btn-outline-secondary @nextDisabled">Siguiente</a>
+    </div>
+    <div class="text-muted">
+        Página @Model.PageIndex de @Model.TotalPages
+    </div>
 </div>

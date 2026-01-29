@@ -118,11 +118,13 @@ namespace PhonePalace.Web.Controllers
             var roles = await _roleManager.Roles.Where(r => r.Name != null && _definedRoles.Contains(r.Name)).ToListAsync();
             var userRoles = await _userManager.GetRolesAsync(user);
 
-            var model = new EditUserRolesViewModel
+            var model = new UserEditViewModel
             {
                 UserId = user.Id,
                 UserName = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
+                PhoneNumber = user.PhoneNumber,
+                ProfilePictureUrl = user.ProfilePictureUrl,
                 AvailableRoles = roles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList(),
                 SelectedRoles = userRoles.ToList()
             };
@@ -132,12 +134,65 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(EditUserRolesViewModel model)
+        public async Task<IActionResult> Edit(UserEditViewModel model)
         {
+            // Recargar roles disponibles en caso de que tengamos que devolver la vista por error
+            var allRoles = await _roleManager.Roles.Where(r => r.Name != null && _definedRoles.Contains(r.Name)).ToListAsync();
+            model.AvailableRoles = allRoles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList();
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
             var user = await _userManager.FindByIdAsync(model.UserId);
             if (user == null)
             {
                 return NotFound();
+            }
+
+            var changes = new List<string>();
+            bool hasChanges = false;
+
+            // 1. Actualizar Nombre de Usuario (Solo en memoria)
+            if (model.UserName != user.UserName)
+            {
+                changes.Add($"Nombre de usuario cambiado de '{user.UserName}' a '{model.UserName}'");
+                user.UserName = model.UserName;
+                // Importante: Actualizar el nombre normalizado para que el login funcione
+                await _userManager.UpdateNormalizedUserNameAsync(user);
+                hasChanges = true;
+            }
+
+            // 2. Actualizar Teléfono (Solo en memoria)
+            if (model.PhoneNumber != user.PhoneNumber)
+            {
+                changes.Add($"Teléfono cambiado de '{user.PhoneNumber ?? "N/A"}' a '{model.PhoneNumber ?? "N/A"}'");
+                user.PhoneNumber = model.PhoneNumber;
+                hasChanges = true;
+            }
+
+            // 3. Actualizar Foto de Perfil (Solo en memoria)
+            if (model.ProfilePictureFile != null)
+            {
+                changes.Add("Foto de perfil actualizada");
+                if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
+                {
+                    await _fileStorageService.DeleteFileAsync(user.ProfilePictureUrl);
+                }
+                user.ProfilePictureUrl = await _fileStorageService.SaveFileAsync(model.ProfilePictureFile, "users");
+                hasChanges = true;
+            }
+
+            // 4. GUARDAR TODO EN UNA SOLA TRANSACCIÓN
+            if (hasChanges)
+            {
+                var updateResult = await _userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    foreach (var error in updateResult.Errors) ModelState.AddModelError("", error.Description);
+                    return View(model);
+                }
             }
 
             var currentRoles = await _userManager.GetRolesAsync(user);
@@ -146,6 +201,7 @@ namespace PhonePalace.Web.Controllers
 
             if (rolesToAdd.Any())
             {
+                changes.Add($"Roles agregados: {string.Join(", ", rolesToAdd)}");
                 var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
                 if (!addResult.Succeeded)
                 {
@@ -156,6 +212,7 @@ namespace PhonePalace.Web.Controllers
 
             if (rolesToRemove.Any())
             {
+                changes.Add($"Roles removidos: {string.Join(", ", rolesToRemove)}");
                 var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
                 if (!removeResult.Succeeded)
                 {
@@ -165,9 +222,12 @@ namespace PhonePalace.Web.Controllers
             }
 
             // Log de auditoría
-            await _auditService.LogAsync("Usuarios", $"Roles actualizados para usuario {user.UserName}: Agregados {string.Join(", ", rolesToAdd)}, Removidos {string.Join(", ", rolesToRemove)}");
+            if (changes.Any())
+            {
+                await _auditService.LogAsync("Usuarios", $"Usuario {user.UserName} actualizado: {string.Join("; ", changes)}");
+            }
 
-            TempData["Success"] = "Roles actualizados exitosamente.";
+            TempData["Success"] = "Usuario actualizado exitosamente.";
             return RedirectToAction(nameof(Index));
         }
 

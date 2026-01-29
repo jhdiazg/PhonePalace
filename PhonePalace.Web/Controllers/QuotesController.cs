@@ -109,7 +109,7 @@ namespace PhonePalace.Web.Controllers
                     Details = new List<QuoteDetail>()
                 };
 
-                foreach (var detailVm in viewModel.Details)
+                foreach (var detailVm in viewModel.Details ?? new List<QuoteDetailViewModel>())
                 {
                     var product = await _context.Products.FindAsync(detailVm.ProductID);
                     if (product == null)
@@ -184,7 +184,7 @@ namespace PhonePalace.Web.Controllers
                 ClientID = quote.ClientID,
                 QuoteDate = quote.QuoteDate,
                 ExpirationDate = quote.ExpirationDate,
-                Status = quote.Status,
+                Status = quote.Status ?? "Pending",
                 Details = quote.Details.Select(d => new QuoteDetailViewModel 
                 {
                     ProductID = d.ProductID,
