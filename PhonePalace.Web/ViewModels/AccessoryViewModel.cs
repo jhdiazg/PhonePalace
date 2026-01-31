@@ -45,7 +45,7 @@ namespace PhonePalace.Web.ViewModels
 
         [StringLength(50)]
         [Display(Name = "Color")]
-        public string Color { get; set; } = string.Empty;
+        public string? Color { get; set; }
 
         [Required(ErrorMessage = "La condición del producto es obligatoria.")]
         [Display(Name = "Condición del Producto")]

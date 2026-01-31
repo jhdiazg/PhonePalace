@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Administrador")]
+    [Authorize]
     public class UserManagementController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -31,6 +31,7 @@ namespace PhonePalace.Web.Controllers
             _fileStorageService = fileStorageService;
         }
 
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Index()
         {
             var users = await _userManager.Users.ToListAsync();
@@ -51,6 +52,7 @@ namespace PhonePalace.Web.Controllers
             return View(userRolesViewModel);
         }
 
+        [Authorize(Roles = "Administrador")]
         public IActionResult Create()
         {
             var model = new CreateUserViewModel
@@ -61,6 +63,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrador")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(CreateUserViewModel model)
         {
@@ -109,6 +112,15 @@ namespace PhonePalace.Web.Controllers
 
         public async Task<IActionResult> Edit(string id)
         {
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Administrador");
+
+            // Seguridad: Solo permitir si es Admin o si el usuario se edita a sí mismo
+            if (!isAdmin && currentUserId != id)
+            {
+                return Forbid();
+            }
+
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
@@ -125,7 +137,8 @@ namespace PhonePalace.Web.Controllers
                 Email = user.Email ?? string.Empty,
                 PhoneNumber = user.PhoneNumber,
                 ProfilePictureUrl = user.ProfilePictureUrl,
-                AvailableRoles = roles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList(),
+                // Solo mostrar roles disponibles si es Admin
+                AvailableRoles = isAdmin ? roles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList() : new List<string>(),
                 SelectedRoles = userRoles.ToList()
             };
 
@@ -136,9 +149,21 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(UserEditViewModel model)
         {
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Administrador");
+
+            // Seguridad: Solo permitir si es Admin o si el usuario se edita a sí mismo
+            if (!isAdmin && currentUserId != model.UserId)
+            {
+                return Forbid();
+            }
+
             // Recargar roles disponibles en caso de que tengamos que devolver la vista por error
-            var allRoles = await _roleManager.Roles.Where(r => r.Name != null && _definedRoles.Contains(r.Name)).ToListAsync();
-            model.AvailableRoles = allRoles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList();
+            if (isAdmin)
+            {
+                var allRoles = await _roleManager.Roles.Where(r => r.Name != null && _definedRoles.Contains(r.Name)).ToListAsync();
+                model.AvailableRoles = allRoles.Select(r => r.Name).Where(n => n != null).Cast<string>().ToList();
+            }
 
             if (!ModelState.IsValid)
             {
@@ -195,29 +220,33 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            var rolesToAdd = model.SelectedRoles.Except(currentRoles).ToList();
-            var rolesToRemove = currentRoles.Except(model.SelectedRoles).ToList();
-
-            if (rolesToAdd.Any())
+            // Solo el administrador puede cambiar roles
+            if (isAdmin)
             {
-                changes.Add($"Roles agregados: {string.Join(", ", rolesToAdd)}");
-                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
-                if (!addResult.Succeeded)
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                var rolesToAdd = model.SelectedRoles.Except(currentRoles).ToList();
+                var rolesToRemove = currentRoles.Except(model.SelectedRoles).ToList();
+
+                if (rolesToAdd.Any())
                 {
-                    ModelState.AddModelError("", "Error al agregar roles.");
-                    return View(model);
+                    changes.Add($"Roles agregados: {string.Join(", ", rolesToAdd)}");
+                    var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                    if (!addResult.Succeeded)
+                    {
+                        ModelState.AddModelError("", "Error al agregar roles.");
+                        return View(model);
+                    }
                 }
-            }
 
-            if (rolesToRemove.Any())
-            {
-                changes.Add($"Roles removidos: {string.Join(", ", rolesToRemove)}");
-                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
-                if (!removeResult.Succeeded)
+                if (rolesToRemove.Any())
                 {
-                    ModelState.AddModelError("", "Error al remover roles.");
-                    return View(model);
+                    changes.Add($"Roles removidos: {string.Join(", ", rolesToRemove)}");
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                    if (!removeResult.Succeeded)
+                    {
+                        ModelState.AddModelError("", "Error al remover roles.");
+                        return View(model);
+                    }
                 }
             }
 
@@ -232,6 +261,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrador")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Lock(string id)
         {
@@ -249,6 +279,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrador")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Unlock(string id)
         {
@@ -263,6 +294,14 @@ namespace PhonePalace.Web.Controllers
 
             TempData["Success"] = "Usuario desbloqueado exitosamente.";
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Profile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+            return RedirectToAction(nameof(Edit), new { id = user.Id });
         }
     }
 }

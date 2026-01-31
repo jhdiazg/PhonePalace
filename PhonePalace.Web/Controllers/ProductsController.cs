@@ -158,7 +158,7 @@ namespace PhonePalace.Web.Controllers
 
             var stock = await _context.Inventories
                                       .Where(i => i.ProductID == id)
-                                      .SumAsync(i => i.Stock);
+                                      .SumAsync(i => (double)i.Stock);
 
             return Ok(new { id = product.ProductID, name = product.Name, price = product.Price, stock });
         }

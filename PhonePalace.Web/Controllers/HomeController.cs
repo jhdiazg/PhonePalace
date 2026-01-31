@@ -28,7 +28,7 @@ namespace PhonePalace.Web.Controllers
             const int lowStockThreshold = 5;
 
             var totalInventoryValue = await _context.Inventories
-                .SumAsync(i => i.Product.Cost * i.Stock);
+                .SumAsync(i => i.Product.Cost * (decimal)((double)i.Stock));
 
             // Obtenemos los productos con bajo stock.
             // Usamos Sum() porque un producto puede tener múltiples registros de inventario.
@@ -36,7 +36,7 @@ namespace PhonePalace.Web.Controllers
                 .Where(p => p.IsActive && p.InventoryLevels.Any())
                 .Select(p => new {
                     p.Name,
-                    CurrentStock = p.InventoryLevels.Sum(i => i.Stock)
+                    CurrentStock = (int)p.InventoryLevels.Sum(i => (double)i.Stock)
                 })
                 .Where(p => p.CurrentStock <= lowStockThreshold)
                 .OrderBy(p => p.CurrentStock)

@@ -1,45 +1,49 @@
 @model PhonePalace.Web.ViewModels.InventoryAdjustViewModel
 
 @{
-    ViewData["Title"] = "Ajustar Stock";
+    ViewData["Title"] = "Ajuste de Inventario";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Ajuste Manual de Stock</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Producto:</dt>
+                        <dd class="col-sm-8 fw-bold">@Model.ProductName</dd>
 
-<h4>@Model.ProductName</h4>
-<hr />
-<div class="row">
-    <div class="col-md-6">
-        <form asp-action="Adjust">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="ProductID" />
-            <input type="hidden" asp-for="ProductName" />
+                        <dt class="col-sm-4">SKU:</dt>
+                        <dd class="col-sm-8">@Model.ProductSKU</dd>
 
-            <div class="mb-3">
-                <label asp-for="CurrentStock" class="form-label"></label>
-                <input asp-for="CurrentStock" class="form-control" readonly />
+                        <dt class="col-sm-4">Stock Actual:</dt>
+                        <dd class="col-sm-8">@Model.CurrentStock</dd>
+                    </dl>
+                    <hr />
+                    <form asp-action="Adjust" method="post">
+                        <input type="hidden" name="id" value="@Model.ProductID" />
+                        
+                        <div class="mb-3">
+                            <label for="adjustment" class="form-label">Cantidad a Ajustar (+/-)</label>
+                            <input type="number" name="adjustment" id="adjustment" class="form-control" required placeholder="Ej: 5 para agregar, -2 para restar" />
+                            <div class="form-text">Ingrese un número positivo para agregar stock o negativo para reducirlo.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Motivo del Ajuste</label>
+                            <textarea name="reason" id="reason" class="form-control" rows="3" required placeholder="Ej: Corrección de conteo físico, Merma, Devolución sin factura..."></textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Guardar Ajuste</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
             </div>
-
-            <div class="mb-3">
-                <label asp-for="NewStock" class="form-label"></label>
-                <input asp-for="NewStock" class="form-control" />
-                <span asp-validation-for="NewStock" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="Reason" class="form-label"></label>
-                <textarea asp-for="Reason" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Reason" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <input type="submit" value="Ajustar" class="btn btn-primary" />
-                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-}

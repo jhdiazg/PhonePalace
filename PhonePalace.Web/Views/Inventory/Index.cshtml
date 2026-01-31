@@ -5,7 +5,16 @@
     ViewData["Title"] = "Stock";
 }
 
-<h1>Gestión de Stock</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Gestión de Stock</h1>
+    <a asp-action="PrintInventory" 
+       asp-route-searchString="@ViewData["CurrentFilter"]"
+       asp-route-categoryId="@ViewData["CurrentCategory"]"
+       target="_blank"
+       class="btn btn-danger">
+        <i class="bi bi-file-pdf"></i> PDF Toma Física
+    </a>
+</div>
 
 <form asp-action="Index" method="get" class="mb-4">
     <div class="row g-3 align-items-center">
@@ -34,6 +43,19 @@
     </div>
 </form>
 
+<div class="row mb-3">
+    <div class="col-md-6">
+        <div class="alert alert-info shadow-sm">
+            <i class="bi bi-cash-coin me-2"></i><strong>Valor Total Inventario (Costo):</strong> @string.Format("{0:C}", ViewData["TotalInventoryValue"])
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="alert alert-success shadow-sm">
+            <i class="bi bi-tag-fill me-2"></i><strong>Valor Total Inventario (Venta):</strong> @string.Format("{0:C}", ViewData["TotalInventorySellValue"])
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
@@ -45,7 +67,20 @@
                         <th>Stock Actual</th>
                         <th>Compras</th>
                         <th>Ventas</th>
+                        <th>
+                            <a asp-action="Index" 
+                               asp-route-sortOrder="@ViewData["DaysSortParm"]"
+                               asp-route-searchString="@ViewData["CurrentFilter"]"
+                               asp-route-categoryId="@ViewData["CurrentCategory"]"
+                               asp-route-pageSize="@ViewData["PageSize"]">
+                                Días @(ViewData["CurrentSort"] as string == "days_desc" ? "▼" : (ViewData["CurrentSort"] as string == "days_asc" ? "▲" : ""))
+                            </a>
+                        </th>
                         <th>Última Actualización (Local)</th>
+                        @if (User.IsInRole("Administrador"))
+                        {
+                            <th>Acciones</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
@@ -59,7 +94,20 @@
                                 <td>@Html.DisplayFor(modelItem => item.CurrentStock)</td>
                                 <td>@Html.DisplayFor(modelItem => item.TotalPurchases)</td>
                                 <td>@Html.DisplayFor(modelItem => item.TotalSales)</td>
+                                <td>
+                                    @{
+                                        var days = (DateTime.Now.Date - item.LastUpdated.ToLocalTime().Date).Days;
+                                        var alertClass = days > 30 ? "text-danger fw-bold" : "";
+                                    }
+                                    <span class="@alertClass">@days</span>
+                                </td>
                                 <td>@item.LastUpdated.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                @if (User.IsInRole("Administrador"))
+                                {
+                                    <td>
+                                        <a asp-action="Adjust" asp-route-id="@item.ProductID" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Ajustar</a>
+                                    </td>
+                                }
                             </tr>
                         }
                     }
@@ -85,6 +133,7 @@
        asp-route-pageSize="@ViewData["PageSize"]"
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-categoryId="@ViewData["CurrentCategory"]"
+       asp-route-sortOrder="@ViewData["CurrentSort"]"
        class="btn btn-secondary @prevDisabled">
         Anterior
     </a>
@@ -94,6 +143,7 @@
        asp-route-pageSize="@ViewData["PageSize"]"
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-categoryId="@ViewData["CurrentCategory"]"
+       asp-route-sortOrder="@ViewData["CurrentSort"]"
        class="btn btn-secondary @nextDisabled">
         Siguiente
     </a>

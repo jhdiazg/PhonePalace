@@ -8,7 +8,7 @@
 {
     var user = await UserManager.GetUserAsync(User);
     <li class="nav-item">
-        <a class="nav-link d-flex align-items-center" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">
+        <a class="nav-link d-flex align-items-center" asp-area="" asp-controller="UserManagement" asp-action="Profile" title="Mi Perfil">
             @if (user != null && !string.IsNullOrEmpty(user.ProfilePictureUrl))
             {
                 <img src="@Url.Content("~/" + user.ProfilePictureUrl.TrimStart('/'))" alt="Perfil" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" />

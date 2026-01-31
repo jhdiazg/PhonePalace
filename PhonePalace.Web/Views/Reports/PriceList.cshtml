@@ -1,0 +1,32 @@
+@using PhonePalace.Web.ViewModels
+@using PhonePalace.Web.Documents
+@{
+    ViewData["Title"] = "Lista de Precios";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Generar Lista de Precios</h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="PriceList" method="post" target="_blank">
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Seleccione el tipo de lista:</label>
+                            <select name="type" class="form-select" asp-items="Html.GetEnumSelectList<PriceListType>()">
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-file-pdf"></i> Descargar PDF
+                            </button>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

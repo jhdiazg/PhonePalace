@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using PhonePalace.Web.Helpers;
+﻿﻿﻿﻿﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -141,7 +141,7 @@ namespace PhonePalace.Web.Controllers
                 SKU = accessory.SKU ?? string.Empty,
                 CategoryID = accessory.CategoryID,
                 BrandID = accessory.BrandID,
-                Color = accessory.Color ?? string.Empty,
+                Color = accessory.Color,
                 IsActive = accessory.IsActive,
                 ProductCondition = accessory.ProductCondition,
                 Images = accessory.Images.ToList()

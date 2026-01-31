@@ -1,0 +1,32 @@
+@model PhonePalace.Web.ViewModels.PriceListReportViewModel
+
+@{
+    ViewData["Title"] = "Generar Lista de Precios";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-file-earmark-pdf me-2"></i>Generar Lista de Precios</h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="GeneratePriceList" target="_blank">
+                        <div class="mb-4">
+                            <label asp-for="Type" class="form-label fw-bold">Seleccione el Tipo de Lista</label>
+                            <select asp-for="Type" class="form-select form-select-lg" asp-items="Html.GetEnumSelectList<PhonePalace.Web.ViewModels.PriceListType>()">
+                            </select>
+                            <div class="form-text">El precio se calculará sumando el porcentaje seleccionado al costo y redondeando al mil siguiente.</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">Generar PDF</button>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

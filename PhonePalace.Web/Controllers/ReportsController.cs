@@ -4,9 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.ViewModels;
 using PhonePalace.Web.Helpers;
+using PhonePalace.Web.Documents;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -15,10 +18,12 @@ namespace PhonePalace.Web.Controllers
     public class ReportsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public ReportsController(ApplicationDbContext context)
+        public ReportsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         [HttpGet]
@@ -95,6 +100,56 @@ namespace PhonePalace.Web.Controllers
             };
 
             return View(model);
+        }
+
+        [HttpGet]
+        [Route("ListaPrecios")]
+        public IActionResult PriceList()
+        {
+            return View(new PriceListReportViewModel());
+        }
+
+        [HttpPost]
+        [Route("ListaPrecios")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GeneratePriceList(PriceListReportViewModel model)
+        {
+            // Obtener productos activos con stock > 0
+            var products = await _context.Products
+                .Include(p => p.Category)
+                .Include(p => p.InventoryLevels)
+                .Where(p => p.IsActive)
+                .Select(p => new
+                {
+                    Product = p,
+                    TotalStock = p.InventoryLevels.Sum(i => i.Stock)
+                })
+                .Where(x => x.TotalStock > 0)
+                .Select(x => new ProductIndexViewModel
+                {
+                    Name = x.Product.Name,
+                    Code = x.Product.Code,
+                    SKU = x.Product.SKU,
+                    CategoryName = x.Product.Category.Name,
+                    Cost = x.Product.Cost,
+                    ProductType = "General" // Simplificado para el reporte
+                })
+                .ToListAsync();
+
+            // Cargar Logo
+            string wwwRootPath = _webHostEnvironment.WebRootPath;
+            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_fact.png");
+            byte[] logoBytes = Array.Empty<byte>();
+
+            if (System.IO.File.Exists(logoPath))
+            {
+                logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
+            }
+
+            var document = new PriceListPdfDocument(products, model.Type, logoBytes);
+            var pdfBytes = document.GeneratePdf();
+
+            return File(pdfBytes, "application/pdf", $"ListaPrecios_{model.Type}_{DateTime.Now:yyyyMMdd}.pdf");
         }
     }
 }

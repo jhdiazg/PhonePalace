@@ -17,7 +17,7 @@
         <span class="fs-4">PhonePalace</span>
     </a>
     <hr>
-    <ul class="nav nav-pills flex-column mb-auto">
+    <ul class="nav nav-pills flex-column mb-auto" id="sidebar-nav">
         <li class="nav-item">
             <a asp-controller="Home" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Home")">
                 <i class="bi bi-speedometer2 me-2"></i>
@@ -59,12 +59,18 @@
                 <i class="bi bi-bar-chart-line-fill me-2"></i>
                 Reportes
             </a>
-            <div class="collapse @(isReportsActive ? "show" : "")" id="reports-submenu">
+            <div class="collapse @(isReportsActive ? "show" : "")" id="reports-submenu" data-bs-parent="#sidebar-nav">
                 <ul class="nav flex-column ms-4">
                     <li class="nav-item">
                         <a asp-controller="Reports" asp-action="SalesByPaymentMethod" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reports")">
                             <i class="bi bi-credit-card-2-front me-2"></i>
                             Ventas por Forma de Pago
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="PriceList" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reports")">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            Lista de Precios
                         </a>
                     </li>
                 </ul>
@@ -76,7 +82,7 @@
                 <i class="bi bi-shop me-2"></i>
                 Local
             </a>
-            <div class="collapse @(isLocalActive ? "show" : "")" id="local-submenu">
+            <div class="collapse @(isLocalActive ? "show" : "")" id="local-submenu" data-bs-parent="#sidebar-nav">
                 <ul class="nav flex-column ms-4">
                     <li class="nav-item">
                         <a asp-controller="Cash" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Cash")">
@@ -110,7 +116,7 @@
                 <i class="bi bi-box-seam-fill me-2"></i>
                 Inventario
             </a>
-            <div class="collapse @(isInventoryActive ? "show" : "")" id="inventory-submenu">
+            <div class="collapse @(isInventoryActive ? "show" : "")" id="inventory-submenu" data-bs-parent="#sidebar-nav">
                 <ul class="nav flex-column ms-4">
                     <li class="nav-item">
                         <a asp-controller="Products" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Products")">
@@ -145,7 +151,7 @@
                 <i class="bi bi-gear-fill me-2"></i>
                 Configuración
             </a>
-            <div class="collapse @(isConfigActive ? "show" : "")" id="config-submenu">
+            <div class="collapse @(isConfigActive ? "show" : "")" id="config-submenu" data-bs-parent="#sidebar-nav">
                 <ul class="nav flex-column ms-4">
                     @if (User.IsInRole("Administrador"))
                     {
