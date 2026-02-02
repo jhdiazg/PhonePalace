@@ -578,6 +578,69 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("Concept")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FixedExpenses");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpensePayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int?>("CashMovementId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FixedExpenseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Period")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashMovementId");
+
+                    b.HasIndex("FixedExpenseId");
+
+                    b.ToTable("FixedExpensePayments");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Inventory", b =>
                 {
                     b.Property<int>("InventoryID")
@@ -1358,6 +1421,23 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Municipality");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpensePayment", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.CashMovement", "CashMovement")
+                        .WithMany()
+                        .HasForeignKey("CashMovementId");
+
+                    b.HasOne("PhonePalace.Domain.Entities.FixedExpense", "FixedExpense")
+                        .WithMany()
+                        .HasForeignKey("FixedExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CashMovement");
+
+                    b.Navigation("FixedExpense");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Inventory", b =>

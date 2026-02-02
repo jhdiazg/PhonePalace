@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
@@ -349,6 +350,20 @@ namespace PhonePalace.Web.Controllers
             {
                 ViewData["MunicipalityID"] = new SelectList(new List<SelectListItem> { new SelectListItem { Text = "Seleccione un departamento", Value = "" } }, "Value", "Text");
             }
+
+            // Se generan las listas para los enums usando el helper que sí lee los DisplayNames.
+            ViewData["SupplierTypes"] = Enum.GetValues(typeof(SupplierTypeSelection))
+                .Cast<SupplierTypeSelection>()
+                .Select(e => new SelectListItem { 
+                    Value = e.ToString(), 
+                    Text = e.ToString() == "NaturalPerson" ? "Persona Natural" : (e.ToString() == "LegalEntity" ? "Persona Jurídica" : e.ToString())
+                })
+                .ToList();
+
+            ViewData["DocumentTypes"] = Enum.GetValues(typeof(DocumentType))
+                .Cast<Enum>()
+                .Select(e => new SelectListItem { Value = e.ToString(), Text = EnumHelper.GetDisplayName(e) })
+                .ToList();
         }
     }
 }

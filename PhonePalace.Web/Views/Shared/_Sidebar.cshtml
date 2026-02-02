@@ -7,7 +7,7 @@
     // Define qué controladores pertenecen al menú desplegable "Configuración"
     var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks", "UserManagement");
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
-    var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash");
+    var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash", "FixedExpenses");
     var isReportsActive = ActiveRoute.IsIn(ViewContext, "Reports");
 }
 
@@ -25,8 +25,9 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="Compras" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Compras")">
-                <i class="bi bi-cart-plus-fill me-2"></i>
+            <a asp-controller="Purchases" asp-action="Index" 
+               class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Purchases" ? "active" : "")">
+                <i class="bi bi-cart-fill me-2"></i>
                 Compras
             </a>
         </li>
@@ -37,8 +38,9 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="Sales" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Ventas")">
-                <i class="bi bi-cash-coin me-2"></i>
+            <a asp-controller="Sales" asp-action="Index" 
+               class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Sales" ? "active" : "")">
+                <i class="bi bi-receipt me-2"></i>
                 Ventas
             </a>
         </li>
@@ -62,13 +64,13 @@
             <div class="collapse @(isReportsActive ? "show" : "")" id="reports-submenu" data-bs-parent="#sidebar-nav">
                 <ul class="nav flex-column ms-4">
                     <li class="nav-item">
-                        <a asp-controller="Reports" asp-action="SalesByPaymentMethod" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reports")">
+                        <a asp-controller="Reports" asp-action="SalesByPaymentMethod" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "SalesByPaymentMethod" ? "active" : "")">
                             <i class="bi bi-credit-card-2-front me-2"></i>
                             Ventas por Forma de Pago
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a asp-controller="Reports" asp-action="PriceList" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Reports")">
+                        <a asp-controller="Reports" asp-action="PriceList" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "PriceList" ? "active" : "")">
                             <i class="bi bi-file-earmark-text me-2"></i>
                             Lista de Precios
                         </a>
@@ -88,6 +90,12 @@
                         <a asp-controller="Cash" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Cash")">
                             <i class="bi bi-cash-coin me-2"></i>
                             Caja
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="FixedExpenses" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "FixedExpenses")">
+                            <i class="bi bi-calendar-minus me-2"></i>
+                            Gastos Fijos
                         </a>
                     </li>
                 </ul>

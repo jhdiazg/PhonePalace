@@ -14,12 +14,14 @@
 
             <div class="form-group mb-3">
                 <label asp-for="SupplierType" class="control-label"></label>
-                <select asp-for="SupplierType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Web.ViewModels.SupplierTypeSelection>()" id="SupplierType"></select>
+                <select asp-for="SupplierType" class="form-control" asp-items="ViewBag.SupplierTypes" id="SupplierType">
+                    <option value="">-- Seleccione Tipo --</option>
+                </select>
                 <span asp-validation-for="SupplierType" class="text-danger"></span>
             </div>
 
             <!-- Campos Persona Natural -->
-            <div id="naturalPersonFields">
+            <div id="naturalPersonFields" style="display:none;">
                 <div class="row">
                     <div class="col-md-6 form-group mb-3">
                         <label asp-for="FirstName" class="control-label"></label>
@@ -35,7 +37,9 @@
                 <div class="row">
                     <div class="col-md-6 form-group mb-3">
                         <label asp-for="DocumentType" class="control-label"></label>
-                        <select asp-for="DocumentType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.DocumentType>()"></select>
+                        <select asp-for="DocumentType" class="form-control" asp-items="ViewBag.DocumentTypes">
+                            <option value="">-- Seleccione Tipo --</option>
+                        </select>
                         <span asp-validation-for="DocumentType" class="text-danger"></span>
                     </div>
                     <div class="col-md-6 form-group mb-3">
@@ -118,13 +122,16 @@
     <script>
         $(document).ready(function () {
             function toggleFields() {
-                var type = $("#SupplierType").val();
-                if (type == "0") { // NaturalPerson
+                var supplierType = $("#SupplierType").val();
+                if (supplierType === "NaturalPerson") {
                     $("#naturalPersonFields").show();
                     $("#legalEntityFields").hide();
-                } else { // LegalEntity
+                } else if (supplierType === "LegalEntity") {
                     $("#naturalPersonFields").hide();
                     $("#legalEntityFields").show();
+                } else {
+                    $("#naturalPersonFields").hide();
+                    $("#legalEntityFields").hide();
                 }
             }
 

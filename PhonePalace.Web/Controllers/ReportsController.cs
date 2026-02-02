@@ -30,6 +30,26 @@ namespace PhonePalace.Web.Controllers
         [Route("VentasPorFormaPago")]
         public async Task<IActionResult> SalesByPaymentMethod(DateTime? startDate, DateTime? endDate, string? selectedPaymentMethod, int? pageNumber, int? pageSize)
         {
+            // Validaciones de fechas
+            bool datesAdjusted = false;
+
+            if (startDate.HasValue && startDate.Value.Date > DateTime.Now.Date)
+            {
+                startDate = DateTime.Now.Date;
+                datesAdjusted = true;
+            }
+            if (endDate.HasValue && startDate.HasValue && endDate.Value.Date < startDate.Value.Date)
+            {
+                endDate = startDate;
+                datesAdjusted = true;
+            }
+
+            if (datesAdjusted)
+            {
+                TempData["Info"] = "Las fechas han sido ajustadas para cumplir con las validaciones.";
+                return RedirectToAction(nameof(SalesByPaymentMethod), new { startDate = startDate?.ToString("yyyy-MM-dd"), endDate = endDate?.ToString("yyyy-MM-dd"), selectedPaymentMethod, pageNumber, pageSize });
+            }
+
             var start = startDate ?? DateTime.Today;
             var end = endDate ?? DateTime.Today;
             var currentPageSize = pageSize ?? 15;
@@ -112,9 +132,9 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("ListaPrecios")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> GeneratePriceList(PriceListReportViewModel model)
+        public async Task<IActionResult> GeneratePriceList(PriceListReportViewModel model, bool showAllProducts)
         {
-            // Obtener productos activos con stock > 0
+            // Obtener productos activos (filtrando por stock si no se solicita mostrar todos)
             var products = await _context.Products
                 .Include(p => p.Category)
                 .Include(p => p.InventoryLevels)
@@ -124,7 +144,7 @@ namespace PhonePalace.Web.Controllers
                     Product = p,
                     TotalStock = p.InventoryLevels.Sum(i => i.Stock)
                 })
-                .Where(x => x.TotalStock > 0)
+                .Where(x => showAllProducts || x.TotalStock > 0)
                 .Select(x => new ProductIndexViewModel
                 {
                     Name = x.Product.Name,

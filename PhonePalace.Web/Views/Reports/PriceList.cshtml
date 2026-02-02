@@ -18,6 +18,12 @@
                             <select name="type" class="form-select" asp-items="Html.GetEnumSelectList<PriceListType>()">
                             </select>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="showAllProducts" name="showAllProducts" value="true">
+                            <label class="form-check-label" for="showAllProducts">
+                                Incluir productos sin stock (Inventario en 0)
+                            </label>
+                        </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="bi bi-file-pdf"></i> Descargar PDF
