@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Threading.Tasks;
 
@@ -15,6 +16,7 @@ namespace PhonePalace.Infrastructure.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             // No se puede usar ILogger<DbSeeder> porque DbSeeder es una clase estática.
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
             // En su lugar, usamos ILoggerFactory para crear un logger con un nombre de categoría específico.
             var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
@@ -49,10 +51,18 @@ namespace PhonePalace.Infrastructure.Data
                     EmailConfirmed = true // Confirma el email para poder hacer login directamente
                 };
 
-                // ¡IMPORTANTE! Usa una contraseña segura y gestiónala con User Secrets en desarrollo.
-                // Esto es solo un ejemplo.
-                var createResult = await userManager.CreateAsync(newAdminUser, "AdminPass123!");
+                // --- Cargar contraseña de administrador desde configuración ---
+                // ¡CRÍTICO PARA PRODUCCIÓN! La contraseña NUNCA debe estar hardcodeada.
+                // En desarrollo: Usar User Secrets (secrets.json) -> "InitialAdminPassword": "TuClaveSecreta"
+                // En producción: Usar Variables de Entorno o un servicio como Azure Key Vault.
+                var adminPassword = configuration["INITIAL_ADMIN_PASSWORD"];
+                if (string.IsNullOrEmpty(adminPassword))
+                {
+                    logger.LogCritical("La contraseña del administrador ('InitialAdminPassword') no está configurada. No se puede crear el usuario administrador.");
+                    throw new InvalidOperationException("La contraseña del administrador no está configurada. Defina 'InitialAdminPassword' en la configuración.");
+                }
 
+                var createResult = await userManager.CreateAsync(newAdminUser, adminPassword);
                 if (createResult.Succeeded)
                 {
                     logger.LogInformation("Usuario administrador creado exitosamente.");

@@ -73,6 +73,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Identity/Account/Login";
     options.LogoutPath = "/Identity/Account/Logout";
     options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+
+    // --- INICIO: Configuración de Expiración de Sesión de Autenticación ---
+    // Forzar el cierre de sesión después de un tiempo fijo, sin importar la actividad del usuario.
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // La sesión expira después de 60 minutos.
+    options.SlidingExpiration = false; // Impide que la cookie se renueve con cada petición.
 });
 
 // Configuración de la licencia de QuestPDF
