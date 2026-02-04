@@ -297,6 +297,100 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> ChangePassword(string id)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Administrador");
+
+            // Seguridad: Solo permitir si es Admin o si el usuario se edita a sí mismo
+            if (!isAdmin && currentUserId != id)
+            {
+                return Forbid();
+            }
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            var model = new ChangePasswordViewModel
+            {
+                UserId = user.Id,
+                UserName = user.UserName ?? string.Empty,
+                IsAdminReset = isAdmin && currentUserId != id
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole("Administrador");
+
+            // Seguridad
+            if (!isAdmin && currentUserId != model.UserId)
+            {
+                return Forbid();
+            }
+
+            // Validar OldPassword solo si no es un reset administrativo
+            if (!model.IsAdminReset && string.IsNullOrEmpty(model.OldPassword))
+            {
+                ModelState.AddModelError("OldPassword", "La contraseña actual es requerida.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var user = await _userManager.FindByIdAsync(model.UserId);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            IdentityResult result;
+
+            if (model.IsAdminReset)
+            {
+                // Admin reseteando contraseña de otro usuario (no requiere clave anterior)
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    await _auditService.LogAsync("Usuarios", $"Admin restableció contraseña de {user.UserName}");
+                }
+            }
+            else
+            {
+                // Usuario cambiando su propia contraseña (requiere clave anterior)
+                result = await _userManager.ChangePasswordAsync(user, model.OldPassword!, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    await _auditService.LogAsync("Usuarios", $"Usuario {user.UserName} cambió su contraseña");
+                }
+            }
+
+            if (result.Succeeded)
+            {
+                TempData["Success"] = "Contraseña actualizada exitosamente.";
+                return RedirectToAction(nameof(Edit), new { id = model.UserId });
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError("", error.Description);
+            }
+
+            return View(model);
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Profile()
         {
             var user = await _userManager.GetUserAsync(User);

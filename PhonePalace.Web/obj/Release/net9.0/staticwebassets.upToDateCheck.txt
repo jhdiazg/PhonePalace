@@ -22,6 +22,7 @@ D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-reboot.m
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\jquery\dist\jquery.js
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-utilities.rtl.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\js\bootstrap.min.js.map
+D:\PhonePalace\PhonePalace.Web\wwwroot\site.webmanifest
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\js\bootstrap.esm.js.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.css
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\js\bootstrap.bundle.min.js
@@ -43,6 +44,7 @@ D:\PhonePalace\PhonePalace.Web\wwwroot\lib\jquery\LICENSE.txt
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-reboot.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-grid.min.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.min.css.map
+D:\PhonePalace\PhonePalace.Web\wwwroot\favicon.svg
 D:\PhonePalace\PhonePalace.Web\wwwroot\js\site.js
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-utilities.rtl.min.css
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css
@@ -62,8 +64,11 @@ D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.min.
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-utilities.min.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\jquery-validation\dist\jquery.validate.min.js
+wwwroot\apple-touch-icon.png
 wwwroot\css\site.css
+wwwroot\favicon-96x96.png
 wwwroot\favicon.ico
+wwwroot\favicon.svg
 wwwroot\images\Logo_jahudi.png
 wwwroot\images\Logo_pdf.jpg
 wwwroot\images\logo.png
@@ -139,4 +144,7 @@ wwwroot\products\240e7f69-2d66-406f-859e-45df5ec800ce.webp
 wwwroot\products\4b0980ec-37ae-4b24-b1bc-63b6ebe9c815.webp
 wwwroot\products\7ead2131-9c9c-45d0-ad61-94cf729daa74.jpg
 wwwroot\products\cc7f81e2-750f-4833-9e61-7d835b5aefa6.jpg
-wwwroot\users\cee5bffa-fa1f-412b-8b56-6009e6a7c0f8.webp
+wwwroot\site.webmanifest
+wwwroot\users\bb36f48f-a678-4a1c-9fde-8f1f7aa443cb.png
+wwwroot\web-app-manifest-192x192.png
+wwwroot\web-app-manifest-512x512.png

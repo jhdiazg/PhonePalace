@@ -406,7 +406,6 @@ D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\nezrqnk58p-{0}-muyc
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\v0zgfp0y55-{0}-87fc7y1x7t-87fc7y1x7t.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\yfc7ypekbg-{0}-mlv21k5csn-mlv21k5csn.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\v4bo1rkmam-{0}-winz5n96v6-winz5n96v6.gz
-D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\ric45qga7u-{0}-61n19gt1b8-61n19gt1b8.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\vqxncioay9-{0}-5ipweew5fc-5ipweew5fc.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\k6up6cn8lp-{0}-lbb0apdxbt-lbb0apdxbt.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\p1wah9oy63-{0}-xtxxf3hu2r-xtxxf3hu2r.gz
@@ -483,3 +482,16 @@ D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\ref\PhonePalace.Web.dll
+D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\ric45qga7u-{0}-jv1k87j1qv-jv1k87j1qv.gz
+D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\ojstad5u4s-{0}-u6xjsamubx-u6xjsamubx.gz
+D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\btuqta8js3-{0}-vwxzmjkmsq-vwxzmjkmsq.gz
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\site.webmanifest.gz
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.svg.gz
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.ico.gz
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\apple-touch-icon.png
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon-96x96.png
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.ico
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.svg
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\site.webmanifest
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\web-app-manifest-192x192.png
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\web-app-manifest-512x512.png

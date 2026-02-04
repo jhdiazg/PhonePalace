@@ -1,7 +1,7 @@
 {
   "format": 1,
   "restore": {
-    "D:\\PhonePalace\\phonepalace.web\\PhonePalace.Web.csproj": {}
+    "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj": {}
   },
   "projects": {
     "D:\\PhonePalace\\PhonePalace.Domain\\PhonePalace.Domain.csproj": {
@@ -190,14 +190,14 @@
         }
       }
     },
-    "D:\\PhonePalace\\phonepalace.web\\PhonePalace.Web.csproj": {
+    "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\PhonePalace\\phonepalace.web\\PhonePalace.Web.csproj",
+        "projectUniqueName": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
         "projectName": "PhonePalace.Web",
-        "projectPath": "D:\\PhonePalace\\phonepalace.web\\PhonePalace.Web.csproj",
+        "projectPath": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
         "packagesPath": "C:\\Users\\DELL\\.nuget\\packages\\",
-        "outputPath": "D:\\PhonePalace\\phonepalace.web\\obj\\",
+        "outputPath": "D:\\PhonePalace\\PhonePalace.Web\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
