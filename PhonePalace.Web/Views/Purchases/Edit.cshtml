@@ -28,6 +28,11 @@
                 <label asp-for="SupplierInvoiceNumber" class="control-label"></label>
                 <input asp-for="SupplierInvoiceNumber" class="form-control" placeholder="Ej: FAC-12345" />
             </div>
+            <div class="form-group">
+                <label asp-for="Observations" class="control-label"></label>
+                <textarea asp-for="Observations" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Observations" class="text-danger"></span>
+            </div>
 
             <h3>Productos</h3>
             <span asp-validation-for="Details" class="text-danger"></span>

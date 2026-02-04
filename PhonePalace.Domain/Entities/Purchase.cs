@@ -30,7 +30,9 @@ namespace PhonePalace.Domain.Entities
         public string? SupplierInvoiceNumber { get; set; }
         [DisplayName("Tipo Documento")]
         public AccountPayableDocumentType DocumentType { get; set; } = AccountPayableDocumentType.Invoice;
-    public ICollection<PurchaseDetail> PurchaseDetails { get; set; } = new List<PurchaseDetail>();
+        [DisplayName("Observaciones")]
+        public string? Observations { get; set; }
+        public ICollection<PurchaseDetail> PurchaseDetails { get; set; } = new List<PurchaseDetail>();
         public bool IsDeleted { get; set; }
         public DateTime? DeletedDate { get; set; }
         public DateTime? DeletedOn { get; set; }

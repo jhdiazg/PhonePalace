@@ -142,6 +142,7 @@ namespace PhonePalace.Web.Controllers
                     PaymentMethod = model.PaymentMethod,
                     SupplierInvoiceNumber = model.SupplierInvoiceNumber?.ToUpper(),
                     DocumentType = model.DocumentType,
+                    Observations = model.Observations,
                     PurchaseDetails = model.Details?.Select(d => 
                     {
                         var taxRate = d.TaxRate;
@@ -219,6 +220,7 @@ namespace PhonePalace.Web.Controllers
                 PaymentMethod = purchase.PaymentMethod,
                 SupplierInvoiceNumber = purchase.SupplierInvoiceNumber,
                 DocumentType = purchase.DocumentType,
+                Observations = purchase.Observations,
                 Details = purchase.PurchaseDetails?.Select(d => new PurchaseDetailViewModel
                 {
                     ProductId = d.ProductId,
@@ -258,6 +260,7 @@ namespace PhonePalace.Web.Controllers
                     purchase.PaymentMethod = model.PaymentMethod;
                     purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber?.ToUpper();
                     purchase.DocumentType = model.DocumentType;
+                    purchase.Observations = model.Observations;
                     purchase.PurchaseDetails = model.Details?.Select(d => 
                     {
                         var taxRate = d.TaxRate;

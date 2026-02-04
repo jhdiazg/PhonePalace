@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "+qd/R1xD1kk=",
+  "dgSpecHash": "2t96b0Qtakc=",
   "success": true,
-  "projectFilePath": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
+  "projectFilePath": "D:\\PhonePalace\\phonepalace.web\\PhonePalace.Web.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\DELL\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\DELL\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
@@ -239,15 +239,5 @@
     "C:\\Users\\DELL\\.nuget\\packages\\x.pagedlist\\10.5.7\\x.pagedlist.10.5.7.nupkg.sha512",
     "C:\\Users\\DELL\\.nuget\\packages\\x.pagedlist.mvc.core\\10.5.7\\x.pagedlist.mvc.core.10.5.7.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1900",
-      "level": "Warning",
-      "message": "Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.",
-      "projectPath": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
-      "warningLevel": 1,
-      "filePath": "D:\\PhonePalace\\PhonePalace.Web\\PhonePalace.Web.csproj",
-      "targetGraphs": []
-    }
-  ]
+  "logs": []
 }

@@ -18,6 +18,8 @@ namespace PhonePalace.Web.ViewModels
         public string? SupplierInvoiceNumber { get; set; }
         [Display(Name = "Tipo Documento")]
         public AccountPayableDocumentType DocumentType { get; set; }
+        [Display(Name = "Observaciones")]
+        public string? Observations { get; set; }
         public List<PurchaseDetailViewModel> Details { get; set; } = new List<PurchaseDetailViewModel>();
     }
 }
