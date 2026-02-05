@@ -488,7 +488,6 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.build.json.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.development.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\swae.build.ex.cache
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePal.9B91939D.Up2Date
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll

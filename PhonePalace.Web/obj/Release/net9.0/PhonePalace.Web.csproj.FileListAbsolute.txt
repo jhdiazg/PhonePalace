@@ -405,7 +405,6 @@ D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\a3ygkwa5zy-{0}-2z0n
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\nezrqnk58p-{0}-muycvpuwrr-muycvpuwrr.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\v0zgfp0y55-{0}-87fc7y1x7t-87fc7y1x7t.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\yfc7ypekbg-{0}-mlv21k5csn-mlv21k5csn.gz
-D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\vqxncioay9-{0}-5ipweew5fc-5ipweew5fc.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\k6up6cn8lp-{0}-lbb0apdxbt-lbb0apdxbt.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\p1wah9oy63-{0}-xtxxf3hu2r-xtxxf3hu2r.gz
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\qhc1uttex2-{0}-t1cqhe9u97-t1cqhe9u97.gz
@@ -495,3 +494,4 @@ D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\site.webmanifest
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\web-app-manifest-192x192.png
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\web-app-manifest-512x512.png
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\compressed\v4bo1rkmam-{0}-d3mvzsp006-d3mvzsp006.gz
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\images\Logo_jahudi.png

@@ -57,7 +57,6 @@ D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-grid.rtl
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\jquery-validation-unobtrusive\dist\jquery.validate.unobtrusive.js
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-reboot.rtl.css.map
 D:\PhonePalace\PhonePalace.Web\wwwroot\css\site.css
-D:\PhonePalace\PhonePalace.Web\wwwroot\images\logo_fac.bmp
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.css
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-reboot.rtl.min.css
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap.rtl.min.css
@@ -72,8 +71,8 @@ wwwroot\favicon.svg
 wwwroot\images\Logo_jahudi.png
 wwwroot\images\Logo_jahudi2.png
 wwwroot\images\Logo_pdf.jpg
+wwwroot\images\Logo_pdf2.jpg
 wwwroot\images\logo.png
-wwwroot\images\logo_fac.bmp
 wwwroot\images\logo_fact.png
 wwwroot\images\main-banner.jpg
 wwwroot\images\main-banner.png
