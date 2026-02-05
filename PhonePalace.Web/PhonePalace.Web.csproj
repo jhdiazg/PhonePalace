@@ -48,6 +48,9 @@
     <Content Update="wwwroot\favicon.svg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Update="wwwroot\images\Logo_jahudi.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\site.webmanifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

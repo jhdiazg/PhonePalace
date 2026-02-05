@@ -12,8 +12,8 @@ using PhonePalace.Infrastructure.Data;
 namespace PhonePalace.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260110133721_AddCodeToProduct")]
-    partial class AddCodeToProduct
+    [Migration("20260204165153_InitialCreate3")]
+    partial class InitialCreate3
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,74 @@ namespace PhonePalace.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("ApplicationUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ProfilePictureUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -75,71 +143,6 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.ToTable("AspNetUsers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -266,6 +269,76 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasIndex("PurchaseId");
 
                     b.ToTable("AccountPayables");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
+                {
+                    b.Property<int>("AccountReceivableID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountReceivableID"));
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("ClientID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("SaleID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("AccountReceivableID");
+
+                    b.HasIndex("ClientID");
+
+                    b.HasIndex("SaleID");
+
+                    b.ToTable("AccountReceivables");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivablePayment", b =>
+                {
+                    b.Property<int>("AccountReceivablePaymentID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AccountReceivablePaymentID"));
+
+                    b.Property<int>("AccountReceivableID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("AccountReceivablePaymentID");
+
+                    b.HasIndex("AccountReceivableID");
+
+                    b.ToTable("AccountReceivablePayments");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.AuditLog", b =>
@@ -508,6 +581,69 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpense", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("Concept")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FixedExpenses");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpensePayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int?>("CashMovementId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FixedExpenseId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Period")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashMovementId");
+
+                    b.HasIndex("FixedExpenseId");
+
+                    b.ToTable("FixedExpensePayments");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Inventory", b =>
                 {
                     b.Property<int>("InventoryID")
@@ -732,7 +868,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(13)");
 
                     b.Property<string>("SKU")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ProductID");
@@ -785,8 +920,17 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("DocumentType")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Observations")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("PurchaseDate")
                         .HasColumnType("datetime2");
@@ -799,6 +943,9 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.Property<int>("SupplierId")
                         .HasColumnType("int");
+
+                    b.Property<string>("SupplierInvoiceNumber")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("TaxAmount")
                         .HasColumnType("decimal(18, 2)");
@@ -828,6 +975,9 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceivedQuantity")
                         .HasColumnType("int");
 
                     b.Property<decimal>("TaxRate")
@@ -952,6 +1102,10 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SaleDetailID"));
 
+                    b.Property<string>("IMEI")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("ProductID")
                         .HasColumnType("int");
 
@@ -960,6 +1114,10 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.Property<int>("SaleID")
                         .HasColumnType("int");
+
+                    b.Property<string>("Serial")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("decimal(18, 2)");
@@ -1158,7 +1316,7 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1167,7 +1325,7 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1182,7 +1340,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1191,7 +1349,7 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1207,6 +1365,34 @@ namespace PhonePalace.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleID");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivablePayment", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.AccountReceivable", "AccountReceivable")
+                        .WithMany("Payments")
+                        .HasForeignKey("AccountReceivableID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AccountReceivable");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.CashMovement", b =>
@@ -1241,6 +1427,23 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Municipality");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpensePayment", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.CashMovement", "CashMovement")
+                        .WithMany()
+                        .HasForeignKey("CashMovementId");
+
+                    b.HasOne("PhonePalace.Domain.Entities.FixedExpense", "FixedExpense")
+                        .WithMany()
+                        .HasForeignKey("FixedExpenseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CashMovement");
+
+                    b.Navigation("FixedExpense");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Inventory", b =>
@@ -1468,6 +1671,11 @@ namespace PhonePalace.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Model");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Brand", b =>

@@ -1,12 +1,15 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
+using PhonePalace.Web.ViewModels;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -15,11 +18,15 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
+        private readonly IBankService _bankService;
+        private readonly ICashService _cashService;
 
-        public BanksController(ApplicationDbContext context, IAuditService auditService)
+        public BanksController(ApplicationDbContext context, IAuditService auditService, IBankService bankService, ICashService cashService)
         {
             _context = context;
             _auditService = auditService;
+            _bankService = bankService;
+            _cashService = cashService;
         }
 
         // GET: Banks
@@ -165,6 +172,114 @@ namespace PhonePalace.Web.Controllers
         private bool BankExists(int id)
         {
             return _context.Banks.Any(e => e.BankID == id);
+        }
+
+        // GET: Banks/Transfer
+        [HttpGet]
+        public async Task<IActionResult> Transfer()
+        {
+            var banks = await _context.Banks.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync();
+            var model = new BankTransferViewModel
+            {
+                Banks = new SelectList(banks, "BankID", "Name")
+            };
+            return View(model);
+        }
+
+        // POST: Banks/Transfer
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Transfer(BankTransferViewModel model)
+        {
+            if (ModelState.IsValid)
+            {
+                // Validaciones lógicas según el tipo
+                if (model.TransferType == BankTransferType.BankToBank)
+                {
+                    if (!model.SourceBankId.HasValue || !model.TargetBankId.HasValue)
+                    {
+                        ModelState.AddModelError("", "Debe seleccionar banco de origen y destino.");
+                    }
+                    else if (model.SourceBankId == model.TargetBankId)
+                    {
+                        ModelState.AddModelError("", "El banco de origen y destino no pueden ser el mismo.");
+                    }
+                }
+                else if (model.TransferType == BankTransferType.BankToCash)
+                {
+                    if (!model.SourceBankId.HasValue) ModelState.AddModelError("SourceBankId", "Debe seleccionar el banco de origen.");
+                }
+                else if (model.TransferType == BankTransferType.CashToBank)
+                {
+                    if (!model.TargetBankId.HasValue) ModelState.AddModelError("TargetBankId", "Debe seleccionar el banco de destino.");
+                }
+
+                if (ModelState.IsValid)
+                {
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (userId == null) return Unauthorized();
+
+                    try 
+                    {
+                        // Usamos una transacción global para asegurar que ambos lados (Banco y Caja) se actualicen o ninguno
+                        using var transaction = await _context.Database.BeginTransactionAsync();
+                        try
+                        {
+                            switch (model.TransferType)
+                            {
+                                case BankTransferType.BankToBank:
+                                    await _bankService.RegisterTransferAsync(model.SourceBankId!.Value, model.TargetBankId!.Value, model.Amount, model.Description);
+                                    await _auditService.LogAsync("Bancos", $"Transferencia entre bancos: {model.Amount:C} de ID {model.SourceBankId} a ID {model.TargetBankId}");
+                                    break;
+
+                                case BankTransferType.BankToCash:
+                                    // Validar caja abierta
+                                    var cashRegister = await _cashService.GetCurrentCashRegisterAsync();
+                                    if (cashRegister == null) throw new InvalidOperationException("La caja debe estar abierta para recibir dinero.");
+
+                                    // Retiro del banco
+                                    await _bankService.RegisterManualMovementAsync(model.SourceBankId!.Value, Domain.Enums.BankTransactionType.TransferOut, model.Amount, $"Retiro hacia Caja: {model.Description}");
+                                    // Ingreso a caja
+                                    await _cashService.RegisterIncomeAsync(model.Amount, $"Transferencia desde Banco: {model.Description}", userId);
+                                    
+                                    await _auditService.LogAsync("Bancos", $"Retiro de banco a caja: {model.Amount:C} del banco ID {model.SourceBankId}");
+                                    break;
+
+                                case BankTransferType.CashToBank:
+                                    // Validar caja abierta
+                                    var cashRegister2 = await _cashService.GetCurrentCashRegisterAsync();
+                                    if (cashRegister2 == null) throw new InvalidOperationException("La caja debe estar abierta para sacar dinero.");
+
+                                    // Egreso de caja
+                                    await _cashService.RegisterExpenseAsync(model.Amount, $"Consignación a Banco: {model.Description}", userId);
+                                    // Ingreso al banco
+                                    await _bankService.RegisterManualMovementAsync(model.TargetBankId!.Value, Domain.Enums.BankTransactionType.TransferIn, model.Amount, $"Consignación desde Caja: {model.Description}");
+
+                                    await _auditService.LogAsync("Bancos", $"Consignación de caja a banco: {model.Amount:C} al banco ID {model.TargetBankId}");
+                                    break;
+                            }
+
+                            await transaction.CommitAsync();
+                            TempData["Success"] = "Transferencia realizada exitosamente.";
+                            return RedirectToAction(nameof(Index));
+                        }
+                        catch (Exception ex)
+                        {
+                            await transaction.RollbackAsync();
+                            ModelState.AddModelError("", $"Error en la transacción: {ex.Message}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                         ModelState.AddModelError("", $"Error: {ex.Message}");
+                    }
+                }
+            }
+
+            // Recargar lista si hay error
+            var banks = await _context.Banks.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync();
+            model.Banks = new SelectList(banks, "BankID", "Name");
+            return View(model);
         }
     }
 }

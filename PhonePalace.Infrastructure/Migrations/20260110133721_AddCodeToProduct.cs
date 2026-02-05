@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,7 +10,8 @@ namespace PhonePalace.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
+            // Cambiamos AddColumn por AlterColumn porque la columna ya existe en InitialCreate
+            migrationBuilder.AlterColumn<string>(
                 name: "Code",
                 table: "Products",
                 type: "nvarchar(10)",
@@ -21,9 +22,12 @@ namespace PhonePalace.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
+            // En caso de revertir, la devolvemos a nvarchar(max) que es el defecto
+            migrationBuilder.AlterColumn<string>(
                 name: "Code",
-                table: "Products");
+                table: "Products",
+                type: "nvarchar(max)",
+                nullable: true);
         }
     }
 }

@@ -64,6 +64,7 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 builder.Services.AddScoped<ICashService, CashService>();
+builder.Services.AddScoped<IBankService, BankService>();
 
 builder.Services.AddTransient<IEmailSender, EmailService>();
 builder.Services.AddRazorPages();
@@ -122,12 +123,14 @@ using (var scope = app.Services.CreateScope())
     var logger = services.GetRequiredService<ILogger<Program>>();
     try
     {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+
         // 1. Poblar roles y usuario administrador
         await DbSeeder.SeedRolesAndAdminAsync(services);
         logger.LogInformation("Roles and admin user seeded successfully.");
 
         // 2. Poblar datos de Departamentos y Municipios
-        var context = services.GetRequiredService<ApplicationDbContext>();
         await DataSeeder.SeedDaneDataAsync(context);
         logger.LogInformation("DANE data seeded successfully.");
     }

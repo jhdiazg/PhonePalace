@@ -11,21 +11,25 @@
     <div class="col-md-12">
         <form asp-action="Create" id="purchase-form">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="SupplierId" class="control-label">Proveedor</label>
-                <select asp-for="SupplierId" class="form-control" asp-items="Model.Suppliers"></select>
+            <div class="row">
+                <div class="form-group col-md-6">
+                    <label asp-for="SupplierId" class="control-label">Proveedor</label>
+                    <select asp-for="SupplierId" class="form-control" asp-items="Model.Suppliers"></select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label asp-for="PaymentMethod" class="control-label"></label>
+                    <select asp-for="PaymentMethod" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.PurchasePaymentMethod>()"></select>
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="PaymentMethod" class="control-label"></label>
-                <select asp-for="PaymentMethod" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.PurchasePaymentMethod>()"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="DocumentType" class="control-label"></label>
-                <select asp-for="DocumentType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.AccountPayableDocumentType>()"></select>
-            </div>
-            <div class="form-group">
-                <label asp-for="SupplierInvoiceNumber" class="control-label"></label>
-                <input asp-for="SupplierInvoiceNumber" class="form-control" placeholder="Ej: FAC-12345" />
+            <div class="row">
+                <div class="form-group col-md-6">
+                    <label asp-for="DocumentType" class="control-label"></label>
+                    <select asp-for="DocumentType" class="form-control" asp-items="Html.GetEnumSelectList<PhonePalace.Domain.Enums.AccountPayableDocumentType>()"></select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label asp-for="SupplierInvoiceNumber" class="control-label"></label>
+                    <input asp-for="SupplierInvoiceNumber" class="form-control" placeholder="Ej: FAC-12345" />
+                </div>
             </div>
             <div class="form-group">
                 <label asp-for="Observations" class="control-label"></label>
@@ -35,15 +39,17 @@
 
             <h3>Productos</h3>
             <span asp-validation-for="Details" class="text-danger"></span>
-            <div class="form-group">
-                <label for="category-select">Filtrar por Categoría</label>
-                <select id="category-select" class="form-control" asp-items="Model.Categories">
-                    <option value="">Todas las categorías</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="product-search">Buscar Producto</label>
-                <select id="product-search" class="form-control"></select>
+            <div class="row">
+                <div class="form-group col-md-6">
+                    <label for="category-select">Filtrar por Categoría</label>
+                    <select id="category-select" class="form-control" asp-items="Model.Categories">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="product-search">Buscar Producto</label>
+                    <select id="product-search" class="form-control"></select>
+                </div>
             </div>
             <table class="table" id="purchase-details">
                 <thead>

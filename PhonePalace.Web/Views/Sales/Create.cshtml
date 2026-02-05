@@ -113,14 +113,20 @@
                     <h4 class="mb-0">Formas de Pago</h4>
                 </div>
                 <div class="card-body">
-                    <div class="row align-items-end gx-2">
-                        <div class="col-md-4 form-group">
+                    <div class="row align-items-end gx-3">
+                        <div class="col-md-3 form-group">
                             <label for="payment-method-select">Método de Pago</label>
                             <select id="payment-method-select" name="PaymentMethods" class="form-control" asp-items="Model.PaymentMethods">
                                 <option value="">-- Seleccione un Método de Pago --</option>
                             </select>
                         </div>
-                        <div class="col-md-3 form-group">
+                        <div class="col-md-3 form-group" id="bank-selection-group" style="display: none;">
+                            <label for="bank-select">Cuenta Destino</label>
+                            <select id="bank-select" class="form-control" asp-items="ViewBag.Banks">
+                                <option value="">-- Seleccione Banco --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 form-group">
                             <label for="payment-amount-input">Monto</label>
                             <input type="number" id="payment-amount-input" class="form-control" min="0" step="0.01">
                         </div>
@@ -128,7 +134,7 @@
                             <label for="payment-reference-input">Referencia</label>
                             <input type="text" id="payment-reference-input" class="form-control" placeholder="(Opcional)">
                         </div>
-                        <div class="col-md-2 form-group">
+                        <div class="col-md-2 form-group mt-3 mt-md-0">
                             <button type="button" id="add-payment-btn" class="btn btn-info w-100">Agregar</button>
                         </div>
                     </div>
@@ -274,6 +280,18 @@
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
 
+            // --- PAYMENT METHOD LOGIC ---
+            const bankPaymentMethods = ['Card', 'Transfer', 'Nequi', 'Daviplata'];
+
+            $('#payment-method-select').on('change', function() {
+                const selectedMethod = $(this).val();
+                if (bankPaymentMethods.includes(selectedMethod)) {
+                    $('#bank-selection-group').show();
+                } else {
+                    $('#bank-selection-group').hide();
+                }
+            });
+
             // --- DYNAMIC FIELDS LOGIC ---
             $('#product-select').on('change', function() {
                 const productId = $(this).val();
@@ -407,18 +425,25 @@
                 const methodText = methodSelect.find('option:selected').text();
                 const amount = parseFloat(amountInput.val());
                 const reference = referenceInput.val();
+                const bankId = $('#bank-select').val();
 
                 if (!method || !amount || amount <= 0) {
                     alert('Por favor, seleccione un método de pago y un monto válido.');
                     return;
                 }
 
-                payments.push({ method, methodText, amount, reference });
+                if (bankPaymentMethods.includes(method) && !bankId) {
+                    alert('Por favor, seleccione una cuenta de destino para este método de pago.');
+                    return;
+                }
+
+                payments.push({ method, methodText, amount, reference, bankId: bankPaymentMethods.includes(method) ? bankId : null });
                 renderPayments();
 
                 // Clear inputs
                 amountInput.val('');
                 referenceInput.val('');
+                $('#bank-select').val('');
                 methodSelect.val('').trigger('change');
             });
 
@@ -502,6 +527,9 @@
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].PaymentMethod" value="${p.method}" />`);
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].Amount" value="${p.amount}" />`);
                     hiddenContainer.append(`<input type="hidden" name="Payments[${index}].ReferenceNumber" value="${p.reference || ''}" />`);
+                    if (p.bankId) {
+                        hiddenContainer.append(`<input type="hidden" name="Payments[${index}].BankID" value="${p.bankId}" />`);
+                    }
                 });
 
                 this.submit();

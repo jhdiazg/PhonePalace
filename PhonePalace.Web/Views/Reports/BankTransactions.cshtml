@@ -1,0 +1,87 @@
+@model PhonePalace.Web.ViewModels.BankReportViewModel
+@using PhonePalace.Web.Helpers
+
+@{
+    ViewData["Title"] = "Reporte de Movimientos Bancarios";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form asp-action="BankTransactions" method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label asp-for="BankId" class="form-label">Banco</label>
+                <select asp-for="BankId" asp-items="Model.Banks" class="form-select">
+                    <option value="">-- Seleccione un Banco --</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="StartDate" class="form-label">Fecha Inicio</label>
+                <input asp-for="StartDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label asp-for="EndDate" class="form-label">Fecha Fin</label>
+                <input asp-for="EndDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Generar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.BankId.HasValue)
+{
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Movimientos</h5>
+                <span class="badge bg-info text-dark fs-6">Saldo Anterior: @Model.PreviousBalance.ToString("C")</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Ingreso</th>
+                            <th class="text-end">Egreso</th>
+                            <th class="text-end">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Transactions.Any())
+                        {
+                            foreach (var item in Model.Transactions)
+                            {
+                                var isIncome = item.Type == PhonePalace.Domain.Enums.BankTransactionType.SaleIncome || 
+                                               item.Type == PhonePalace.Domain.Enums.BankTransactionType.TransferIn || 
+                                               item.Type == PhonePalace.Domain.Enums.BankTransactionType.ManualIncome;
+                                <tr>
+                                    <td>@item.Date.ToString("g")</td>
+                                    <td>@EnumHelper.GetDisplayName(item.Type)</td>
+                                    <td>@item.Description</td>
+                                    <td class="text-end text-success">@(isIncome ? item.Amount.ToString("C") : "-")</td>
+                                    <td class="text-end text-danger">@(!isIncome ? item.Amount.ToString("C") : "-")</td>
+                                    <td class="text-end fw-bold">@item.BalanceAfterTransaction.ToString("C")</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No se encontraron movimientos en el rango de fechas seleccionado.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

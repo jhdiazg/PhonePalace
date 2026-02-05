@@ -75,6 +75,12 @@
                             Lista de Precios
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="BankTransactions" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "BankTransactions" ? "active" : "")">
+                            <i class="bi bi-bank me-2"></i>
+                            Movimientos Bancarios
+                        </a>
+                    </li>
                 </ul>
             </div>
         </li>
@@ -208,6 +214,6 @@
     <partial name="_LoginPartial" />
     <hr>
     <div class="text-center">
-        <img src="~/images/Logo_jahudi.png" alt="Jahudi Software Logo" width="50" height="50" class="border border-white">
+        <img src="~/images/Logo_jahudi.png" alt="Jahudi Software Logo" class="logo-jahudi">
     </div>
 </div>

@@ -1,0 +1,89 @@
+@model PhonePalace.Web.ViewModels.BankTransferViewModel
+
+@{
+    ViewData["Title"] = "Transferencias Bancarias";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form asp-action="Transfer">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="TransferType" class="form-label"></label>
+                        <select asp-for="TransferType" class="form-select" asp-items="Html.GetEnumSelectList<PhonePalace.Web.ViewModels.BankTransferType>()" id="transferType">
+                        </select>
+                        <span asp-validation-for="TransferType" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3" id="sourceBankGroup">
+                        <label asp-for="SourceBankId" class="form-label"></label>
+                        <select asp-for="SourceBankId" class="form-select" asp-items="Model.Banks">
+                            <option value="">-- Seleccione Banco Origen --</option>
+                        </select>
+                        <span asp-validation-for="SourceBankId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3" id="targetBankGroup">
+                        <label asp-for="TargetBankId" class="form-label"></label>
+                        <select asp-for="TargetBankId" class="form-select" asp-items="Model.Banks">
+                            <option value="">-- Seleccione Banco Destino --</option>
+                        </select>
+                        <span asp-validation-for="TargetBankId" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Amount" class="form-label"></label>
+                        <input asp-for="Amount" class="form-control" />
+                        <span asp-validation-for="Amount" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Realizar Transferencia</button>
+                        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            function updateFields() {
+                var type = $('#transferType').val();
+                // 0: BankToBank, 1: BankToCash, 2: CashToBank
+                
+                if (type == '0') { // BankToBank
+                    $('#sourceBankGroup').show();
+                    $('#targetBankGroup').show();
+                    $('label[for="SourceBankId"]').text("Banco Origen");
+                    $('label[for="TargetBankId"]').text("Banco Destino");
+                } else if (type == '1') { // BankToCash
+                    $('#sourceBankGroup').show();
+                    $('#targetBankGroup').hide();
+                    $('label[for="SourceBankId"]').text("Banco a Debitar");
+                } else if (type == '2') { // CashToBank
+                    $('#sourceBankGroup').hide();
+                    $('#targetBankGroup').show();
+                    $('label[for="TargetBankId"]').text("Banco a Consignar");
+                }
+            }
+
+            $('#transferType').change(updateFields);
+            updateFields(); // Run on load
+        });
+    </script>
+}

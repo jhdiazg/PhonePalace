@@ -44,6 +44,7 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<AccountReceivable> AccountReceivables { get; set; }
         public DbSet<AccountReceivablePayment> AccountReceivablePayments { get; set; }
         public DbSet<Bank> Banks { get; set; }
+        public DbSet<BankTransaction> BankTransactions { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleDetail> SaleDetails { get; set; }
 
@@ -119,6 +120,20 @@ namespace PhonePalace.Infrastructure.Data
                 .HasMany(cr => cr.CashMovements)
                 .WithOne(cm => cm.CashRegister)
                 .HasForeignKey(cm => cm.CashRegisterID);
+
+            // Configuración para BankTransaction
+            modelBuilder.Entity<BankTransaction>()
+                .HasOne(bt => bt.Payment)
+                .WithMany()
+                .HasForeignKey(bt => bt.PaymentID)
+                .OnDelete(DeleteBehavior.Restrict); // Evita borrado en cascada ambiguo
+
+            // Configuración para Payment -> Bank
+            modelBuilder.Entity<Payment>()
+                .HasOne(p => p.Bank)
+                .WithMany() // Bank no tiene colección de Payments (tiene Transactions)
+                .HasForeignKey(p => p.BankID)
+                .OnDelete(DeleteBehavior.Restrict); // Evita borrar el Banco si tiene Pagos asociados
 
         }
     }

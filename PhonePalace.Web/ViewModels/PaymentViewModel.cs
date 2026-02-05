@@ -16,5 +16,8 @@ namespace PhonePalace.Web.ViewModels
 
         [Display(Name = "Número de Referencia")]
         public string? ReferenceNumber { get; set; }
+
+        // Propiedad para identificar el banco en pagos que lo requieran
+        public int? BankID { get; set; }
     }
 }

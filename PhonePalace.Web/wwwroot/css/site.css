@@ -63,3 +63,15 @@ body {
     color: red;
 }
 
+/* Estilos para el Logo Jahudi en el Sidebar */
+.logo-jahudi {
+    display: block;
+    width: 100%; /* Ampliar para ocupar el ancho disponible */
+    max-width: 120px; /* Aumentado para mayor tamaño */
+    height: auto;
+    background-color: #ffffff; /* Fondo blanco sólido */
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px auto; /* Centrado y con margen */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Sombra suave para resaltar */
+}

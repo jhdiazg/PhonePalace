@@ -19,14 +19,16 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
+        private readonly IBankService _bankService;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly CompanySettings _companySettings;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
         {
             _context = context;
             _cashService = cashService;
+            _bankService = bankService;
             _config = config;
             _webHostEnvironment = webHostEnvironment;
             _companySettings = companySettings.Value;
@@ -173,6 +175,7 @@ namespace PhonePalace.Web.Controllers
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
             ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+            ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
             if (taxRate > 1) taxRate /= 100; // Normalizar si viene como entero (ej. 19 -> 0.19)
@@ -190,6 +193,7 @@ namespace PhonePalace.Web.Controllers
                     viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
                     viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
                     ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+                    ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
                     ViewBag.TaxRate = taxRate;
                 }
             }
@@ -206,6 +210,7 @@ namespace PhonePalace.Web.Controllers
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
             ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+            ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
             if (taxRate > 1) taxRate /= 100; // Normalizar
@@ -330,7 +335,8 @@ namespace PhonePalace.Web.Controllers
                         Invoice = invoice,
                         PaymentMethod = paymentMethod,
                         Amount = paymentVM.Amount,
-                        ReferenceNumber = paymentVM.ReferenceNumber
+                        ReferenceNumber = paymentVM.ReferenceNumber,
+                        BankID = paymentVM.BankID
                     };
                     payments.Add(payment);
                     _context.Payments.Add(payment);
@@ -338,12 +344,20 @@ namespace PhonePalace.Web.Controllers
                 await _context.SaveChangesAsync();
 
                 // Registrar ingresos en caja para pagos en efectivo
+                // Y registrar ingresos en bancos para los demás métodos de pago
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!string.IsNullOrEmpty(userId))
                 {
-                    foreach (var payment in payments.Where(p => p.PaymentMethod == PaymentMethod.Cash))
+                    foreach (var p in payments)
                     {
-                        await _cashService.RegisterIncomeAsync(payment.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", userId, payment.PaymentID);
+                        if (p.PaymentMethod == PaymentMethod.Cash)
+                        {
+                            await _cashService.RegisterIncomeAsync(p.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", userId, p.PaymentID);
+                        }
+                        else if (p.BankID.HasValue) // Si es un pago bancario
+                        {
+                            await _bankService.RegisterIncomeFromPaymentAsync(p);
+                        }
                     }
                 }
             }

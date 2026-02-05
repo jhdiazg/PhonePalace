@@ -25,6 +25,7 @@ namespace PhonePalace.Web.Controllers
 
         public async Task<IActionResult> Index()
         {
+            // Umbral de bajo stock para los productos.
             const int lowStockThreshold = 5;
 
             var totalInventoryValue = await _context.Inventories

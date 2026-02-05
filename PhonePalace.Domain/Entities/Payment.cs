@@ -23,6 +23,10 @@ namespace PhonePalace.Domain.Entities
         [StringLength(100)]
         public string? ReferenceNumber { get; set; } // Para tarjetas, transferencias, etc.
         
+        // Foreign key para saber a qué cuenta bancaria ingresó el pago
+        public int? BankID { get; set; }
+        public virtual Bank? Bank { get; set; }
+
         public DateTime PaymentDate { get; set; } = DateTime.Now;
     }
 }

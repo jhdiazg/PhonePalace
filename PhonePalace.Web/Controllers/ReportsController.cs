@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.ViewModels;
@@ -170,6 +171,44 @@ namespace PhonePalace.Web.Controllers
             var pdfBytes = document.GeneratePdf();
 
             return File(pdfBytes, "application/pdf", $"ListaPrecios_{model.Type}_{DateTime.Now:yyyyMMdd}.pdf");
+        }
+
+        [HttpGet]
+        [Route("MovimientosBancarios")]
+        public async Task<IActionResult> BankTransactions(int? bankId, DateTime? startDate, DateTime? endDate)
+        {
+            var start = startDate ?? DateTime.Today.AddDays(-30);
+            var end = endDate ?? DateTime.Today;
+
+            // Ajustar fecha fin para incluir todo el día
+            var endFilter = end.Date.AddDays(1).AddTicks(-1);
+
+            var model = new BankReportViewModel
+            {
+                StartDate = start,
+                EndDate = end,
+                BankId = bankId,
+                Banks = new SelectList(await _context.Banks.AsNoTracking().ToListAsync(), "BankID", "Name", bankId)
+            };
+
+            if (bankId.HasValue)
+            {
+                model.Transactions = await _context.BankTransactions
+                    .Where(t => t.BankID == bankId.Value && t.Date >= start && t.Date <= endFilter)
+                    .OrderBy(t => t.Date)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                // Calcular saldo anterior buscando la última transacción antes del rango
+                var lastTransactionBefore = await _context.BankTransactions
+                    .Where(t => t.BankID == bankId.Value && t.Date < start)
+                    .OrderByDescending(t => t.Date)
+                    .FirstOrDefaultAsync();
+
+                model.PreviousBalance = lastTransactionBefore?.BalanceAfterTransaction ?? 0;
+            }
+
+            return View(model);
         }
     }
 }

@@ -1,4 +1,5 @@
 @model PhonePalace.Domain.Entities.Bank
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Detalles del Banco";
@@ -6,31 +7,93 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<div>
-    <h4>Banco</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Name)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.AccountNumber)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.AccountNumber)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.IsActive)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.IsActive)
-        </dd>
-    </dl>
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h5 class="mb-0">Información del Banco</h5>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">
+                Nombre
+            </dt>
+            <dd class="col-sm-9">
+                @Html.DisplayFor(model => model.Name)
+            </dd>
+
+            <dt class="col-sm-3">
+                Saldo Actual
+            </dt>
+            <dd class="col-sm-9 fw-bold fs-5 text-success">
+                @Model.Balance.ToString("C")
+            </dd>
+
+            <dt class="col-sm-3">
+                Número de Cuenta
+            </dt>
+            <dd class="col-sm-9">
+                @Html.DisplayFor(model => model.AccountNumber)
+            </dd>
+
+            <dt class="col-sm-3">
+                Estado
+            </dt>
+            <dd class="col-sm-9">
+                @if (Model.IsActive)
+                {
+                    <span class="badge bg-success">Activo</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Inactivo</span>
+                }
+            </dd>
+        </dl>
+    </div>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.BankID" class="btn btn-primary">Editar</a> |
+<div class="mt-3">
+    <a asp-action="Edit" asp-route-id="@Model?.BankID" class="btn btn-primary">Editar</a>
     <a asp-action="Index" class="btn btn-secondary">Volver a la lista</a>
+</div>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Últimos Movimientos</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Transactions != null && Model.Transactions.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th class="text-end">Monto</th>
+                            <th class="text-end">Saldo Resultante</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Transactions.OrderByDescending(t => t.Date))
+                        {
+                            var isIncome = item.Type == PhonePalace.Domain.Enums.BankTransactionType.SaleIncome || item.Type == PhonePalace.Domain.Enums.BankTransactionType.TransferIn || item.Type == PhonePalace.Domain.Enums.BankTransactionType.ManualIncome;
+                            var amountClass = isIncome ? "text-success" : "text-danger";
+                            var amountSign = isIncome ? "+" : "-";
+                            <tr>
+                                <td>@item.Date.ToString("g")</td>
+                                <td>@EnumHelper.GetDisplayName(item.Type)</td>
+                                <td>@Html.DisplayFor(modelItem => item.Description)</td>
+                                <td class="text-end @amountClass fw-semibold">@amountSign@item.Amount.ToString("C")</td>
+                                <td class="text-end">@item.BalanceAfterTransaction.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted">No hay movimientos registrados para esta cuenta.</p>
+        }
+    </div>
 </div>

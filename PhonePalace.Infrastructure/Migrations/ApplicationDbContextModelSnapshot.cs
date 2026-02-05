@@ -386,6 +386,9 @@ namespace PhonePalace.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18, 2)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -396,6 +399,45 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasKey("BankID");
 
                     b.ToTable("Banks");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.BankTransaction", b =>
+                {
+                    b.Property<int>("BankTransactionID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BankTransactionID"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<decimal>("BalanceAfterTransaction")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<int>("BankID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PaymentID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("BankTransactionID");
+
+                    b.HasIndex("BankID");
+
+                    b.HasIndex("PaymentID");
+
+                    b.ToTable("BankTransactions");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Brand", b =>
@@ -805,6 +847,9 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
+                    b.Property<int?>("BankID")
+                        .HasColumnType("int");
+
                     b.Property<int>("InvoiceID")
                         .HasColumnType("int");
 
@@ -819,6 +864,8 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("PaymentID");
+
+                    b.HasIndex("BankID");
 
                     b.HasIndex("InvoiceID");
 
@@ -924,7 +971,8 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("Observations")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("int");
@@ -936,7 +984,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("SubtotalAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.Property<int>("SupplierId")
                         .HasColumnType("int");
@@ -948,7 +996,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("decimal(18, 2)");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18, 2)");
 
                     b.HasKey("Id");
 
@@ -1392,6 +1440,24 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("AccountReceivable");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.BankTransaction", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Bank", "Bank")
+                        .WithMany("Transactions")
+                        .HasForeignKey("BankID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Payment", "Payment")
+                        .WithMany()
+                        .HasForeignKey("PaymentID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Bank");
+
+                    b.Navigation("Payment");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.CashMovement", b =>
                 {
                     b.HasOne("PhonePalace.Domain.Entities.CashRegister", "CashRegister")
@@ -1508,11 +1574,18 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Payment", b =>
                 {
+                    b.HasOne("PhonePalace.Domain.Entities.Bank", "Bank")
+                        .WithMany()
+                        .HasForeignKey("BankID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("PhonePalace.Domain.Entities.Invoice", "Invoice")
                         .WithMany("Payments")
                         .HasForeignKey("InvoiceID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Bank");
 
                     b.Navigation("Invoice");
                 });
@@ -1673,6 +1746,11 @@ namespace PhonePalace.Infrastructure.Migrations
             modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
                 {
                     b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Bank", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Brand", b =>

@@ -5,6 +5,7 @@ D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\apple-touch-icon.png
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\favicon-96x96.png
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\favicon.ico
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\favicon.svg
+D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\images\Logo_jahudi.png
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\site.webmanifest
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\web-app-manifest-192x192.png
 D:\PhonePalace\PhonePalace.Web\bin\Debug\net9.0\wwwroot\web-app-manifest-512x512.png
@@ -415,10 +416,9 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\a3ygkwa5zy-{0}-2z0ns9
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\nezrqnk58p-{0}-muycvpuwrr-muycvpuwrr.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v0zgfp0y55-{0}-87fc7y1x7t-87fc7y1x7t.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\yfc7ypekbg-{0}-mlv21k5csn-mlv21k5csn.gz
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v4bo1rkmam-{0}-winz5n96v6-winz5n96v6.gz
+D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\v4bo1rkmam-{0}-d3mvzsp006-d3mvzsp006.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\ric45qga7u-{0}-jv1k87j1qv-jv1k87j1qv.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\ojstad5u4s-{0}-u6xjsamubx-u6xjsamubx.gz
-D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\vqxncioay9-{0}-5ipweew5fc-5ipweew5fc.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\k6up6cn8lp-{0}-lbb0apdxbt-lbb0apdxbt.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\p1wah9oy63-{0}-xtxxf3hu2r-xtxxf3hu2r.gz
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\compressed\qhc1uttex2-{0}-t1cqhe9u97-t1cqhe9u97.gz
@@ -488,6 +488,7 @@ D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.build.json.cache
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.development.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\swae.build.ex.cache
+D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePal.9B91939D.Up2Date
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Debug\net9.0\refint\PhonePalace.Web.dll

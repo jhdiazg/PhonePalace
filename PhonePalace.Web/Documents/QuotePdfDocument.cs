@@ -2,6 +2,7 @@
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using PhonePalace.Domain.Entities;
+using PhonePalace.Infrastructure.Configuration;
 using System.Linq;
 
 namespace PhonePalace.Web.Documents
@@ -10,11 +11,13 @@ namespace PhonePalace.Web.Documents
     {
         public Quote Model { get; }
         public byte[] LogoBytes { get; }
+        private readonly CompanySettings _companySettings;
 
-        public QuotePdfDocument(Quote model, byte[] logoBytes)
+        public QuotePdfDocument(Quote model, byte[] logoBytes, CompanySettings companySettings)
         {
             Model = model;
             LogoBytes = logoBytes;
+            _companySettings = companySettings;
         }
 
         public byte[] GeneratePdf()
@@ -25,6 +28,7 @@ namespace PhonePalace.Web.Documents
                 {
                     page.Margin(50);
                     page.Size(PageSizes.A4);
+                    page.DefaultTextStyle(x => x.FontSize(10));
 
                     page.Header().Element(ComposeHeader);
                     page.Content().Element(ComposeContent);
@@ -35,13 +39,13 @@ namespace PhonePalace.Web.Documents
 
         void ComposeHeader(IContainer container)
         {
-            var titleStyle = TextStyle.Default.FontSize(16).SemiBold().FontColor(Colors.Blue.Medium);
+            var titleStyle = TextStyle.Default.FontSize(12).SemiBold().FontColor(Colors.Blue.Medium);
 
             container.Row(row =>
             {
                 row.RelativeItem().Column(column =>
                 {
-                    column.Item().Text($"Cotización #{Model.QuoteID}").Style(titleStyle);
+                    column.Item().Text($"Cotización # {Model.QuoteID}").Style(titleStyle);
                     column.Item().Text(text =>
                     {
                         text.Span("Fecha: ").SemiBold();
@@ -65,7 +69,7 @@ namespace PhonePalace.Web.Documents
         {
             container.PaddingVertical(40).Column(column =>
             {
-                column.Spacing(5);
+                column.Spacing(20);
 
                 column.Item().Row(row =>
                 {
@@ -76,14 +80,29 @@ namespace PhonePalace.Web.Documents
                         c.Item().Text(Model.Client.Email ?? "");
                         c.Item().Text(Model.Client.PhoneNumber ?? "");
                     });
+                    row.RelativeItem().Column(companyColumn =>
+                    {
+                        companyColumn.Item().Text("De").SemiBold().AlignRight();
+                        companyColumn.Item().Text(_companySettings.CompanyName).AlignRight();
+                        if (!string.IsNullOrEmpty(_companySettings.NIT))
+                        {
+                            companyColumn.Item().Text($"NIT: {_companySettings.NIT}").AlignRight();
+                        }
+                        companyColumn.Item().Text(_companySettings.Email).AlignRight();
+                        companyColumn.Item().Text(_companySettings.PhoneNumber).AlignRight();
+                        if (!string.IsNullOrEmpty(_companySettings.Address))
+                        {
+                            companyColumn.Item().Text(_companySettings.Address).AlignRight();
+                        }
+                    });
                 });
 
                 column.Item().PaddingTop(20).Element(ComposeTable);
 
                 column.Item().PaddingTop(10).AlignRight().Text(text =>
                 {
-                    text.Span("Total: ").SemiBold().FontSize(10);
-                    text.Span($"{Model.Total:C}").FontSize(10);
+                    text.Span("Total: ").SemiBold().FontSize(12);
+                    text.Span($"{Model.Total:C}").FontSize(12).Bold();
                 });
             });
         }
@@ -129,7 +148,18 @@ namespace PhonePalace.Web.Documents
 
         void ComposeFooter(IContainer container)
         {
-            container.AlignCenter().Text(x => { x.Span("Página "); x.CurrentPageNumber(); });
+            container.Column(column =>
+            {
+                column.Spacing(5);
+                column.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+                column.Item().PaddingTop(5).Text(_companySettings.WarrantyText).FontSize(8).Justify();
+                column.Item().AlignCenter().Text(x =>
+                {
+                    x.CurrentPageNumber();
+                    x.Span(" / ");
+                    x.TotalPages();
+                });
+            });
         }
     }
 }

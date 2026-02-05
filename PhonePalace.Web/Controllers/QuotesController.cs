@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
+using PhonePalace.Infrastructure.Configuration;
 using System.IO;
 
 namespace PhonePalace.Web.Controllers
@@ -22,13 +24,15 @@ namespace PhonePalace.Web.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly CompanySettings _companySettings;
 
-        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IConfiguration config, IWebHostEnvironment webHostEnvironment)
+        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
         {
             _context = context;
             _userManager = userManager;
             _config = config;
             _webHostEnvironment = webHostEnvironment;
+            _companySettings = companySettings.Value;
         }
 
         // GET: Quotes
@@ -377,7 +381,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             string wwwRootPath = _webHostEnvironment.WebRootPath;
-            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_pdf.jpg");
+            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_fact.png");
             byte[] logoBytes = Array.Empty<byte>();
 
             if (System.IO.File.Exists(logoPath))
@@ -385,7 +389,7 @@ namespace PhonePalace.Web.Controllers
                 logoBytes = await System.IO.File.ReadAllBytesAsync(logoPath);
             }
 
-            var pdfGenerator = new PhonePalace.Web.Documents.QuotePdfDocument(quote, logoBytes);
+            var pdfGenerator = new PhonePalace.Web.Documents.QuotePdfDocument(quote, logoBytes, _companySettings);
             var pdfBytes = pdfGenerator.GeneratePdf();
 
             return File(pdfBytes, "application/pdf", $"Cotizacion-{id}.pdf");
