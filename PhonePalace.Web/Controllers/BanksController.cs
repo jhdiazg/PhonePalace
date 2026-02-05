@@ -51,6 +51,12 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
+            ViewBag.BankTransactions = await _context.BankTransactions
+                .Where(t => t.BankID == id)
+                .OrderByDescending(t => t.Date)
+                .AsNoTracking()
+                .ToListAsync();
+
             return View(bank);
         }
 
@@ -148,6 +154,13 @@ namespace PhonePalace.Web.Controllers
             {
                 return NotFound();
             }
+
+            // Cargar los movimientos manualmente y pasarlos a la vista mediante ViewBag
+            ViewBag.BankTransactions = await _context.BankTransactions
+                .Where(t => t.BankID == id)
+                .OrderByDescending(t => t.Date)
+                .AsNoTracking()
+                .ToListAsync();
 
             return View(bank);
         }

@@ -1,5 +1,6 @@
 @model PhonePalace.Domain.Entities.Bank
 @using PhonePalace.Web.Helpers
+@using PhonePalace.Domain.Entities
 
 @{
     ViewData["Title"] = "Detalles del Banco";
@@ -60,7 +61,8 @@
         <h5 class="mb-0">Últimos Movimientos</h5>
     </div>
     <div class="card-body">
-        @if (Model.Transactions != null && Model.Transactions.Any())
+        @{ var transactions = ViewBag.BankTransactions as IEnumerable<BankTransaction>; }
+        @if (transactions != null && transactions.Any())
         {
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
@@ -74,7 +76,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in Model.Transactions.OrderByDescending(t => t.Date))
+                        @foreach (var item in transactions)
                         {
                             var isIncome = item.Type == PhonePalace.Domain.Enums.BankTransactionType.SaleIncome || item.Type == PhonePalace.Domain.Enums.BankTransactionType.TransferIn || item.Type == PhonePalace.Domain.Enums.BankTransactionType.ManualIncome;
                             var amountClass = isIncome ? "text-success" : "text-danger";

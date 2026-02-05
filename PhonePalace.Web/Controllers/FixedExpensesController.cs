@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
@@ -21,12 +22,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
         private readonly ICashService _cashService;
+        private readonly IBankService _bankService;
 
-        public FixedExpensesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService)
+        public FixedExpensesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService)
         {
             _context = context;
             _auditService = auditService;
             _cashService = cashService;
+            _bankService = bankService;
         }
 
         // GET: FixedExpenses
@@ -42,7 +45,7 @@ namespace PhonePalace.Web.Controllers
                 .ToListAsync();
 
             // 3. Combinar
-            var model = definitions.Select(d => new FixedExpenseStatusViewModel { FixedExpense = d, LastPayment = lastPayments.FirstOrDefault(p => p.FixedExpenseId == d.Id) }).ToList();
+            var model = definitions.Select(d => new FixedExpenseStatusViewModel { FixedExpense = d, LastPayment = lastPayments.FirstOrDefault(p => p?.FixedExpenseId == d.Id) }).ToList();
 
             return View(model);
         }
@@ -159,33 +162,42 @@ namespace PhonePalace.Web.Controllers
             };
 
             ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             return View(viewModel);
         }
 
         // POST: FixedExpenses/Pay/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Pay(int id, FixedExpensePayViewModel model)
+        public async Task<IActionResult> Pay(int id, FixedExpensePayViewModel model, int? bankId)
         {
             if (id != model.Id) return NotFound();
 
             var fixedExpense = await _context.FixedExpenses.FindAsync(id);
             if (fixedExpense == null) return NotFound();
 
+            // Validar banco si el método de pago lo requiere
+            if (model.PaymentMethod == PaymentMethod.Transfer && !bankId.HasValue)
+            {
+                ModelState.AddModelError("", "Debe seleccionar un banco para este método de pago.");
+            }
+
             // Verificar si ya existe un pago para ese periodo
             var existingPayment = await _context.FixedExpensePayments
                 .AnyAsync(p => p.FixedExpenseId == id && p.Period.Year == model.Year && p.Period.Month == model.Month);
 
-            if (existingPayment)
+            if (existingPayment || !ModelState.IsValid)
             {
-                ModelState.AddModelError("", $"Ya existe un pago registrado para el periodo {model.Month}/{model.Year}.");
+                if (existingPayment) ModelState.AddModelError("", $"Ya existe un pago registrado para el periodo {model.Month}/{model.Year}.");
                 ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name", bankId);
                 return View(model);
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var payment = new FixedExpensePayment
@@ -213,20 +225,28 @@ namespace PhonePalace.Web.Controllers
                     var cashMovement = await _cashService.RegisterExpenseAsync(model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}", userId);
                     payment.CashMovementId = cashMovement.CashMovementID;
                 }
+                else if (bankId.HasValue)
+                {
+                    // Registrar egreso bancario
+                    await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.ManualExpense, model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}");
+                }
 
                 _context.FixedExpensePayments.Add(payment);
                 await _context.SaveChangesAsync();
                 
                 await _auditService.LogAsync("Gastos Fijos", $"Registró pago de '{fixedExpense.Concept}' por {model.Amount:C} para el periodo {model.Month}/{model.Year}.");
+                await transaction.CommitAsync();
                 TempData["Success"] = "Pago registrado exitosamente.";
             }
             catch (InvalidOperationException ex)
             {
+                await transaction.RollbackAsync();
                 TempData["Error"] = ex.Message;
                 return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 TempData["Error"] = $"Ocurrió un error: {ex.Message}";
                 return RedirectToAction(nameof(Index));
             }

@@ -40,6 +40,13 @@
                 <span asp-validation-for="PaymentMethod" class="text-danger"></span>
             </div>
 
+            <div class="form-group mb-3" id="bank-selection-group" style="display:none;">
+                <label for="bankId" class="control-label">Banco de Origen</label>
+                <select name="bankId" id="bankId" class="form-control" asp-items="ViewBag.Banks">
+                    <option value="">-- Seleccione Banco --</option>
+                </select>
+            </div>
+
             <div class="form-group mb-3">
                 <label asp-for="Notes" class="control-label"></label>
                 <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
@@ -56,4 +63,21 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            function toggleBankSelection() {
+                var method = $('#PaymentMethod').val();
+                var bankMethods = ['Transfer', 'Card', 'Nequi', 'Daviplata'];
+                
+                if (bankMethods.includes(method)) {
+                    $('#bank-selection-group').show();
+                } else {
+                    $('#bank-selection-group').hide();
+                }
+            }
+
+            $('#PaymentMethod').change(toggleBankSelection);
+            toggleBankSelection(); // Ejecutar al cargar por si hay validaciones fallidas
+        });
+    </script>
 }

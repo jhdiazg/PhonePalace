@@ -108,6 +108,12 @@ namespace PhonePalace.Infrastructure.Services
                             type == BankTransactionType.TransferIn || 
                             type == BankTransactionType.ManualIncome;
 
+            // Validar que el saldo sea suficiente para movimientos de egreso
+            if (!isIncome && bank.Balance < amount)
+            {
+                throw new InvalidOperationException($"Saldo insuficiente en el banco '{bank.Name}'. Saldo actual: {bank.Balance:C}, Monto a retirar: {amount:C}.");
+            }
+
             bank.Balance += isIncome ? amount : -amount;
 
             var transaction = new BankTransaction
