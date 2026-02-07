@@ -1,0 +1,19 @@
+@model PhonePalace.Domain.Entities.CashRegister
+
+<div class="alert alert-warning alert-dismissible fade show shadow-sm mb-0 rounded-0" role="alert" style="border-left: 5px solid #ffc107;">
+    <div class="container">
+        <div class="d-flex align-items-center">
+            <div class="fs-1 me-3 text-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div>
+                <h5 class="alert-heading fw-bold mb-1">¡Atención: Caja de días anteriores abierta!</h5>
+                <p class="mb-0">
+                    La caja actual fue abierta el <strong>@Model.OpeningDate.ToString("dd/MM/yyyy HH:mm")</strong>. 
+                    Por favor, realice el <strong>Cierre de Caja</strong> y abra un nuevo turno para que las ventas queden registradas en la fecha correcta.
+                </p>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+</div>

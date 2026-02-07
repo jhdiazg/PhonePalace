@@ -31,6 +31,7 @@ namespace PhonePalace.Domain.Entities
         public PurchasePaymentMethod PaymentMethod { get; set; }
         [DisplayName("No. Factura Proveedor")]
         public string? SupplierInvoiceNumber { get; set; }
+
         [DisplayName("Tipo Documento")]
         public AccountPayableDocumentType DocumentType { get; set; } = AccountPayableDocumentType.Invoice;
         [DisplayName("Observaciones")]

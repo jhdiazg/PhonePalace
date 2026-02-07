@@ -39,6 +39,10 @@
                     </nav>
                 </header>
             }
+            @if (SignInManager.IsSignedIn(User))
+            {
+                @await Component.InvokeAsync("CashRegisterStatus")
+            }
             <main role="main" class="p-3">
                 @RenderBody()
             </main>

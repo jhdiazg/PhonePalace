@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Domain.Interfaces;
@@ -48,14 +49,17 @@ namespace PhonePalace.Web.Controllers
             return View(accountPayable);
         }
 
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            // Cargamos los proveedores para que el usuario seleccione uno existente
+            var suppliers = await _context.Suppliers.ToListAsync();
+            ViewData["Beneficiary"] = new SelectList(suppliers, "DisplayName", "DisplayName");
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("DocumentType,DocumentNumber,Amount,DueDate")] AccountPayable accountPayable)
+        public async Task<IActionResult> Create([Bind("DocumentType,DocumentNumber,Amount,DueDate,Beneficiary")] AccountPayable accountPayable)
         {
             // Regla de negocio: El estado inicial no puede ser Pagada
             accountPayable.IsPaid = false;
@@ -69,6 +73,10 @@ namespace PhonePalace.Web.Controllers
                 await _auditService.LogAsync("Cuentas por Pagar", $"Creó la cuenta por pagar manual #{accountPayable.Id}.");
                 return RedirectToAction(nameof(Index));
             }
+
+            // Recargar la lista en caso de error de validación
+            var suppliersList = await _context.Suppliers.ToListAsync();
+            ViewData["Beneficiary"] = new SelectList(suppliersList, "DisplayName", "DisplayName", accountPayable.Beneficiary);
             return View(accountPayable);
         }
 

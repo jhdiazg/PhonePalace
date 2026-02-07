@@ -234,6 +234,10 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
+                    b.Property<string>("Beneficiary")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
@@ -258,7 +262,7 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<bool>("IsPaid")
                         .HasColumnType("bit");
 
-                    b.Property<int>("PurchaseId")
+                    b.Property<int?>("PurchaseId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1405,9 +1409,7 @@ namespace PhonePalace.Infrastructure.Migrations
                 {
                     b.HasOne("PhonePalace.Domain.Entities.Purchase", "Purchase")
                         .WithMany()
-                        .HasForeignKey("PurchaseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("PurchaseId");
 
                     b.Navigation("Purchase");
                 });
