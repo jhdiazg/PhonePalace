@@ -1,0 +1,104 @@
+@model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Domain.Entities.CreditCardVerification>
+
+@{
+    ViewData["Title"] = "Verificación de Pagos con Tarjeta de Crédito";
+}
+
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">Esta vista muestra los pagos realizados con tarjeta de crédito que están pendientes de ser verificados y aplicados al saldo del banco correspondiente.</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Warning"] != null)
+{
+    <div class="alert alert-warning">@TempData["Warning"]</div>
+}
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Fecha Venta</th>
+                        <th>Venta ID</th>
+                        <th>Cliente</th>
+                        <th>Banco Destino</th>
+                        <th class="text-end">Monto</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.CreationDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID" target="_blank">
+                                    @item.SaleID <i class="bi bi-box-arrow-up-right small"></i>
+                                </a>
+                            </td>
+                            <td>@item.Sale?.Client?.DisplayName</td>
+                            <td>@item.Bank?.Name</td>
+                            <td class="text-end">@item.Amount.ToString("C")</td>
+                            <td class="text-center">
+                                <form asp-action="Verify" asp-route-id="@item.CreditCardVerificationID" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-success" title="Marcar como verificado y aplicar al banco">
+                                        <i class="bi bi-check-circle-fill"></i> Verificar
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-sm btn-danger d-inline" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.CreditCardVerificationID" title="Marcar como rechazado">
+                                    <i class="bi bi-x-circle-fill"></i> Rechazar
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Modal for Rejection -->
+                        <div class="modal fade" id="rejectModal-@item.CreditCardVerificationID" tabindex="-1" aria-labelledby="rejectModalLabel-@item.CreditCardVerificationID" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form asp-action="Reject" asp-route-id="@item.CreditCardVerificationID" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="rejectModalLabel-@item.CreditCardVerificationID">Rechazar Pago Venta #@item.SaleID</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Está a punto de marcar este pago como <strong>rechazado</strong>. Esta acción no se puede deshacer y el monto no ingresará al banco.</p>
+                                            <div class="mb-3">
+                                                <label for="reason-@item.CreditCardVerificationID" class="form-label">Razón del rechazo (opcional):</label>
+                                                <textarea class="form-control" id="reason-@item.CreditCardVerificationID" name="reason" rows="3"></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">No hay pagos pendientes de verificación.</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @* Asegúrate de tener el partial _Pagination o elimina esta línea si no usas paginación *@
+        @if (Model.TotalPages > 1) 
+        {
+             <partial name="_Pagination" model="Model" />
+        }
+    </div>
+</div>

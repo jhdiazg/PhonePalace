@@ -29,21 +29,27 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label asp-for="ClientID" class="control-label"></label>
                             <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
                                 <option value="">-- Seleccione un Cliente --</option>
                             </select>
                             <span asp-validation-for="ClientID" class="text-danger"></span>
                         </div>
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label asp-for="SaleChannel" class="control-label"></label>
                             <select asp-for="SaleChannel" class="form-control" asp-items="Model.SaleChannels">
                                 <option value="">-- Seleccione un Canal de Venta --</option>
                             </select>
                             <span asp-validation-for="SaleChannel" class="text-danger"></span>
                         </div>
-                        <div class="col-md-6 form-group mt-3">
+                        <div class="col-md-4 form-group">
+                            <label for="price-list-select" class="control-label">Lista de Precios</label>
+                            <select id="price-list-select" class="form-control" asp-items="@(new SelectList(ViewBag.PriceListTypes, "Value", "Text"))">
+                                <option value="">-- Manual / Predeterminado --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 form-group mt-3">
                             <label asp-for="SaleDate" class="control-label"></label>
                             <input asp-for="SaleDate" class="form-control" readonly type="date" />
                             <span asp-validation-for="SaleDate" class="text-danger"></span>
@@ -213,7 +219,13 @@
     <script>
         $(document).ready(function () {
             // Data from the server
+            function roundToNearestThousand(num) {
+                if (isNaN(num)) return 0;
+                return Math.round(num / 1000) * 1000;
+            }
+
             const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0.19m);
+            const defaultCardBankId = @Json.Serialize(ViewBag.DefaultCardBankId);
 
             // State
             let products = [];
@@ -288,16 +300,23 @@
             $('#category-select').select2({ placeholder: "-- Todas las Categorías --", width: '100%', allowClear: true });
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
+            $('#price-list-select').select2({ placeholder: "-- Manual / Predeterminado --", width: '100%', allowClear: true });
 
             // --- PAYMENT METHOD LOGIC ---
-            const bankPaymentMethods = ['Card', 'Transfer', 'Nequi', 'Daviplata'];
+            const bankPaymentMethods = ['Card', 'Transfer', 'Nequi', 'Daviplata', 'DebitCard', 'CreditCard'];
 
             $('#payment-method-select').on('change', function() {
                 const selectedMethod = $(this).val();
                 if (bankPaymentMethods.includes(selectedMethod)) {
                     $('#bank-selection-group').show();
+                    
+                    // Auto-seleccionar banco por defecto si es Tarjeta
+                    if ((selectedMethod === 'Card' || selectedMethod === 'DebitCard' || selectedMethod === 'CreditCard') && defaultCardBankId) {
+                        $('#bank-select').val(defaultCardBankId).trigger('change');
+                    }
                 } else {
                     $('#bank-selection-group').hide();
+                    $('#bank-select').val(null).trigger('change'); // Limpiar selección al ocultar
                 }
             });
 
@@ -326,6 +345,11 @@
                 productSelect.select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             });
 
+            $('#price-list-select').on('change', function() {
+                // Recalculate price if a product is already selected
+                $('#product-select').trigger('change');
+            });
+
             // --- DYNAMIC FIELDS LOGIC ---
             $('#product-select').on('change', function() {
                 const productId = $(this).val();
@@ -337,14 +361,49 @@
                 serialGroup.hide();
 
                 if (productId && allProductsDict[productId]) {
-                    const type = allProductsDict[productId].type;
+                    const productInfo = allProductsDict[productId];
+                    const type = productInfo.type;
                     if (type === 'CellPhone') imeiGroup.show();
                     else imeiGroup.hide(); // Accesorios u otros usan Serial si se desea, o ajustar lógica
                     
                     if (type !== 'CellPhone') serialGroup.show();
 
-                    // Set default price
-                    priceInput.val(allProductsDict[productId].price);
+                    // --- Price Calculation Logic ---
+                    const priceListPercentage = $('#price-list-select').val();
+                    if (priceListPercentage && productInfo.cost > 0) {
+                        const percentage = parseInt(priceListPercentage, 10);
+                        const rawPrice = productInfo.cost * (1 + percentage / 100);
+                        priceInput.val(roundToNearestThousand(rawPrice));
+                    } else {
+                        // Set default price if no list is selected
+                        priceInput.val(productInfo.price);
+                    }
+                }
+            });
+
+            $('#price-input').on('blur', function() {
+                const price = parseFloat($(this).val());
+                const productId = $('#product-select').val();
+
+                if (!productId || !allProductsDict[productId] || isNaN(price)) {
+                    return; // No product selected or invalid price
+                }
+
+                const productInfo = allProductsDict[productId];
+                if (price < productInfo.cost) {
+                    alert(`El precio de venta no puede ser inferior al costo del producto ($${formatCurrency(productInfo.cost)}). Se restaurará el precio calculado.`);
+                    
+                    // Restore the calculated price
+                    const priceListPercentage = $('#price-list-select').val();
+                    let restoredPrice;
+                    if (priceListPercentage && productInfo.cost > 0) {
+                        const percentage = parseInt(priceListPercentage, 10);
+                        const rawPrice = productInfo.cost * (1 + percentage / 100);
+                        restoredPrice = roundToNearestThousand(rawPrice);
+                    } else {
+                        restoredPrice = productInfo.price;
+                    }
+                    $(this).val(restoredPrice);
                 }
             });
 

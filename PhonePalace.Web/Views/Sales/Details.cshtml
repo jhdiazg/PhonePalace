@@ -47,6 +47,44 @@
     </div>
 </div>
 
+@if (ViewBag.CreditInfo != null)
+{
+    var credit = (PhonePalace.Domain.Entities.AccountReceivable)ViewBag.CreditInfo;
+    <div class="card shadow-sm mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="bi bi-credit-card-2-front me-2"></i>Información del Crédito</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Estado:</strong><br>
+                    @if (credit.IsPaid)
+                    {
+                        <span class="badge bg-success">Pagado Totalmente</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                    }
+                </div>
+                <div class="col-md-3">
+                    <strong>Saldo Pendiente:</strong><br>
+                    <span class="text-danger fw-bold fs-5">@credit.Balance.ToString("C")</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Monto Original:</strong><br>
+                    <span>@credit.TotalAmount.ToString("C")</span>
+                </div>
+                <div class="col-md-3 text-end">
+                    <a asp-controller="AccountReceivables" asp-action="Details" asp-route-id="@credit.AccountReceivableID" class="btn btn-sm btn-outline-primary">
+                        Ver Abonos / Detalles
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="card shadow-sm">
     <div class="card-header">
         <h4 class="mb-0">Productos Vendidos</h4>

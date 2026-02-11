@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.ViewModels;
 using PhonePalace.Domain.Entities;
+using PhonePalace.Domain.Enums;
 using PhonePalace.Web.Helpers;
 using PhonePalace.Web.Documents;
+using QuestPDF.Fluent;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -75,7 +77,7 @@ namespace PhonePalace.Web.Controllers
 
             if (!string.IsNullOrEmpty(selectedPaymentMethod))
             {
-                if (Enum.TryParse<PhonePalace.Domain.Enums.PaymentMethod>(selectedPaymentMethod, out var paymentMethodEnum))
+                if (Enum.TryParse<PaymentMethod>(selectedPaymentMethod, out var paymentMethodEnum))
                 {
                     query = query.Where(x => x.Payment.PaymentMethod == paymentMethodEnum);
                 }
@@ -115,7 +117,7 @@ namespace PhonePalace.Web.Controllers
                 StartDate = start,
                 EndDate = end,
                 SelectedPaymentMethod = selectedPaymentMethod,
-                PaymentMethods = EnumHelper.ToSelectList<PhonePalace.Domain.Enums.PaymentMethod>().ToList(),
+                PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>().ToList(),
                 TotalSales = totalSales,
                 Summary = summary,
                 Details = paginatedDetails
@@ -236,7 +238,7 @@ namespace PhonePalace.Web.Controllers
             {
                 model.IsCashRegisterFound = true;
                 model.OpeningBalance = cashRegister.OpeningAmount;
-                model.Movements = cashRegister.CashMovements.OrderBy(m => m.MovementDate).ToList();
+                model.Movements = cashRegister.CashMovements?.OrderBy(m => m.MovementDate).ToList() ?? new List<CashMovement>();
 
                 // Obtener nombres de usuarios para mostrar en la vista
                 var userIds = model.Movements.Where(m => m.UserId != null).Select(m => m.UserId).Distinct().ToList();
@@ -246,10 +248,10 @@ namespace PhonePalace.Web.Controllers
 
                 // Calcular totales
                 model.TotalIncome = model.Movements
-                    .Where(m => m.MovementType == Domain.Enums.CashMovementType.Income || m.MovementType == Domain.Enums.CashMovementType.Opening)
+                    .Where(m => m.MovementType == CashMovementType.Income || m.MovementType == CashMovementType.Opening)
                     .Sum(m => m.Amount);
-                model.TotalExpenses = model.Movements.Where(m => m.MovementType == Domain.Enums.CashMovementType.Expense).Sum(m => m.Amount);
-                model.ExpectedBalance = (cashRegister.OpeningAmount + model.Movements.Where(m => m.MovementType == Domain.Enums.CashMovementType.Income).Sum(m => m.Amount)) - model.TotalExpenses;
+                model.TotalExpenses = model.Movements.Where(m => m.MovementType == CashMovementType.Expense).Sum(m => m.Amount);
+                model.ExpectedBalance = (cashRegister.OpeningAmount + model.Movements.Where(m => m.MovementType == CashMovementType.Income).Sum(m => m.Amount)) - model.TotalExpenses;
             }
 
             return View(model);
@@ -305,7 +307,7 @@ namespace PhonePalace.Web.Controllers
 
             // 3. Gastos Local (Movimientos de Caja tipo Egreso, excluyendo los que son pagos de Gastos Fijos)
             var cashExpenses = await _context.CashMovements
-                .Where(cm => cm.MovementDate.Year == reportYear && cm.MovementType == Domain.Enums.CashMovementType.Expense)
+                .Where(cm => cm.MovementDate.Year == reportYear && cm.MovementType == CashMovementType.Expense)
                 .AsNoTracking()
                 .ToListAsync();
             
@@ -324,7 +326,7 @@ namespace PhonePalace.Web.Controllers
             // 4. Compras e IVA Compras
             var purchases = await _context.Purchases
                 .Include(p => p.PurchaseDetails)
-                .Where(p => p.PurchaseDate.Year == reportYear && p.Status != Domain.Enums.PurchaseStatus.Cancelled && p.Status != Domain.Enums.PurchaseStatus.Draft)
+                .Where(p => p.PurchaseDate.Year == reportYear && p.Status != PurchaseStatus.Cancelled && p.Status != PurchaseStatus.Draft)
                 .AsNoTracking()
                 .ToListAsync();
 

@@ -9,6 +9,7 @@
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
     var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash", "FixedExpenses");
     var isReportsActive = ActiveRoute.IsIn(ViewContext, "Reports");
+    var isFinanceActive = ActiveRoute.IsIn(ViewContext, "AccountPayables", "AccountReceivables", "CreditCardVerifications");
 }
 
 <div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-dark" style="width: 280px;">
@@ -32,12 +33,6 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="AccountPayables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountPayables")">
-                <i class="bi bi-cash-stack me-2"></i>
-                Cuentas por Pagar
-            </a>
-        </li>
-        <li class="nav-item">
             <a asp-controller="Sales" asp-action="Index" 
                class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Sales" ? "active" : "")">
                 <i class="bi bi-receipt me-2"></i>
@@ -45,10 +40,32 @@
             </a>
         </li>
         <li class="nav-item">
-            <a asp-controller="AccountReceivables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountReceivables")">
-                <i class="bi bi-wallet2 me-2"></i>
-                Cuentas por Cobrar
+            <a href="#finance-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isFinanceActive ? "" : "collapsed")" aria-expanded="@isFinanceActive.ToString().ToLower()">
+                <i class="bi bi-currency-dollar me-2"></i>
+                Finanzas
             </a>
+            <div class="collapse @(isFinanceActive ? "show" : "")" id="finance-submenu" data-bs-parent="#sidebar-nav">
+                <ul class="nav flex-column ms-4">
+                    <li class="nav-item">
+                        <a asp-controller="AccountPayables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountPayables")">
+                            <i class="bi bi-cash-stack me-2"></i>
+                            Cuentas por Pagar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="AccountReceivables" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "AccountReceivables")">
+                            <i class="bi bi-wallet2 me-2"></i>
+                            Cuentas por Cobrar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="CreditCardVerifications" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "CreditCardVerifications")">
+                            <i class="bi bi-patch-check-fill me-2"></i>
+                            Verificación Tarjetas
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </li>
         <li class="nav-item">
             <a href="#reports-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isReportsActive ? "" : "collapsed")" aria-expanded="@isReportsActive.ToString().ToLower()">

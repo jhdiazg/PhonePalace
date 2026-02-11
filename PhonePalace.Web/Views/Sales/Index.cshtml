@@ -3,6 +3,7 @@
 
 @{
     ViewData["Title"] = "Ventas";
+    var pendingSaleIds = ViewData["PendingSaleIds"] as HashSet<int>;
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -84,9 +85,15 @@
                 <tbody>
                     @foreach (var item in Model)
                     {
-                        var profit = item.Details.Sum(d => d.Quantity * (d.UnitPrice - d.Product.Cost));
+                        var profit = item.Details != null ? item.Details.Sum(d => d.Quantity * (d.UnitPrice - (d.Product?.Cost ?? 0))) : 0;
                         <tr>
-                            <td>@item.SaleID</td>
+                            <td>
+                                @item.SaleID
+                                @if (pendingSaleIds != null && pendingSaleIds.Contains(item.SaleID))
+                                {
+                                    <i class="bi bi-exclamation-circle-fill text-warning ms-1" title="Saldo Pendiente (Crédito)"></i>
+                                }
+                            </td>
                             <td>@item.Client.DisplayName</td>
                             <td>@item.SaleDate.ToString("dd/MM/yyyy")</td>
                             <td>@(item.Invoice != null ? EnumHelper.GetDisplayName(item.Invoice.SaleChannel) : "")</td>

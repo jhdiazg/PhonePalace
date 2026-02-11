@@ -52,7 +52,7 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<CashMovement> CashMovements { get; set; }
         public DbSet<FixedExpense> FixedExpenses { get; set; }
         public DbSet<FixedExpensePayment> FixedExpensePayments { get; set; }
-
+        public DbSet<CreditCardVerification> CreditCardVerifications { get; set; }
 
 
         // ... (otros DbSets)

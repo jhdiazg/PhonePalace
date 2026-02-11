@@ -1,10 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using PhonePalace.Web.ViewModels;
-using System.Collections.Generic;
-using System.Linq;
-using System;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Documents
 {
@@ -21,98 +22,126 @@ namespace PhonePalace.Web.Documents
             _logoData = logoData;
         }
 
-        public byte[] GeneratePdf()
-        {
-            return ((IDocument)this).GeneratePdf();
-        }
-
         public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
+        public DocumentSettings GetSettings() => DocumentSettings.Default;
 
         public void Compose(IDocumentContainer container)
         {
-            container.Page(page =>
-            {
-                page.Size(PageSizes.Letter);
-                page.Margin(1, Unit.Centimetre);
-                page.PageColor(Colors.White);
-                page.DefaultTextStyle(x => x.FontSize(6).FontFamily("Helvetica"));
-
-                page.Header().Element(ComposeHeader);
-                
-                // Contenido a 3 columnas
-                page.Content().PaddingTop(10).MultiColumn(column =>
+            container
+                .Page(page =>
                 {
-                    column.Columns(3);
-                    column.Spacing(15);
-                    column.Content().Element(ComposeContent);
+                    page.Margin(20);
+                    
+                    page.Header().Element(ComposeHeader);
+                    page.Content().Element(ComposeContent);
+                    page.Footer().AlignCenter().Text(x =>
+                    {
+                        x.CurrentPageNumber();
+                        x.Span(" / ");
+                        x.TotalPages();
+                    });
                 });
-
-                page.Footer().AlignCenter().Text(x =>
-                {
-                    x.Span("Página ");
-                    x.CurrentPageNumber();
-                    x.Span(" de ");
-                    x.TotalPages();
-                });
-            });
         }
 
         void ComposeHeader(IContainer container)
         {
+            var titleStyle = TextStyle.Default.FontSize(14).SemiBold().FontColor(Colors.Blue.Medium);
+
             container.Row(row =>
             {
+                row.RelativeItem().Column(column =>
+                {
+                    column.Item().Text($"Lista de Precios - {_type}").Style(titleStyle);
+                    column.Item().Text(text =>
+                    {
+                        text.Span("Fecha de generación: ").SemiBold();
+                        text.Span($"{DateTime.Now:g}");
+                    });
+                });
+
                 if (_logoData != null && _logoData.Length > 0)
                 {
-                    row.ConstantItem(60).Image(_logoData);
+                    row.ConstantItem(100).Image(_logoData);
                 }
-                
-                row.RelativeItem().PaddingLeft(10).Column(column =>
-                {
-                    column.Item().Text($"LISTA DE PRECIOS - {_type}").FontSize(10).SemiBold().FontColor(Colors.Blue.Medium);
-                    column.Item().Text($"Fecha de generación: {DateTime.Now:dd/MM/yyyy HH:mm}").FontSize(7).FontColor(Colors.Grey.Darken2);
-                });
             });
         }
 
         void ComposeContent(IContainer container)
         {
-            container.Column(column =>
+            var groupedProducts = _products.GroupBy(p => p.CategoryName).OrderBy(g => g.Key);
+
+            container.PaddingVertical(8).Table(table =>
             {
-                var categories = _products.GroupBy(p => p.CategoryName).OrderBy(g => g.Key);
-
-                foreach (var category in categories)
+                table.ColumnsDefinition(columns =>
                 {
-                    // Envuelve cada categoría y su tabla en un bloque que no se puede dividir entre columnas
-                    column.Item().ShowEntire().Column(categoryColumn =>
+                    for (int i = 0; i < 3; i++)
                     {
-                        // Encabezado de Categoría
-                        categoryColumn.Item().PaddingTop(5).PaddingBottom(2).Background(Colors.Grey.Lighten3).Padding(2).Text(category.Key.ToUpper())
-                            .FontSize(9).Bold().FontColor(Colors.Black);
+                        columns.RelativeColumn(1.2f); // Código
+                        columns.RelativeColumn(3.5f); // Producto
+                        columns.RelativeColumn(1.3f); // Precio
+                        
+                        if (i < 2) columns.ConstantColumn(10); // Spacer
+                    }
+                });
 
-                        // Tabla de productos
-                        categoryColumn.Item().Table(table =>
+                table.Header(header =>
+                {
+                    for (int i = 0; i < 3; i++)
+                    {
+                        header.Cell().Element(HeaderCellStyle).Text("Cód");
+                        header.Cell().Element(HeaderCellStyle).Text("Producto");
+                        header.Cell().Element(HeaderCellStyle).AlignRight().Text("Precio");
+                        
+                        if (i < 2) header.Cell();
+                    }
+                });
+
+                foreach (var group in groupedProducts)
+                {
+                    // Header de Categoría
+                    table.Cell().ColumnSpan(11).Background(Colors.Grey.Lighten3).Padding(2).Text(group.Key).FontSize(7).SemiBold();
+
+                    var products = group.ToList();
+                    var rows = (int)Math.Ceiling(products.Count / 3.0);
+
+                    for (int r = 0; r < rows; r++)
+                    {
+                        for (int c = 0; c < 3; c++)
                         {
-                            table.ColumnsDefinition(columns =>
+                            var index = r * 3 + c;
+                            if (index < products.Count)
                             {
-                                columns.ConstantColumn(35); // Código
-                                columns.RelativeColumn();   // Nombre
-                                columns.ConstantColumn(45); // Precio
-                            });
-
-                            foreach (var product in category.OrderBy(p => p.Name))
-                            {
-                                decimal percentage = (int)_type / 100m;
-                                decimal basePrice = product.Cost * (1 + percentage);
-                                decimal finalPrice = Math.Ceiling(basePrice / 1000m) * 1000m;
-
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(1).Text(product.Code ?? product.SKU ?? "-").FontColor(Colors.Grey.Darken3);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(1).Text(product.Name);
-                                table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(1).AlignRight().Text($"{finalPrice:N0}").SemiBold();
+                                var product = products[index];
+                                decimal percentage = (int)_type;
+                                decimal rawPrice = product.Cost * (1 + percentage / 100m);
+                                decimal calculatedPrice = Math.Round(rawPrice / 1000m) * 1000;
+                                
+                                table.Cell().Element(CellStyle).Text(product.Code ?? product.SKU ?? "-");
+                                table.Cell().Element(CellStyle).Text(product.Name);
+                                table.Cell().Element(CellStyle).AlignRight().Text($"{calculatedPrice:C0}");
                             }
-                        });
-                    });
+                            else
+                            {
+                                table.Cell();
+                                table.Cell();
+                                table.Cell();
+                            }
+
+                            if (c < 2) table.Cell();
+                        }
+                    }
                 }
             });
+        }
+
+        static IContainer HeaderCellStyle(IContainer container)
+        {
+            return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(2).DefaultTextStyle(x => x.FontSize(7).SemiBold());
+        }
+
+        static IContainer CellStyle(IContainer container)
+        {
+            return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten4).PaddingVertical(2).DefaultTextStyle(x => x.FontSize(6));
         }
     }
 }
