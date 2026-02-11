@@ -1,5 +1,6 @@
 @model PhonePalace.Web.ViewModels.SaleCreateViewModel
 @using PhonePalace.Domain.Enums
+@using PhonePalace.Domain.Entities
 @using System.Text.Json
 @using PhonePalace.Web.Helpers
 
@@ -56,18 +57,25 @@
                     <h4 class="mb-0">Productos</h4>
                 </div>
                 <div class="card-body">
-                    <div class="row align-items-end">
+                    <div class="row">
                         <div class="col-md-4 form-group">
-                            <label for="product-select">Producto</label>
+                            <label for="category-select">Categoría</label>
+                            <select id="category-select" class="form-control" asp-items="ViewBag.Categories">
+                                <option value="">-- Todas las Categorías --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 form-group">
+                            <label for="product-select">Producto (Nombre o SKU)</label>
                             <select id="product-select" name="Products" class="form-control">
                                 <option value="">-- Seleccione un Producto --</option>
-                                @foreach (var product in ViewBag.AllProducts)
+                                @foreach (var product in (IEnumerable<Product>)ViewBag.AllProducts)
                                 {
-                                    var isActive = product.IsActive;
-                                    <option value="@product.ProductID" class="@(isActive ? "" : "text-danger")">@product.Name @(isActive ? "" : "(Inactivo)")</option>
+                                    <option value="@product.ProductID" data-category-id="@product.CategoryID">@product.Name (@product.SKU)</option>
                                 }
                             </select>
                         </div>
+                    </div>
+                    <div class="row align-items-end mt-3">
                         <div class="col-md-2 form-group">
                             <label for="price-input">Precio</label>
                             <input type="number" id="price-input" class="form-control" min="0" step="0.01">
@@ -277,6 +285,7 @@
             // Initialize Select2
             $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
             $('#SaleChannel').select2({ placeholder: "-- Seleccione un Canal de Venta --", width: '100%' });
+            $('#category-select').select2({ placeholder: "-- Todas las Categorías --", width: '100%', allowClear: true });
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });
 
@@ -290,6 +299,31 @@
                 } else {
                     $('#bank-selection-group').hide();
                 }
+            });
+
+            // --- CATEGORY FILTER LOGIC ---
+            const allProductOptionsHTML = $('#product-select').html(); // Save initial options as a string
+
+            $('#category-select').on('change', function() {
+                const selectedCategoryId = $(this).val();
+                const productSelect = $('#product-select');
+                
+                // Reset product selection before filtering
+                productSelect.val('').trigger('change');
+
+                // Restore all options from the saved string
+                productSelect.html(allProductOptionsHTML);
+
+                if (selectedCategoryId) {
+                    // Filter and remove non-matching options from the DOM
+                    productSelect.find('option').filter(function() {
+                        // Keep the placeholder and the matching options
+                        return $(this).val() !== '' && $(this).data('category-id') != selectedCategoryId;
+                    }).remove();
+                }
+                
+                // Re-initialize select2 to reflect the new set of options
+                productSelect.select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             });
 
             // --- DYNAMIC FIELDS LOGIC ---

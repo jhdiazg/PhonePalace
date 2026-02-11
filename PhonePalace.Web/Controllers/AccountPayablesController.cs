@@ -8,6 +8,8 @@ using PhonePalace.Web.Helpers;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
+using System.Security.Claims;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -15,23 +17,64 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
+        private readonly ICashService _cashService;
+        private readonly IBankService _bankService;
 
-        public AccountPayablesController(ApplicationDbContext context, IAuditService auditService)
+        public AccountPayablesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService)
         {
             _context = context;
             _auditService = auditService;
+            _cashService = cashService;
+            _bankService = bankService;
         }
 
-        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
+        public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string status = "Pending", int? pageNumber = null, int? pageSize = null)
         {
+            if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
+            {
+                TempData["Error"] = "La fecha de inicio no puede ser mayor a la fecha de fin.";
+            }
+
             ViewData["PageSize"] = pageSize ?? 10;
+            ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
+            ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
+            ViewData["CurrentStatus"] = status;
 
             var accountPayablesQuery = _context.AccountPayables
                 .AsNoTracking() // Improves performance for read-only queries
                 .Include(a => a.Purchase!)
-                .ThenInclude(p => p!.Supplier);
+                .ThenInclude(p => p!.Supplier)
+                .AsQueryable();
 
-            var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderByDescending(a => a.CreatedDate), pageNumber ?? 1, pageSize ?? 10);
+            if (startDate.HasValue)
+            {
+                accountPayablesQuery = accountPayablesQuery.Where(a => a.DueDate >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                accountPayablesQuery = accountPayablesQuery.Where(a => a.DueDate < endDate.Value.Date.AddDays(1));
+            }
+
+            switch (status)
+            {
+                case "Paid":
+                    accountPayablesQuery = accountPayablesQuery.Where(a => a.IsPaid);
+                    break;
+                case "Pending":
+                    accountPayablesQuery = accountPayablesQuery.Where(a => !a.IsPaid);
+                    break;
+            }
+
+            ViewBag.StatusList = new List<SelectListItem>
+            {
+                new SelectListItem { Text = "Pendientes", Value = "Pending", Selected = status == "Pending" },
+                new SelectListItem { Text = "Pagadas", Value = "Paid", Selected = status == "Paid" },
+                new SelectListItem { Text = "Todas", Value = "All", Selected = status == "All" }
+            };
+
+            // Ordenamos por fecha de vencimiento para ver primero lo más urgente
+            var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderBy(a => a.DueDate), pageNumber ?? 1, pageSize ?? 10);
             return View(accountPayables);
         }
 
@@ -46,6 +89,8 @@ namespace PhonePalace.Web.Controllers
 
             if (accountPayable == null) return NotFound();
 
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             return View(accountPayable);
         }
 
@@ -143,6 +188,50 @@ namespace PhonePalace.Web.Controllers
         private bool AccountPayableExists(int id)
         {
             return _context.AccountPayables.Any(e => e.Id == id);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Pay(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
+        {
+            var ap = await _context.AccountPayables.FindAsync(id);
+            if (ap == null) return NotFound();
+
+            if (ap.IsPaid)
+            {
+                TempData["Error"] = "Esta cuenta ya está pagada.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            // 1. Registrar Egreso (Caja o Banco)
+            if (paymentMethod == PaymentMethod.Cash)
+            {
+                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                if (currentCash == null)
+                {
+                    TempData["Error"] = "Debe abrir la caja para realizar pagos en efectivo.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+                await _cashService.RegisterExpenseAsync(amount, $"Pago de CxP #{ap.Id} - {note}", userId);
+            }
+            else if (bankId.HasValue)
+            {
+                // Registrar movimiento bancario de salida (TransferOut)
+                await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.TransferOut, amount, $"Pago de CxP #{ap.Id} ({EnumHelper.GetDisplayName(paymentMethod)}) - {note}");
+            }
+
+            // 2. Actualizar estado de la cuenta
+            // Nota: Asumimos pago total ya que la entidad AccountPayable actual no maneja saldo pendiente explícito en este contexto.
+            ap.IsPaid = true;
+            
+            await _context.SaveChangesAsync();
+            await _auditService.LogAsync("CuentasPorPagar", $"Pagó la cuenta #{ap.Id} por {amount:C}.");
+            TempData["Success"] = "Pago registrado correctamente.";
+
+            return RedirectToAction(nameof(Details), new { id });
         }
     }
 }

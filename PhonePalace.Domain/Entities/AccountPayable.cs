@@ -31,6 +31,7 @@ namespace PhonePalace.Domain.Entities
         [StringLength(100)]
         public string? Beneficiary { get; set; }
 
+        [DisplayName("Fecha de creación")]
         public DateTime CreatedDate { get; set; }
         public DateTime? DeletedDate { get; set; }
         public bool IsDeleted { get; set; }

@@ -6,6 +6,21 @@
 
 <h1>Detalles de Cuenta por Pagar</h1>
 
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div>
     <h4>Información de la Cuenta</h4>
     <hr />
@@ -61,6 +76,50 @@
         </dd>
     </dl>
 </div>
+
+@if (!Model.IsPaid)
+{
+    <div class="card shadow-sm mb-4 mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Registrar Pago</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="Pay" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                
+                <div class="mb-3">
+                    <label for="amount" class="form-label">Monto a Pagar</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" id="amount" name="amount" class="form-control" step="0.01" value="@Model.Amount" readonly />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="paymentMethod" class="form-label">Forma de Pago</label>
+                    <select id="paymentMethod" name="paymentMethod" class="form-select" asp-items="ViewBag.PaymentMethods" required>
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="bank-selection-group" style="display: none;">
+                    <label for="bankId" class="form-label">Banco de Origen</label>
+                    <select id="bankId" name="bankId" class="form-select" asp-items="ViewBag.Banks">
+                        <option value="">-- Seleccione Banco --</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="note" class="form-label">Nota (Opcional)</label>
+                    <input type="text" id="note" name="note" class="form-control" placeholder="Referencia, detalle..." />
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">Registrar Pago</button>
+            </form>
+        </div>
+    </div>
+}
+
 <div>
     <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
     @if (!Model.IsPaid && Model.PurchaseId > 0)
@@ -68,3 +127,15 @@
         <a asp-controller="Purchases" asp-action="Details" asp-route-id="@Model.PurchaseId" class="btn btn-primary">Ir a Compra para Pagar</a>
     }
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const bankPaymentMethods = ['Card', 'Transfer', 'Nequi', 'Daviplata'];
+            $('#paymentMethod').on('change', function () {
+                const selectedMethod = $(this).val();
+                $('#bank-selection-group').toggle(bankPaymentMethods.includes(selectedMethod));
+            });
+        });
+    </script>
+}

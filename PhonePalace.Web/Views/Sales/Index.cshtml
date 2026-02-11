@@ -34,7 +34,7 @@
         <h5 class="mb-0">Filtros</h5>
     </div>
     <div class="card-body">
-        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end" id="salesFilterForm">
             @* --- INICIO: Integración del selector de tamaño de página --- *@
             <div class="col-md-2">
                 <partial name="_PageSizeSelector" model='(int?)ViewData["PageSize"]' />
@@ -77,21 +77,28 @@
                         <th>Fecha de Venta</th>
                         <th>Canal de Venta</th>
                         <th>Monto Total</th>
+                        <th>Utilidad</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var item in Model)
                     {
+                        var profit = item.Details.Sum(d => d.Quantity * (d.UnitPrice - d.Product.Cost));
                         <tr>
                             <td>@item.SaleID</td>
                             <td>@item.Client.DisplayName</td>
                             <td>@item.SaleDate.ToString("dd/MM/yyyy")</td>
                             <td>@(item.Invoice != null ? EnumHelper.GetDisplayName(item.Invoice.SaleChannel) : "")</td>
                             <td>@String.Format("{0:C}", item.Invoice?.Total)</td>
+                            <td class="@(profit >= 0 ? "text-success" : "text-danger")">@String.Format("{0:C}", profit)</td>
                             <td class="text-end">
                                 <a asp-action="Details" asp-route-id="@item.SaleID" class="btn btn-sm btn-info">Detalles</a>
-                                <a asp-action="Delete" asp-route-id="@item.SaleID" class="btn btn-sm btn-danger">Eliminar</a>
+                                @{ var currentCashDate = ViewData["CurrentCashDate"] as DateTime?; }
+                                @if (currentCashDate.HasValue && item.SaleDate.Date == currentCashDate.Value.Date)
+                                {
+                                    <a asp-action="Delete" asp-route-id="@item.SaleID" class="btn btn-sm btn-danger">Eliminar</a>
+                                }
                             </td>
                         </tr>
                     }
@@ -102,8 +109,28 @@
         @if (Model.Any())
         {
             <div class="mt-3">
-                <strong>Total de Ventas Consultadas: @String.Format("{0:C}", ViewData["Total"])</strong>
+                <span class="me-4"><strong>Total de Ventas Consultadas:</strong> @String.Format("{0:C}", ViewData["Total"])</span>
+                @{ var totalProfit = ViewData["TotalProfit"] as decimal? ?? 0m; }
+                <span><strong>Utilidad Total:</strong> <span class="@(totalProfit >= 0 ? "text-success" : "text-danger")">@String.Format("{0:C}", totalProfit)</span></span>
             </div>
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#salesFilterForm').on('submit', function (e) {
+                var startDate = $('input[name="startDate"]').val();
+                var endDate = $('input[name="endDate"]').val();
+
+                if (startDate && endDate) {
+                    if (new Date(startDate) > new Date(endDate)) {
+                        e.preventDefault();
+                        alert('La fecha de inicio no puede ser mayor a la fecha de fin.');
+                    }
+                }
+            });
+        });
+    </script>
+}

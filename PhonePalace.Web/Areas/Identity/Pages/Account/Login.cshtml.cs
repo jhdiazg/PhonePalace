@@ -82,7 +82,8 @@ namespace PhonePalace.Web.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
-                    await _auditService.LogAsync("Inicio de Sesión", $"User {Input.Email} logged in successfully.");
+                   // await _auditService.LogAsync("Inicio de Sesión", $"Usuario {Input.Email} inició sesión exitosamente.");
+                    await _auditService.LogAsync("Inicio de Sesión", $"Usuario {userName} inició sesión exitosamente.");
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)

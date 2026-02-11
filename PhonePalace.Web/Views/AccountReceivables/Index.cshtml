@@ -20,12 +20,26 @@
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <form asp-action="Index" method="get" class="row g-3 align-items-end">
-            <div class="col-md-4">
+        <form asp-action="Index" method="get" class="row g-3 align-items-end" id="arFilterForm">
+            <div class="col-md-2">
+                <label class="form-label">Fecha Inicio</label>
+                <input type="date" name="startDate" value="@ViewBag.StartDate" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha Fin</label>
+                <input type="date" name="endDate" value="@ViewBag.EndDate" class="form-control" />
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Cliente</label>
                 <input type="text" name="clientName" value="@ViewBag.ClientName" class="form-control" placeholder="Buscar..." />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Tipo</label>
+                <select name="type" class="form-select" asp-items="ViewBag.TypeList">
+                    <option value="">-- Todos --</option>
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Estado</label>
                 <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
             </div>
@@ -106,14 +120,38 @@
            asp-route-pageNumber="@(Model.PageIndex - 1)"
            asp-route-clientName="@ViewBag.ClientName"
            asp-route-status="@ViewBag.CurrentStatus"
+           asp-route-type="@ViewBag.CurrentType"
+           asp-route-startDate="@ViewBag.StartDate"
+           asp-route-endDate="@ViewBag.EndDate"
            class="btn btn-outline-secondary @prevDisabled">Anterior</a>
         <a asp-action="Index"
            asp-route-pageNumber="@(Model.PageIndex + 1)"
            asp-route-clientName="@ViewBag.ClientName"
            asp-route-status="@ViewBag.CurrentStatus"
+           asp-route-type="@ViewBag.CurrentType"
+           asp-route-startDate="@ViewBag.StartDate"
+           asp-route-endDate="@ViewBag.EndDate"
            class="btn btn-outline-secondary @nextDisabled">Siguiente</a>
     </div>
     <div class="text-muted">
         Página @Model.PageIndex de @Model.TotalPages
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#arFilterForm').on('submit', function (e) {
+                var startDate = $('input[name="startDate"]').val();
+                var endDate = $('input[name="endDate"]').val();
+
+                if (startDate && endDate) {
+                    if (new Date(startDate) > new Date(endDate)) {
+                        e.preventDefault();
+                        alert('La fecha de inicio no puede ser mayor a la fecha de fin.');
+                    }
+                }
+            });
+        });
+    </script>
+}

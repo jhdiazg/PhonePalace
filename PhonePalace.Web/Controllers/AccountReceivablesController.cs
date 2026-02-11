@@ -26,7 +26,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? clientName, string status = "Pending", int? pageNumber = null, int? pageSize = null)
+        public async Task<IActionResult> Index(string? clientName, string status = "Pending", string? type = null, DateTime? startDate = null, DateTime? endDate = null, int? pageNumber = null, int? pageSize = null)
         {
             ViewData["PageSize"] = pageSize ?? 10;
 
@@ -45,6 +45,21 @@ namespace PhonePalace.Web.Controllers
                 default:
                     query = query.Where(ar => !ar.IsPaid);
                     break;
+            }
+
+            if (!string.IsNullOrEmpty(type))
+            {
+                query = query.Where(ar => ar.Type == type);
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(ar => ar.Date >= startDate.Value.Date);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(ar => ar.Date < endDate.Value.Date.AddDays(1));
             }
 
             if (!string.IsNullOrEmpty(clientName))
@@ -69,6 +84,13 @@ namespace PhonePalace.Web.Controllers
             };
             ViewBag.CurrentStatus = status;
             ViewBag.ClientName = clientName;
+            ViewBag.StartDate = startDate?.ToString("yyyy-MM-dd");
+            ViewBag.EndDate = endDate?.ToString("yyyy-MM-dd");
+
+            // Cargar lista de tipos para el filtro
+            var types = await _context.AccountReceivables.Select(x => x.Type).Distinct().OrderBy(t => t).ToListAsync();
+            ViewBag.TypeList = new SelectList(types, type);
+            ViewBag.CurrentType = type;
 
             return View(list);
         }

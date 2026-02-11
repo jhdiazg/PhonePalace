@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.ViewModels;
+using PhonePalace.Domain.Entities;
 using PhonePalace.Web.Helpers;
 using PhonePalace.Web.Documents;
 using System;
@@ -206,6 +207,164 @@ namespace PhonePalace.Web.Controllers
                     .FirstOrDefaultAsync();
 
                 model.PreviousBalance = lastTransactionBefore?.BalanceAfterTransaction ?? 0;
+            }
+
+            return View(model);
+        }
+
+        [HttpGet]
+        [Route("MovimientosCaja")]
+        public async Task<IActionResult> CashMovements(DateTime? reportDate)
+        {
+            var date = reportDate ?? DateTime.Today;
+
+            var model = new CashMovementReportViewModel
+            {
+                ReportDate = date,
+                IsCashRegisterFound = false
+            };
+
+            // Buscar la caja que se abrió en la fecha especificada.
+            // Asumimos que solo hay una caja por día. Si pueden haber más, se necesitaría un selector.
+            var cashRegister = await _context.CashRegisters
+                .Include(cr => cr.CashMovements)
+                // .ThenInclude(cm => cm.User) // Incluir el usuario para mostrar quién hizo el movimiento (eliminado por error de compilación)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(cr => cr.OpeningDate.Date == date.Date);
+
+            if (cashRegister != null)
+            {
+                model.IsCashRegisterFound = true;
+                model.OpeningBalance = cashRegister.OpeningAmount;
+                model.Movements = cashRegister.CashMovements.OrderBy(m => m.MovementDate).ToList();
+
+                // Obtener nombres de usuarios para mostrar en la vista
+                var userIds = model.Movements.Where(m => m.UserId != null).Select(m => m.UserId).Distinct().ToList();
+                ViewBag.UserNames = await _context.Users
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, u => u.UserName);
+
+                // Calcular totales
+                model.TotalIncome = model.Movements
+                    .Where(m => m.MovementType == Domain.Enums.CashMovementType.Income || m.MovementType == Domain.Enums.CashMovementType.Opening)
+                    .Sum(m => m.Amount);
+                model.TotalExpenses = model.Movements.Where(m => m.MovementType == Domain.Enums.CashMovementType.Expense).Sum(m => m.Amount);
+                model.ExpectedBalance = (cashRegister.OpeningAmount + model.Movements.Where(m => m.MovementType == Domain.Enums.CashMovementType.Income).Sum(m => m.Amount)) - model.TotalExpenses;
+            }
+
+            return View(model);
+        }
+
+        [HttpGet]
+        [Route("BalanceMensual")]
+        public async Task<IActionResult> MonthlyBalance(int? year)
+        {
+            int reportYear = year ?? DateTime.Now.Year;
+            var model = new MonthlyBalanceViewModel { Year = reportYear };
+
+            // Inicializar los 12 meses
+            var culture = new System.Globalization.CultureInfo("es-CO");
+            for (int i = 1; i <= 12; i++)
+            {
+                model.Items.Add(new MonthlyBalanceItem
+                {
+                    Month = i,
+                    MonthName = culture.DateTimeFormat.GetMonthName(i)
+                });
+            }
+
+            // 1. Ventas, IVA Ventas y Costo
+            var sales = await _context.Sales
+                .Include(s => s.Invoice)
+                .Include(s => s.Details)
+                .ThenInclude(d => d.Product)
+                .Where(s => s.SaleDate.Year == reportYear && !s.IsDeleted)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var sale in sales)
+            {
+                var item = model.Items.First(m => m.Month == sale.SaleDate.Month);
+                item.Sales += sale.Invoice.Subtotal;
+                item.SalesVAT += sale.Invoice.Tax;
+                // Aproximación de costo usando el costo actual del producto
+                item.Cost += sale.Details.Sum(d => d.Quantity * d.Product.Cost);
+            }
+
+            // 2. Gastos Fijos
+            var fixedExpenses = await _context.FixedExpensePayments
+                .Where(p => p.PaymentDate.Year == reportYear)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var fe in fixedExpenses)
+            {
+                var item = model.Items.First(m => m.Month == fe.PaymentDate.Month);
+                item.FixedExpenses += fe.Amount;
+            }
+
+            // 3. Gastos Local (Movimientos de Caja tipo Egreso, excluyendo los que son pagos de Gastos Fijos)
+            var cashExpenses = await _context.CashMovements
+                .Where(cm => cm.MovementDate.Year == reportYear && cm.MovementType == Domain.Enums.CashMovementType.Expense)
+                .AsNoTracking()
+                .ToListAsync();
+            
+            // IDs de movimientos de caja que corresponden a gastos fijos para no duplicarlos
+            var feCashIds = fixedExpenses.Where(fe => fe.CashMovementId.HasValue).Select(fe => fe.CashMovementId!.Value).ToHashSet();
+
+            foreach (var ce in cashExpenses)
+            {
+                if (!feCashIds.Contains(ce.CashMovementID))
+                {
+                    var item = model.Items.First(m => m.Month == ce.MovementDate.Month);
+                    item.LocalExpenses += ce.Amount;
+                }
+            }
+
+            // 4. Compras e IVA Compras
+            var purchases = await _context.Purchases
+                .Include(p => p.PurchaseDetails)
+                .Where(p => p.PurchaseDate.Year == reportYear && p.Status != Domain.Enums.PurchaseStatus.Cancelled && p.Status != Domain.Enums.PurchaseStatus.Draft)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var p in purchases)
+            {
+                var item = model.Items.First(m => m.Month == p.PurchaseDate.Month);
+                foreach (var d in p.PurchaseDetails)
+                {
+                    decimal lineTotal = d.Quantity * d.UnitPrice;
+                    item.Purchases += lineTotal;
+                    item.PurchaseVAT += lineTotal * (d.TaxRate / 100);
+                }
+            }
+
+            // 5. Cuentas por Cobrar (Generadas en el mes)
+            var receivables = await _context.AccountReceivables
+                .Where(ar => ar.Date.Year == reportYear)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ar in receivables)
+            {
+                var item = model.Items.First(m => m.Month == ar.Date.Month);
+                item.AccountsReceivable += ar.TotalAmount;
+            }
+
+            // Calcular Utilidad y Totales Generales
+            foreach (var item in model.Items)
+            {
+                item.Profit = item.Sales - item.Cost;
+                
+                model.Totals.Sales += item.Sales;
+                model.Totals.Cost += item.Cost;
+                model.Totals.Profit += item.Profit;
+                model.Totals.FixedExpenses += item.FixedExpenses;
+                model.Totals.LocalExpenses += item.LocalExpenses;
+                model.Totals.Purchases += item.Purchases;
+                model.Totals.AccountsReceivable += item.AccountsReceivable;
+                model.Totals.PurchaseVAT += item.PurchaseVAT;
+                model.Totals.SalesVAT += item.SalesVAT;
             }
 
             return View(model);

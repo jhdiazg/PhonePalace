@@ -29,10 +29,24 @@ namespace PhonePalace.Web.Documents
 
         public void Compose(IDocumentContainer container)
         {
+            var isHalfLetter = _invoice.Details.Count <= 5;
+
             container
                 .Page(page =>
                 {
-                    page.Margin(50);
+                    page.Margin(30);
+                    
+                    if (isHalfLetter)
+                    {
+                        page.Size(new PageSize(PageSizes.Letter.Width, PageSizes.Letter.Height / 2));
+                    }
+                    else
+                    {
+                        page.Size(PageSizes.Letter);
+                    }
+
+                    page.DefaultTextStyle(x => x.FontSize(9));
+
                     page.Header().Element(ComposeHeader);
                     page.Content().Element(ComposeContent);
                     page.Footer().Element(ComposeFooter);
@@ -41,7 +55,7 @@ namespace PhonePalace.Web.Documents
 
         void ComposeHeader(IContainer container)
         {
-            var titleStyle = TextStyle.Default.FontSize(16).SemiBold().FontColor(Colors.Blue.Medium);
+            var titleStyle = TextStyle.Default.FontSize(14).SemiBold().FontColor(Colors.Blue.Medium);
 
             container.Row(row =>
             {
@@ -70,9 +84,9 @@ namespace PhonePalace.Web.Documents
 
         void ComposeContent(IContainer container)
         {
-            container.PaddingVertical(40).Column(column =>
+            container.PaddingVertical(20).Column(column =>
             {
-                column.Spacing(20);
+                column.Spacing(10);
                 column.Item().Row(row =>
                 {
                     row.RelativeItem().Column(clientColumn =>
@@ -174,8 +188,8 @@ namespace PhonePalace.Web.Documents
                     table.Cell().Element(BodyCellStyle).AlignRight().Text($"{detail.LineTotal:C}");
                 }
 
-                static IContainer HeaderCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5);
-                static IContainer BodyCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten3).Padding(5);
+                static IContainer HeaderCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2);
+                static IContainer BodyCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten3).Padding(2);
             });
         }
 

@@ -51,12 +51,6 @@
             </a>
         </li>
         <li class="nav-item">
-            <a href="#" class="nav-link text-white"> <!-- Este enlace aún no tiene controlador -->
-                <i class="bi bi-arrow-counterclockwise me-2"></i>
-                RMA
-            </a>
-        </li>
-        <li class="nav-item">
             <a href="#reports-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isReportsActive ? "" : "collapsed")" aria-expanded="@isReportsActive.ToString().ToLower()">
                 <i class="bi bi-bar-chart-line-fill me-2"></i>
                 Reportes
@@ -79,6 +73,18 @@
                         <a asp-controller="Reports" asp-action="BankTransactions" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "BankTransactions" ? "active" : "")">
                             <i class="bi bi-bank me-2"></i>
                             Movimientos Bancarios
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="CashMovements" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "CashMovements" ? "active" : "")">
+                            <i class="bi bi-inbox-fill me-2"></i>
+                            Movimientos de Caja
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="MonthlyBalance" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "MonthlyBalance" ? "active" : "")">
+                            <i class="bi bi-calendar3 me-2"></i>
+                            Balance Mensual
                         </a>
                     </li>
                 </ul>

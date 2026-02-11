@@ -68,15 +68,18 @@ namespace PhonePalace.Web.Controllers
 
             ViewData["PageSize"] = pageSize ?? 10;
 
+            // Obtener caja actual para validaciones de UI y filtros por defecto
+            var currentCashRegister = await _cashService.GetCurrentCashRegisterAsync();
+            ViewData["CurrentCashDate"] = currentCashRegister?.OpeningDate.Date;
+
             // Por defecto, mostrar solo ventas del día actual
             if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(clientName))
             {
                 // Si hay una caja abierta, mostrar ventas de esa fecha de apertura por defecto
-                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                if (currentCash != null)
+                if (currentCashRegister != null)
                 {
-                    startDate = currentCash.OpeningDate.Date;
-                    endDate = currentCash.OpeningDate.Date;
+                    startDate = currentCashRegister.OpeningDate.Date;
+                    endDate = currentCashRegister.OpeningDate.Date;
                 }
                 else
                 {
@@ -88,6 +91,8 @@ namespace PhonePalace.Web.Controllers
             var salesQuery = _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Invoice)
+                .Include(s => s.Details) // Necesario para acceder a los detalles de la venta
+                .ThenInclude(sd => sd.Product) // Necesario para obtener el costo del producto
                 .AsQueryable();
 
             if (startDate.HasValue)
@@ -111,14 +116,17 @@ namespace PhonePalace.Web.Controllers
             }
 
             // Calcular total de la consulta antes de paginar
-            decimal total = await salesQuery.SumAsync(s => s.Invoice.Total);
+            decimal totalSalesAmount = await salesQuery.SumAsync(s => s.Invoice.Total);
+            // Calcular utilidad total (Venta - Costo)
+            decimal totalProfit = await salesQuery.SumAsync(s => s.Details.Sum(d => d.Quantity * (d.UnitPrice - d.Product.Cost)));
 
             var sales = await PaginatedList<Sale>.CreateAsync(salesQuery.OrderByDescending(s => s.SaleDate).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
 
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
             ViewData["ClientName"] = clientName;
-            ViewData["Total"] = total;
+            ViewData["Total"] = totalSalesAmount;
+            ViewData["TotalProfit"] = totalProfit; // Añadir la utilidad total a ViewData
 
             return View(sales);
         }
@@ -173,8 +181,8 @@ namespace PhonePalace.Web.Controllers
             viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
-            viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
-            ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+            ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(), "CategoryID", "Name");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).ToListAsync();
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
@@ -191,8 +199,8 @@ namespace PhonePalace.Web.Controllers
                     viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
                     viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
                     viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
-                    viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
-                    ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+                    ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(), "CategoryID", "Name");
+                    ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).ToListAsync();
                     ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
                     ViewBag.TaxRate = taxRate;
                 }
@@ -208,8 +216,8 @@ namespace PhonePalace.Web.Controllers
             viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
-            viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
-            ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
+            ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(), "CategoryID", "Name");
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).ToListAsync();
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
@@ -472,6 +480,14 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
+            // Validación: Solo permitir anular si corresponde a la fecha de caja abierta
+            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+            if (currentCash == null || sale.SaleDate.Date != currentCash.OpeningDate.Date)
+            {
+                TempData["Error"] = "Solo se pueden anular ventas correspondientes a la fecha de la caja abierta actual.";
+                return RedirectToAction(nameof(Index));
+            }
+
             return View(sale);
         }
 
@@ -486,6 +502,14 @@ namespace PhonePalace.Web.Controllers
                 .FirstOrDefaultAsync(s => s.SaleID == id);
             if (sale != null)
             {
+                // Validación de seguridad antes de procesar la anulación
+                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                if (currentCash == null || sale.SaleDate.Date != currentCash.OpeningDate.Date)
+                {
+                    TempData["Error"] = "Solo se pueden anular ventas correspondientes a la fecha de la caja abierta actual.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 // Restaurar inventario
                 foreach (var detail in sale.Details)
                 {
