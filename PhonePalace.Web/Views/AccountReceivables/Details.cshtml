@@ -1,179 +1,154 @@
 @model PhonePalace.Domain.Entities.AccountReceivable
-@using PhonePalace.Web.Helpers
 
 @{
-    ViewData["Title"] = "Detalles de Cuenta por Cobrar";
+    ViewData["Title"] = "Detalle Cuenta por Cobrar";
 }
 
-<h1>@ViewData["Title"]</h1>
+<div>
+    <a asp-action="Index" class="btn btn-outline-secondary mb-3"><i class="bi bi-arrow-left"></i> Volver</a>
+</div>
 
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">Cuenta #@Model.AccountReceivableID</h4>
+        <span class="badge bg-light text-dark">@Model.Type</span>
     </div>
-}
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-}
-
-<div class="row">
-    <div class="col-md-6">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Información de la Cuenta</h5>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Cliente:</strong> @Model.Client.DisplayName</p>
+                <p><strong>Fecha:</strong> @Model.Date.ToShortDateString()</p>
+                <p><strong>Descripción:</strong> @Model.Description</p>
             </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">Cliente</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Client.DisplayName)</dd>
-
-                    <dt class="col-sm-4">Fecha</dt>
-                    <dd class="col-sm-8">@Model.Date.ToString("dd/MM/yyyy")</dd>
-
-                    <dt class="col-sm-4">Tipo</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Type)</dd>
-
-                    <dt class="col-sm-4">Descripción</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Description)</dd>
-
-                    <dt class="col-sm-4">Monto Total</dt>
-                    <dd class="col-sm-8">@Model.TotalAmount.ToString("C")</dd>
-
-                    <dt class="col-sm-4">Saldo Pendiente</dt>
-                    <dd class="col-sm-8 text-danger fw-bold">@Model.Balance.ToString("C")</dd>
-                    
-                    <dt class="col-sm-4">Estado</dt>
-                    <dd class="col-sm-8">
-                        @if (Model.IsPaid)
-                        {
-                            <span class="badge bg-success">Pagado</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-warning text-dark">Pendiente</span>
-                        }
-                    </dd>
-                </dl>
+            <div class="col-md-6 text-end">
+                <h5 class="text-muted">Monto Total</h5>
+                <h3>@Model.TotalAmount.ToString("C2")</h3>
+                <hr />
+                <h5 class="text-danger">Saldo Pendiente</h5>
+                <h2 class="text-danger fw-bold">@Model.Balance.ToString("C2")</h2>
             </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
         @if (!Model.IsPaid)
         {
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Registrar Abono</h5>
-                </div>
-                <div class="card-body">
-                    <form asp-action="AddPayment" method="post">
-                        <input type="hidden" name="id" value="@Model.AccountReceivableID" />
-                        
-                        <div class="mb-3">
-                            <label for="amount" class="form-label">Monto a Abonar</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" id="amount" name="amount" class="form-control" step="0.01" min="0.01" max="@Model.Balance" required />
-                            </div>
-                            <div class="form-text">Saldo actual: @Model.Balance.ToString("C")</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="paymentMethod" class="form-label">Forma de Pago</label>
-                            <select id="paymentMethod" name="paymentMethod" class="form-select" asp-items="ViewBag.PaymentMethods" required>
-                                <option value="">-- Seleccione --</option>
-                            </select>
-                            <div class="form-text">Solo los pagos en <strong>Efectivo</strong> afectarán la caja.</div>
-                        </div>
-
-                        <div class="mb-3" id="bank-selection-group" style="display: none;">
-                            <label for="bankId" class="form-label">Cuenta Destino</label>
-                            <select id="bankId" name="bankId" class="form-select" asp-items="ViewBag.Banks">
-                                <option value="">-- Seleccione Banco --</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="note" class="form-label">Nota (Opcional)</label>
-                            <input type="text" id="note" name="note" class="form-control" placeholder="Referencia, detalle..." />
-                        </div>
-
-                        <button type="submit" class="btn btn-success w-100">Registrar Pago</button>
-                    </form>
-                </div>
-            </div>
+            <hr />
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                <i class="bi bi-cash-coin"></i> Registrar Abono
+            </button>
         }
         else
         {
-            <div class="alert alert-success">
-                <h4 class="alert-heading">¡Pagado!</h4>
-                <p>Esta cuenta ha sido pagada en su totalidad.</p>
+            <div class="alert alert-success mt-3">
+                <i class="bi bi-check-circle-fill"></i> Esta cuenta está pagada en su totalidad.
             </div>
         }
     </div>
 </div>
 
-<div class="card shadow-sm mt-4">
-    <div class="card-header">
-        <h5 class="mb-0">Historial de Pagos</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Monto</th>
-                        <th>Detalle</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (Model.Payments != null && Model.Payments.Any())
-                    {
-                        foreach (var item in Model.Payments.OrderByDescending(p => p.Date))
-                        {
-                            <tr>
-                                <td>@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@item.Amount.ToString("C")</td>
-                                <td>@item.Note</td>
-                            </tr>
-                        }
-                    }
-                    else
-                    {
-                        <tr>
-                            <td colspan="3" class="text-center text-muted">No hay pagos registrados.</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+<h4 class="mt-4">Historial de Pagos</h4>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Nota / Método</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var payment in Model.Payments.OrderByDescending(p => p.Date))
+            {
+                <tr>
+                    <td>@payment.Date.ToString("g")</td>
+                    <td class="fw-bold text-success">@payment.Amount.ToString("C2")</td>
+                    <td>@payment.Note</td>
+                </tr>
+            }
+            @if (!Model.Payments.Any())
+            {
+                <tr>
+                    <td colspan="3" class="text-center text-muted">No hay abonos registrados.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Abono -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddPayment" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Abono</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" value="@Model.AccountReceivableID" />
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Abonar</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" max="@Model.Balance" required />
+                        <div class="form-text">Máximo: @Model.Balance.ToString("C2")</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select name="paymentMethod" id="paymentMethodSelect" class="form-select" asp-items="ViewBag.PaymentMethods"></select>
+                    </div>
+
+                    <div class="mb-3" id="bankSelectGroup" style="display:none;">
+                        <label class="form-label">Cuenta Destino (Banco)</label>
+                        <select name="bankId" class="form-select" asp-items="ViewBag.Banks">
+                            <option value="">-- Seleccione Banco --</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nota (Opcional)</label>
+                        <input type="text" name="note" class="form-control" placeholder="Referencia, detalle..." />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Abono</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<div class="mt-3">
-    <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
-</div>
+<script>
+    const defaultCardBankId = @(ViewBag.DefaultCardBankId ?? "null");
 
-@section Scripts {
-    <script>
-        $(document).ready(function () {
-            const bankPaymentMethods = ['Card', 'Transfer', 'Nequi', 'Daviplata'];
+    document.getElementById('paymentMethodSelect').addEventListener('change', function() {
+        var method = this.value;
+        var bankGroup = document.getElementById('bankSelectGroup');
+        var bankSelect = document.querySelector('select[name="bankId"]');
 
-            $('#paymentMethod').on('change', function () {
-                const selectedMethod = $(this).val();
-                if (bankPaymentMethods.includes(selectedMethod)) {
-                    $('#bank-selection-group').show();
-                } else {
-                    $('#bank-selection-group').hide();
-                }
-            });
-        });
-    </script>
-}
+        // Mostrar banco para Tarjetas y Transferencias
+        if (method === 'CreditCard' || method === 'DebitCard' || method === 'Transfer') {
+            bankGroup.style.display = 'block';
+
+            // Auto-seleccionar banco por defecto si es Tarjeta
+            if ((method === 'CreditCard' || method === 'DebitCard') && defaultCardBankId) {
+                bankSelect.value = defaultCardBankId;
+            } else {
+                // No limpiar para transferencia si ya hay algo seleccionado
+            }
+        } else {
+            bankGroup.style.display = 'none';
+            bankSelect.value = ''; // Limpiar selección al ocultar
+        }
+    });
+
+    document.querySelector('form[action$="AddPayment"]').addEventListener('submit', function(e) {
+        var method = document.getElementById('paymentMethodSelect').value;
+        var bankSelect = document.querySelector('select[name="bankId"]');
+        
+        if ((method === 'CreditCard' || method === 'DebitCard' || method === 'Transfer') && !bankSelect.value) {
+            e.preventDefault();
+            alert('Debe seleccionar un banco para el método de pago seleccionado.');
+        }
+    });
+</script>

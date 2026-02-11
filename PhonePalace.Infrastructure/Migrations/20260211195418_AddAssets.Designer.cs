@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PhonePalace.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PhonePalace.Infrastructure.Data;
 namespace PhonePalace.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260211195418_AddAssets")]
+    partial class AddAssets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -649,11 +652,8 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CreditCardVerificationID"));
 
-                    b.Property<int?>("AccountReceivablePaymentID")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18, 2)");
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("BankID")
                         .HasColumnType("int");
@@ -661,10 +661,10 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<DateTime>("CreationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("PaymentID")
+                    b.Property<int>("PaymentID")
                         .HasColumnType("int");
 
-                    b.Property<int?>("SaleID")
+                    b.Property<int>("SaleID")
                         .HasColumnType("int");
 
                     b.Property<int>("Status")
@@ -677,8 +677,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("CreditCardVerificationID");
-
-                    b.HasIndex("AccountReceivablePaymentID");
 
                     b.HasIndex("BankID");
 
@@ -1577,10 +1575,6 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.CreditCardVerification", b =>
                 {
-                    b.HasOne("PhonePalace.Domain.Entities.AccountReceivablePayment", "AccountReceivablePayment")
-                        .WithMany()
-                        .HasForeignKey("AccountReceivablePaymentID");
-
                     b.HasOne("PhonePalace.Domain.Entities.Bank", "Bank")
                         .WithMany()
                         .HasForeignKey("BankID")
@@ -1589,13 +1583,15 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.HasOne("PhonePalace.Domain.Entities.Payment", "Payment")
                         .WithMany()
-                        .HasForeignKey("PaymentID");
+                        .HasForeignKey("PaymentID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("PhonePalace.Domain.Entities.Sale", "Sale")
                         .WithMany()
-                        .HasForeignKey("SaleID");
-
-                    b.Navigation("AccountReceivablePayment");
+                        .HasForeignKey("SaleID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Bank");
 

@@ -7,7 +7,7 @@
     // Define qué controladores pertenecen al menú desplegable "Configuración"
     var isConfigActive = ActiveRoute.IsIn(ViewContext, "Categories", "AuditLogs", "Brands", "Models", "Banks", "UserManagement");
     var isInventoryActive = ActiveRoute.IsIn(ViewContext, "CellPhones", "Accessories", "Products", "Inventory");
-    var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash", "FixedExpenses");
+    var isLocalActive = ActiveRoute.IsIn(ViewContext, "Local", "Cash", "FixedExpenses", "Assets");
     var isReportsActive = ActiveRoute.IsIn(ViewContext, "Reports");
     var isFinanceActive = ActiveRoute.IsIn(ViewContext, "AccountPayables", "AccountReceivables", "CreditCardVerifications");
 }
@@ -125,6 +125,12 @@
                         <a asp-controller="FixedExpenses" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "FixedExpenses")">
                             <i class="bi bi-calendar-minus me-2"></i>
                             Gastos Fijos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a asp-controller="Assets" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Assets")">
+                            <i class="bi bi-laptop me-2"></i>
+                            Activos Fijos
                         </a>
                     </li>
                 </ul>

@@ -27,7 +27,7 @@
                 <thead>
                     <tr>
                         <th>Fecha Venta</th>
-                        <th>Venta ID</th>
+                        <th>Referencia</th>
                         <th>Cliente</th>
                         <th>Banco Destino</th>
                         <th class="text-end">Monto</th>
@@ -40,11 +40,26 @@
                         <tr>
                             <td>@item.CreationDate.ToString("dd/MM/yyyy HH:mm")</td>
                             <td>
-                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID" target="_blank">
-                                    @item.SaleID <i class="bi bi-box-arrow-up-right small"></i>
-                                </a>
+                                @if (item.SaleID.HasValue && item.Sale != null)
+                                {
+                                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID" target="_blank" class="badge bg-info text-decoration-none">
+                                        Venta #@item.SaleID <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                }
+                                else if (item.AccountReceivablePayment?.AccountReceivableID != null)
+                                {
+                                    <a asp-controller="AccountReceivables" asp-action="Details" asp-route-id="@item.AccountReceivablePayment.AccountReceivableID" target="_blank" class="badge bg-warning text-dark text-decoration-none">
+                                        CxC #@item.AccountReceivablePayment.AccountReceivableID <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span>-</span>
+                                }
                             </td>
-                            <td>@item.Sale?.Client?.DisplayName</td>
+                            <td>
+                                @(item.Sale?.Client?.DisplayName ?? item.AccountReceivablePayment?.AccountReceivable?.Client?.DisplayName ?? "Desconocido")
+                            </td>
                             <td>@item.Bank?.Name</td>
                             <td class="text-end">@item.Amount.ToString("C")</td>
                             <td class="text-center">
@@ -67,7 +82,20 @@
                                     <form asp-action="Reject" asp-route-id="@item.CreditCardVerificationID" method="post">
                                         @Html.AntiForgeryToken()
                                         <div class="modal-header">
-                                            <h5 class="modal-title" id="rejectModalLabel-@item.CreditCardVerificationID">Rechazar Pago Venta #@item.SaleID</h5>
+                                            <h5 class="modal-title" id="rejectModalLabel-@item.CreditCardVerificationID">
+                                                @if (item.SaleID.HasValue)
+                                                {
+                                                    <text>Rechazar Pago Venta #@item.SaleID</text>
+                                                }
+                                                else if (item.AccountReceivablePayment?.AccountReceivableID != null)
+                                                {
+                                                    <text>Rechazar Pago CxC #@item.AccountReceivablePayment.AccountReceivableID</text>
+                                                }
+                                                else
+                                                {
+                                                    <text>Rechazar Pago</text>
+                                                }
+                                            </h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
                                         <div class="modal-body">

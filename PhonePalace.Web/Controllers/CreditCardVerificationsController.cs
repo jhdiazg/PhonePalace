@@ -31,6 +31,9 @@ namespace PhonePalace.Web.Controllers
             var query = _context.CreditCardVerifications
                 .Include(v => v.Sale)
                     .ThenInclude(s => s.Client)
+                .Include(v => v.AccountReceivablePayment)
+                    .ThenInclude(arp => arp.AccountReceivable)
+                        .ThenInclude(ar => ar.Client)
                 .Include(v => v.Bank)
                 .Where(v => v.Status == VerificationStatus.Pending)
                 .OrderByDescending(v => v.CreationDate);
@@ -43,22 +46,45 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Verify(int id)
         {
-            var verification = await _context.CreditCardVerifications.FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
+            var verification = await _context.CreditCardVerifications
+                .Include(v => v.AccountReceivablePayment)
+                    .ThenInclude(arp => arp.AccountReceivable)
+                .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
+
             if (verification == null || verification.Status != VerificationStatus.Pending)
             {
                 TempData["Error"] = "La verificación no se encontró o ya fue procesada.";
                 return RedirectToAction(nameof(Index));
             }
 
-            var payment = await _context.Payments.FindAsync(verification.PaymentID);
-            if (payment == null)
+            // Escenario 1: Verificación de Venta (PaymentID existe)
+            if (verification.PaymentID.HasValue)
             {
-                TempData["Error"] = "No se encontró el pago asociado a esta verificación.";
+                var payment = await _context.Payments.FindAsync(verification.PaymentID);
+                if (payment == null)
+                {
+                    TempData["Error"] = "No se encontró el pago de venta asociado.";
+                    return RedirectToAction(nameof(Index));
+                }
+                // Afectar el banco usando el servicio de pagos
+                await _bankService.RegisterIncomeFromPaymentAsync(payment);
+            }
+            // Escenario 2: Verificación de Abono a CxC (AccountReceivablePaymentID existe)
+            else if (verification.AccountReceivablePaymentID.HasValue && verification.AccountReceivablePayment != null)
+            {
+                // Registrar ingreso manual en el banco
+                await _bankService.RegisterManualMovementAsync(
+                    verification.BankID,
+                    BankTransactionType.TransferIn, // Ingreso
+                    verification.Amount,
+                    $"Abono CxC #{verification.AccountReceivablePayment.AccountReceivableID} (TC Verificada) - Ref: {verification.CreditCardVerificationID}"
+                );
+            }
+            else
+            {
+                TempData["Error"] = "La verificación no tiene un origen de pago válido.";
                 return RedirectToAction(nameof(Index));
             }
-
-            // Afectar el banco
-            await _bankService.RegisterIncomeFromPaymentAsync(payment);
 
             // Actualizar estado de la verificación
             verification.Status = VerificationStatus.Verified;
@@ -66,7 +92,9 @@ namespace PhonePalace.Web.Controllers
             _context.Update(verification);
 
             await _context.SaveChangesAsync();
-            await _auditService.LogAsync("VerificacionTarjeta", $"Verificó y aplicó el pago con tarjeta de crédito para la venta #{verification.SaleID} por un monto de {verification.Amount:C}.");
+            
+            string sourceRef = verification.SaleID.HasValue ? $"Venta #{verification.SaleID}" : $"CxC #{verification.AccountReceivablePayment?.AccountReceivableID}";
+            await _auditService.LogAsync("VerificacionTarjeta", $"Verificó y aplicó pago TC para {sourceRef} por {verification.Amount:C}.");
 
             TempData["Success"] = "Pago verificado y aplicado al banco correctamente.";
             return RedirectToAction(nameof(Index));

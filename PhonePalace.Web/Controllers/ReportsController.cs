@@ -353,6 +353,20 @@ namespace PhonePalace.Web.Controllers
                 item.AccountsReceivable += ar.TotalAmount;
             }
 
+            // 6. Activos (Valor de adquisición acumulado)
+            var assets = await _context.Assets
+                .Where(a => a.AcquisitionDate.Year <= reportYear && a.Status == AssetStatus.Active)
+                .OrderBy(a => a.AcquisitionDate)
+                .AsNoTracking()
+                .ToListAsync();
+
+            for (int i = 1; i <= 12; i++)
+            {
+                var endOfMonth = new DateTime(reportYear, i, DateTime.DaysInMonth(reportYear, i));
+                var item = model.Items.First(m => m.Month == i);
+                item.AssetsValue = assets.Where(a => a.AcquisitionDate <= endOfMonth).Sum(a => a.AcquisitionCost);
+            }
+
             // Calcular Utilidad y Totales Generales
             foreach (var item in model.Items)
             {
@@ -367,6 +381,7 @@ namespace PhonePalace.Web.Controllers
                 model.Totals.AccountsReceivable += item.AccountsReceivable;
                 model.Totals.PurchaseVAT += item.PurchaseVAT;
                 model.Totals.SalesVAT += item.SalesVAT;
+                model.Totals.AssetsValue = item.AssetsValue; // Asigna el valor del último mes al total
             }
 
             return View(model);

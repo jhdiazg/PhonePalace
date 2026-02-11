@@ -54,16 +54,16 @@
                 </div>
                 <div class="col-md-3">
                     <div class="mb-3">
-                        <label asp-for="Price" class="form-label"></label>
-                        <input asp-for="Price" class="form-control" />
-                        <span asp-validation-for="Price" class="text-danger"></span>
+                        <label asp-for="Cost" class="form-label"></label>
+                        <input asp-for="Cost" class="form-control" />
+                        <span asp-validation-for="Cost" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="mb-3">
-                        <label asp-for="Cost" class="form-label"></label>
-                        <input asp-for="Cost" class="form-control" />
-                        <span asp-validation-for="Cost" class="text-danger"></span>
+                        <label asp-for="Price" class="form-label"></label>
+                        <input asp-for="Price" class="form-control" />
+                        <span asp-validation-for="Price" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -117,4 +117,28 @@
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            // Función para redondear al múltiplo de 1000 más cercano
+            function roundToNearestThousand(num) {
+                if (isNaN(num)) return 0;
+                return Math.round(num / 1000) * 1000;
+            }
+
+            // Asumiendo que los IDs de los campos de entrada son 'Cost' y 'Price'
+            $('#Cost').on('blur', function() {
+                const cost = parseFloat($(this).val());
+                const priceInput = $('#Price');
+                
+                // Solo actualiza el precio si el campo de precio está vacío o es cero,
+                // para no sobreescribir un valor que hayas ingresado manualmente.
+                if (cost > 0 && (!priceInput.val() || parseFloat(priceInput.val()) === 0)) {
+                    const localPercentage = 85; // Porcentaje de la lista "Local"
+                    const rawPrice = cost * (1 + localPercentage / 100);
+                    const calculatedPrice = roundToNearestThousand(rawPrice);
+                    priceInput.val(calculatedPrice.toFixed(2)); // .toFixed(2) para formato de moneda
+                }
+            });
+        });
+    </script>
 }

@@ -1,160 +1,76 @@
 @model PhonePalace.Web.ViewModels.MonthlyBalanceViewModel
-@using System.Linq
 
 @{
     ViewData["Title"] = "Balance Mensual";
-    var currentYear = DateTime.Now.Year;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>@ViewData["Title"]</h1>
-    <form asp-action="MonthlyBalance" method="get" class="d-flex align-items-center">
-        <label class="me-2 fw-bold">Año:</label>
-        <select name="year" class="form-select w-auto" onchange="this.form.submit()">
-            @for (int i = currentYear; i >= currentYear - 5; i--)
-            {
-                if (Model.Year == i)
-                {
-                    <option value="@i" selected>@i</option>
-                }
-                else
-                {
-                    <option value="@i">@i</option>
-                }
-            }
-        </select>
-    </form>
-</div>
-
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <canvas id="balanceChart" style="max-height: 400px;"></canvas>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Balance Mensual - @Model.Year</h1>
+        <form asp-action="MonthlyBalance" method="get" class="d-flex align-items-center">
+            <label for="year" class="me-2 fw-bold">Año:</label>
+            <input type="number" class="form-control me-2" id="year" name="year" value="@Model.Year" style="width: 100px;">
+            <button type="submit" class="btn btn-primary">Generar</button>
+        </form>
     </div>
-</div>
 
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover table-sm mb-0" style="font-size: 0.85rem;">
-                <thead class="table-light text-center align-middle">
-                    <tr>
-                        <th class="py-2">Mes</th>
-                        <th class="py-2 text-primary">Ventas<br><small>(Subtotal)</small></th>
-                        <th class="py-2 text-success">Utilidad<br><small>(Venta-Costo)</small></th>
-                        <th class="py-2 text-danger">Gastos Fijos</th>
-                        <th class="py-2 text-danger">Gastos Local</th>
-                        <th class="py-2">Compras<br><small>(Subtotal)</small></th>
-                        <th class="py-2 text-warning">Cuentas por Cobrar<br><small>(Créditos)</small></th>
-                        <th class="py-2 text-muted">IVA<br>Compras</th>
-                        <th class="py-2 text-muted">IVA<br>Ventas</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model.Items)
-                    {
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped mb-0 text-end">
+                    <thead class="table-dark text-center align-middle">
                         <tr>
-                            <td class="fw-bold text-capitalize ps-3">@item.MonthName</td>
-                            <td class="text-end">@item.Sales.ToString("N0")</td>
-                            <td class="text-end fw-bold @(item.Profit >= 0 ? "text-success" : "text-danger")">@item.Profit.ToString("N0")</td>
-                            <td class="text-end text-danger">@item.FixedExpenses.ToString("N0")</td>
-                            <td class="text-end text-danger">@item.LocalExpenses.ToString("N0")</td>
-                            <td class="text-end">@item.Purchases.ToString("N0")</td>
-                            <td class="text-end text-warning text-dark">@item.AccountsReceivable.ToString("N0")</td>
-                            <td class="text-end text-muted">@item.PurchaseVAT.ToString("N0")</td>
-                            <td class="text-end text-muted">@item.SalesVAT.ToString("N0")</td>
+                            <th>Mes</th>
+                            <th>Ventas</th>
+                            <th>IVA Ventas</th>
+                            <th>Costo Aprox.</th>
+                            <th>Utilidad Bruta</th>
+                            <th>Gastos Fijos</th>
+                            <th>Gastos Local</th>
+                            <th>Compras</th>
+                            <th>IVA Compras</th>
+                            <th>CxC (Créditos)</th>
+                            <th class="bg-info text-dark">Activos (Valor)</th>
+                            <th>Utilidad Neta</th>
                         </tr>
-                    }
-                </tbody>
-                <tfoot class="table-light fw-bold">
-                    <tr class="text-end border-top border-2">
-                        <td class="text-start ps-3">TOTALES</td>
-                        <td class="text-primary">@Model.Totals.Sales.ToString("C0")</td>
-                        <td class="@(Model.Totals.Profit >= 0 ? "text-success" : "text-danger")">@Model.Totals.Profit.ToString("C0")</td>
-                        <td class="text-danger">@Model.Totals.FixedExpenses.ToString("C0")</td>
-                        <td class="text-danger">@Model.Totals.LocalExpenses.ToString("C0")</td>
-                        <td>@Model.Totals.Purchases.ToString("C0")</td>
-                        <td class="text-warning text-dark">@Model.Totals.AccountsReceivable.ToString("C0")</td>
-                        <td class="text-muted">@Model.Totals.PurchaseVAT.ToString("C0")</td>
-                        <td class="text-muted">@Model.Totals.SalesVAT.ToString("C0")</td>
-                    </tr>
-                </tfoot>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="text-start fw-bold">@item.MonthName</td>
+                                <td>@item.Sales.ToString("C0")</td>
+                                <td class="text-muted"><small>@item.SalesVAT.ToString("C0")</small></td>
+                                <td class="text-muted"><small>@item.Cost.ToString("C0")</small></td>
+                                <td class="fw-bold text-primary">@((item.Sales - item.Cost).ToString("C0"))</td>
+                                <td>@item.FixedExpenses.ToString("C0")</td>
+                                <td>@item.LocalExpenses.ToString("C0")</td>
+                                <td>@item.Purchases.ToString("C0")</td>
+                                <td class="text-muted"><small>@item.PurchaseVAT.ToString("C0")</small></td>
+                                <td>@item.AccountsReceivable.ToString("C0")</td>
+                                <td class="table-info fw-bold">@item.AssetsValue.ToString("C0")</td>
+                                <td class="@(item.Profit >= 0 ? "text-success" : "text-danger") fw-bold fs-6">@item.Profit.ToString("C0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="table-secondary fw-bold">
+                        <tr>
+                            <td class="text-start">TOTALES / FINAL</td>
+                            <td>@Model.Totals.Sales.ToString("C0")</td>
+                            <td>@Model.Totals.SalesVAT.ToString("C0")</td>
+                            <td>@Model.Totals.Cost.ToString("C0")</td>
+                            <td>@((Model.Totals.Sales - Model.Totals.Cost).ToString("C0"))</td>
+                            <td>@Model.Totals.FixedExpenses.ToString("C0")</td>
+                            <td>@Model.Totals.LocalExpenses.ToString("C0")</td>
+                            <td>@Model.Totals.Purchases.ToString("C0")</td>
+                            <td>@Model.Totals.PurchaseVAT.ToString("C0")</td>
+                            <td>@Model.Totals.AccountsReceivable.ToString("C0")</td>
+                            <td class="table-info">@Model.Totals.AssetsValue.ToString("C0")</td>
+                            <td class="@(Model.Totals.Profit >= 0 ? "text-success" : "text-danger") fs-5">@Model.Totals.Profit.ToString("C0")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-
-<div class="mt-3 text-muted small">
-    <p>
-        <i class="bi bi-info-circle me-1"></i> <strong>Notas del Reporte:</strong><br>
-        - <strong>Ventas:</strong> Subtotal de facturas (sin IVA).<br>
-        - <strong>Utilidad:</strong> Ventas menos el Costo estimado de los productos vendidos.<br>
-        - <strong>G.Local:</strong> Egresos de caja que no corresponden a pagos de Gastos Fijos.<br>
-        - <strong>CxC:</strong> Total de cuentas por cobrar (créditos) generadas en el mes.
-    </p>
-</div>
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('balanceChart').getContext('2d');
-            
-            const labels = @Json.Serialize(Model.Items.Select(i => i.MonthName));
-            const salesData = @Json.Serialize(Model.Items.Select(i => i.Sales));
-            const expensesData = @Json.Serialize(Model.Items.Select(i => i.FixedExpenses + i.LocalExpenses));
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Ventas',
-                            data: salesData,
-                            backgroundColor: 'rgba(13, 110, 253, 0.7)', // Bootstrap Primary
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Gastos (Fijos + Local)',
-                            data: expensesData,
-                            backgroundColor: 'rgba(220, 53, 69, 0.7)', // Bootstrap Danger
-                            borderColor: 'rgba(220, 53, 69, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value, index, values) {
-                                    return '$' + value.toLocaleString('es-CO');
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(context.parsed.y);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        });
-    </script>
-}

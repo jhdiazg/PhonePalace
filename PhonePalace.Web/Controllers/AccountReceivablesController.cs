@@ -8,6 +8,7 @@ using PhonePalace.Web.ViewModels;
 using PhonePalace.Web.Helpers;
 using System.Security.Claims;
 using PhonePalace.Domain.Enums;
+using Microsoft.Extensions.Configuration;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -17,12 +18,16 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
         private readonly IAuditService _auditService;
+        private readonly IBankService _bankService;
+        private readonly IConfiguration _config;
 
-        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService, IAuditService auditService)
+        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService, IAuditService auditService, IBankService bankService, IConfiguration config)
         {
             _context = context;
             _cashService = cashService;
             _auditService = auditService;
+            _bankService = bankService;
+            _config = config;
         }
 
         [HttpGet]
@@ -99,13 +104,15 @@ namespace PhonePalace.Web.Controllers
         public IActionResult Create()
         {
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
-            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+            ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
             return View(new LoanCreateViewModel { Date = DateTime.Now, Description = string.Empty });
         }
 
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(LoanCreateViewModel model, PaymentMethod disbursementMethod)
+        public async Task<IActionResult> Create(LoanCreateViewModel model, PaymentMethod disbursementMethod, int? bankId)
         {
             if (ModelState.IsValid)
             {
@@ -117,7 +124,9 @@ namespace PhonePalace.Web.Controllers
                     {
                         ModelState.AddModelError("", "Debe abrir la caja antes de registrar un préstamo en efectivo.");
                         ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                            .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+                        ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
                         return View(model);
                     }
 
@@ -127,6 +136,35 @@ namespace PhonePalace.Web.Controllers
                     // 1. Registrar Egreso de Caja
                     await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
                 }
+                else if (disbursementMethod == PaymentMethod.Transfer)
+                {
+                    // Desembolso por Banco (Egreso)
+                    if (!bankId.HasValue)
+                    {
+                        ModelState.AddModelError("", "Debe seleccionar un banco para el desembolso.");
+                        ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
+                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                            .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+                        ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
+                        return View(model);
+                    }
+
+                    var bank = await _context.Banks.FindAsync(bankId.Value);
+                    if (bank != null)
+                    {
+                        var transaction = new BankTransaction
+                        {
+                            BankID = bank.BankID,
+                            Date = DateTime.Now,
+                            Amount = -model.Amount, // Egreso es negativo
+                            Description = $"Desembolso Préstamo: {model.Description}",
+                            BalanceAfterTransaction = bank.Balance - model.Amount
+                        };
+                        _context.BankTransactions.Add(transaction);
+                        bank.Balance -= model.Amount;
+                        _context.Update(bank);
+                    }
+                }
 
                 // 2. Obtener el cliente
                 var client = await _context.Clients.FindAsync(model.ClientID);
@@ -134,7 +172,9 @@ namespace PhonePalace.Web.Controllers
                 {
                     ModelState.AddModelError("", "Cliente no encontrado.");
                     ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-                    ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                    ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                        .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+                    ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
                     return View(model);
                 }
 
@@ -158,7 +198,9 @@ namespace PhonePalace.Web.Controllers
             }
 
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+            ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
             return View(model);
         }
 
@@ -172,14 +214,20 @@ namespace PhonePalace.Web.Controllers
 
             if (ar == null) return NotFound();
 
-            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                .Where(x => x.Value == PaymentMethod.Cash.ToString() || 
+                            x.Value == PaymentMethod.Transfer.ToString() ||
+                            x.Value == PaymentMethod.DebitCard.ToString() ||
+                            x.Value == PaymentMethod.CreditCard.ToString());
+            ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
+            ViewBag.DefaultCardBankId = _config.GetValue<int?>("Defaults:CardBankID");
 
             return View(ar);
         }
 
         [HttpPost("AddPayment")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddPayment(int id, decimal amount, string note, PaymentMethod paymentMethod)
+        public async Task<IActionResult> AddPayment(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
             var ar = await _context.AccountReceivables.FindAsync(id);
             if (ar == null) return NotFound();
@@ -196,19 +244,7 @@ namespace PhonePalace.Web.Controllers
                 return Unauthorized();
             }
 
-            // 1. Validar caja y Registrar Ingreso solo si es Efectivo
-            if (paymentMethod == PaymentMethod.Cash)
-            {
-                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                if (currentCash == null)
-                {
-                    TempData["Error"] = "Debe abrir la caja para recibir abonos en efectivo.";
-                    return RedirectToAction(nameof(Details), new { id });
-                }
-                await _cashService.RegisterIncomeAsync(amount, $"Abono a CxC #{ar.AccountReceivableID} ({ar.Type})", userId, null);
-            }
-
-            // 2. Registrar Pago en Historial
+            // Preparar el objeto de pago primero para poder enlazarlo si es necesario
             string methodDesc = EnumHelper.GetDisplayName(paymentMethod);
             string finalNote = string.IsNullOrEmpty(note) ? $"[{methodDesc}]" : $"[{methodDesc}] {note.ToUpper()}";
 
@@ -220,7 +256,65 @@ namespace PhonePalace.Web.Controllers
                 Amount = amount,
                 Note = finalNote
             };
+
+            // 2. Registrar Pago en Historial (Lo agregamos antes para asegurar que la entidad esté rastreada)
             _context.AccountReceivablePayments.Add(payment);
+
+            // 1. Validar caja y Registrar Ingreso solo si es Efectivo
+            if (paymentMethod == PaymentMethod.Cash)
+            {
+                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                if (currentCash == null)
+                {
+                    TempData["Error"] = "Debe abrir la caja para recibir abonos en efectivo.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+                await _cashService.RegisterIncomeAsync(amount, $"Abono a CxC #{ar.AccountReceivableID} ({ar.Type})", userId, null);
+            }
+            else if (paymentMethod == PaymentMethod.CreditCard)
+            {
+                if (!bankId.HasValue)
+                {
+                    TempData["Error"] = "Debe seleccionar un banco para pagos con tarjeta.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                // Crear Verificación de Tarjeta de Crédito (Pendiente)
+                var verification = new CreditCardVerification
+                {
+                    SaleID = ar.SaleID, // Si viene de una venta, enlazamos. Si es préstamo, será null.
+                    BankID = bankId.Value,
+                    Amount = amount,
+                    CreationDate = DateTime.Now,
+                    Status = VerificationStatus.Pending,
+                    AccountReceivablePayment = payment // Enlazamos el pago de CxC
+                };
+                _context.CreditCardVerifications.Add(verification);
+            }
+            else if (paymentMethod == PaymentMethod.Transfer || paymentMethod == PaymentMethod.DebitCard)
+            {
+                if (!bankId.HasValue)
+                {
+                    TempData["Error"] = "Debe seleccionar un banco/cuenta destino.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+
+                var bank = await _context.Banks.FindAsync(bankId.Value);
+                if (bank != null)
+                {
+                    var transaction = new BankTransaction
+                    {
+                        BankID = bank.BankID,
+                        Date = DateTime.Now,
+                        Amount = amount, // Ingreso es positivo
+                        Description = $"Abono CxC #{ar.AccountReceivableID} ({ar.Type}) - {EnumHelper.GetDisplayName(paymentMethod)}",
+                        BalanceAfterTransaction = bank.Balance + amount
+                    };
+                    _context.BankTransactions.Add(transaction);
+                    bank.Balance += amount;
+                    _context.Update(bank);
+                }
+            }
 
             // 3. Actualizar Saldo
             ar.Balance -= amount;

@@ -11,6 +11,8 @@ using PhonePalace.Web.Helpers;
 using PhonePalace.Web.Documents;
 using System.Security.Claims;
 using QuestPDF.Fluent;
+using ClosedXML.Excel;
+using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -615,6 +617,79 @@ namespace PhonePalace.Web.Controllers
             var pdfBytes = document.GeneratePdf();
 
             return File(pdfBytes, "application/pdf", $"Factura-{sale.Invoice.InvoiceID}.pdf");
+        }
+
+        [HttpGet]
+        [Route("PlantillaVenta")]
+        public async Task<IActionResult> GenerateSaleTemplate()
+        {
+            using (var workbook = new XLWorkbook())
+            {
+                // --- Hoja 1: Plantilla para ingresar ventas ---
+                var salesSheet = workbook.Worksheets.Add("PlantillaVentas");
+                var currentRow = 1;
+
+                // Cabeceras
+                salesSheet.Cell(currentRow, 1).Value = "SKU_o_Codigo";
+                salesSheet.Cell(currentRow, 2).Value = "Cantidad";
+                salesSheet.Cell(currentRow, 3).Value = "PrecioUnitario";
+                salesSheet.Cell(currentRow, 4).Value = "IMEI";
+                salesSheet.Cell(currentRow, 5).Value = "Serial";
+                salesSheet.Row(1).Style.Font.Bold = true;
+                salesSheet.Row(1).Style.Fill.BackgroundColor = XLColor.LightGray;
+
+                // Ejemplo/Instrucción
+                currentRow++;
+                salesSheet.Cell(currentRow, 1).Value = "IPH15PRO-256";
+                salesSheet.Cell(currentRow, 2).Value = 1;
+                salesSheet.Cell(currentRow, 3).Value = 5000000;
+                salesSheet.Cell(currentRow, 4).Value = "123456789012345";
+                salesSheet.Cell(currentRow, 5).Value = "";
+                salesSheet.Row(currentRow).Style.Font.Italic = true;
+
+                // --- Hoja 2: Lista de productos de referencia ---
+                var productsSheet = workbook.Worksheets.Add("ListaProductos");
+                var products = await _context.Products
+                    .Where(p => p.IsActive)
+                    .OrderBy(p => p.Name)
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var productRow = 1;
+                // Cabeceras
+                productsSheet.Cell(productRow, 1).Value = "SKU";
+                productsSheet.Cell(productRow, 2).Value = "Código";
+                productsSheet.Cell(productRow, 3).Value = "Nombre";
+                productsSheet.Cell(productRow, 4).Value = "Costo";
+                productsSheet.Cell(productRow, 5).Value = "Precio Venta (Base)";
+                productsSheet.Row(productRow).Style.Font.Bold = true;
+
+                // Datos
+                foreach (var product in products)
+                {
+                    productRow++;
+                    productsSheet.Cell(productRow, 1).Value = product.SKU;
+                    productsSheet.Cell(productRow, 2).Value = product.Code;
+                    productsSheet.Cell(productRow, 3).Value = product.Name;
+                    productsSheet.Cell(productRow, 4).Value = product.Cost;
+                    productsSheet.Cell(productRow, 5).Value = product.Price;
+                }
+
+                // Ajustar columnas y proteger hoja
+                salesSheet.Columns().AdjustToContents();
+                productsSheet.Columns().AdjustToContents();
+                productsSheet.Protect("phonepalace"); // Proteger con una contraseña simple
+
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    var content = stream.ToArray();
+                    return File(
+                        content,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        $"Plantilla_Ventas_{DateTime.Now:yyyyMMdd}.xlsx");
+                }
+            }
         }
     }
 }
