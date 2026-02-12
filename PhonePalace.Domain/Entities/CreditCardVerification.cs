@@ -19,7 +19,7 @@ namespace PhonePalace.Domain.Entities
         public AccountReceivablePayment? AccountReceivablePayment { get; set; }
 
         public int BankID { get; set; }
-        public Bank Bank { get; set; }
+        public Bank? Bank { get; set; }
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }

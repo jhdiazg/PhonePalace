@@ -30,9 +30,9 @@ namespace PhonePalace.Web.Controllers
         {
             var query = _context.CreditCardVerifications
                 .Include(v => v.Sale)
-                    .ThenInclude(s => s.Client)
+                    .ThenInclude(s => s!.Client)
                 .Include(v => v.AccountReceivablePayment)
-                    .ThenInclude(arp => arp.AccountReceivable)
+                    .ThenInclude(arp => arp!.AccountReceivable)
                         .ThenInclude(ar => ar.Client)
                 .Include(v => v.Bank)
                 .Where(v => v.Status == VerificationStatus.Pending)
@@ -48,7 +48,7 @@ namespace PhonePalace.Web.Controllers
         {
             var verification = await _context.CreditCardVerifications
                 .Include(v => v.AccountReceivablePayment)
-                    .ThenInclude(arp => arp.AccountReceivable)
+                    .ThenInclude(arp => arp!.AccountReceivable)
                 .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
 
             if (verification == null || verification.Status != VerificationStatus.Pending)

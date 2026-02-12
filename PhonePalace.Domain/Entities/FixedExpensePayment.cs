@@ -11,7 +11,7 @@ namespace PhonePalace.Domain.Entities
 
         public int FixedExpenseId { get; set; }
         [ForeignKey("FixedExpenseId")]
-        public virtual FixedExpense FixedExpense { get; set; }
+        public virtual FixedExpense? FixedExpense { get; set; }
 
         [Required]
         public DateTime PaymentDate { get; set; }

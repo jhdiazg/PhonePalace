@@ -226,6 +226,7 @@
 
             const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0.19m);
             const defaultCardBankId = @Json.Serialize(ViewBag.DefaultCardBankId);
+            const surchargePercentage = @Json.Serialize(ViewBag.CardSurchargePercentage ?? 0);
 
             // State
             let products = [];
@@ -243,13 +244,16 @@
             }
 
             // Diccionario de productos para inicialización rápida
-            var allProductsDict = {
-                @foreach (var p in ViewBag.AllProducts)
-                {
-                    var type = p is PhonePalace.Domain.Entities.CellPhone ? "CellPhone" : "Accessory";
-                    <text>'@p.ProductID': { id: @p.ProductID, name: '@p.Name', price: @p.Price, cost: @p.Cost, type: '@type' },</text>
+            var allProductsDict = @Html.Raw(Json.Serialize(((IEnumerable<Product>)ViewBag.AllProducts).ToDictionary(
+                p => p.ProductID.ToString(),
+                p => new { 
+                    id = p.ProductID, 
+                    name = p.Name, 
+                    price = p.Price, 
+                    cost = p.Cost, 
+                    type = (p is PhonePalace.Domain.Entities.CellPhone ? "CellPhone" : "Accessory") 
                 }
-            };
+            )));
 
             // Inicializa productos si vienen del modelo
             var initialDetails = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Details ?? new List<PhonePalace.Web.ViewModels.SaleDetailViewModel>()));
@@ -287,7 +291,8 @@
                         method: p.PaymentMethod,
                         methodText: paymentMethodEnum[p.PaymentMethod] || p.PaymentMethod,
                         amount: p.Amount,
-                        reference: p.ReferenceNumber
+                        reference: p.ReferenceNumber,
+                        surcharge: 0 // Asumimos 0 si viene del modelo recargado por error, o recalcular si es necesario
                     });
                 });
                 renderPayments(); 
@@ -370,8 +375,8 @@
 
                     // --- Price Calculation Logic ---
                     const priceListPercentage = $('#price-list-select').val();
-                    if (priceListPercentage && productInfo.cost > 0) {
-                        const percentage = parseInt(priceListPercentage, 10);
+                    if (priceListPercentage && productInfo.cost > 0 && !isNaN(parseFloat(priceListPercentage))) {
+                        const percentage = parseFloat(priceListPercentage);
                         const rawPrice = productInfo.cost * (1 + percentage / 100);
                         priceInput.val(roundToNearestThousand(rawPrice));
                     } else {
@@ -396,8 +401,8 @@
                     // Restore the calculated price
                     const priceListPercentage = $('#price-list-select').val();
                     let restoredPrice;
-                    if (priceListPercentage && productInfo.cost > 0) {
-                        const percentage = parseInt(priceListPercentage, 10);
+                    if (priceListPercentage && productInfo.cost > 0 && !isNaN(parseFloat(priceListPercentage))) {
+                        const percentage = parseFloat(priceListPercentage);
                         const rawPrice = productInfo.cost * (1 + percentage / 100);
                         restoredPrice = roundToNearestThousand(rawPrice);
                     } else {
@@ -530,7 +535,22 @@
                     return;
                 }
 
-                payments.push({ method, methodText, amount, reference, bankId: bankPaymentMethods.includes(method) ? bankId : null });
+                let finalAmount = amount;
+                let surchargeAmount = 0;
+
+                // Lógica de Recargo para Tarjetas
+                if ((method === 'CreditCard' || method === 'DebitCard') && surchargePercentage > 0) {
+                    surchargeAmount = amount * (surchargePercentage / 100);
+                    finalAmount = amount + surchargeAmount;
+
+                    if (!confirm(`Se aplicará un recargo del ${surchargePercentage}% ($${formatCurrency(surchargeAmount)}) por pago con tarjeta.\n\nTotal a cobrar: $${formatCurrency(finalAmount)}`)) {
+                        return;
+                    }
+                    // Actualizamos el texto para indicar que incluye recargo
+                    // methodText += ` (+${surchargePercentage}%)`; 
+                }
+
+                payments.push({ method, methodText, amount: finalAmount, reference, bankId: bankPaymentMethods.includes(method) ? bankId : null, surcharge: surchargeAmount });
                 renderPayments();
 
                 // Clear inputs
@@ -550,7 +570,9 @@
             // --- TOTALS CALCULATION ---
             function updateTotals() {
                 // El precio del producto ya incluye IVA, por lo tanto la suma es el Total
-                let total = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let productsTotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let totalSurcharges = payments.reduce((acc, p) => acc + (p.surcharge || 0), 0);
+                let total = productsTotal + totalSurcharges;
                 
                 let subtotal = total / (1 + taxRate);
                 let tax = total - subtotal;
@@ -601,7 +623,10 @@
                 }
 
                 // Ajustar dinámicamente el monto del último pago al balance
-                let total = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let productsTotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                let totalSurcharges = finalPayments.reduce((acc, p) => acc + (p.surcharge || 0), 0);
+                let total = productsTotal + totalSurcharges;
+
                 let totalPaid = finalPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
                 let balance = total - totalPaid;
 

@@ -222,6 +222,7 @@ namespace PhonePalace.Web.Controllers
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
             if (taxRate > 1) taxRate /= 100; // Normalizar si viene como entero (ej. 19 -> 0.19)
             ViewBag.TaxRate = taxRate;
+            ViewBag.CardSurchargePercentage = _config.GetValue<decimal>("SalesSettings:CardSurchargePercentage");
 
             // Si hay datos en TempData (por conversión de cotización), los carga y re-inicializa dropdowns
             if (TempData["SaleModel"] is string saleJson)
@@ -262,6 +263,7 @@ namespace PhonePalace.Web.Controllers
             var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
             if (taxRate > 1) taxRate /= 100; // Normalizar
             ViewBag.TaxRate = taxRate;
+            ViewBag.CardSurchargePercentage = _config.GetValue<decimal>("SalesSettings:CardSurchargePercentage");
 
             // Validaciones de caja
             var currentCash = await _cashService.GetCurrentCashRegisterAsync();
@@ -345,6 +347,26 @@ namespace PhonePalace.Web.Controllers
                     total += detailVM.Quantity * price;
                 }
             }
+
+            // Calcular Recargo por Tarjeta (Si aplica)
+            decimal surchargePercentage = _config.GetValue<decimal>("SalesSettings:CardSurchargePercentage");
+            decimal totalSurcharge = 0;
+
+            if (viewModel.Payments != null && surchargePercentage > 0)
+            {
+                foreach (var p in viewModel.Payments)
+                {
+                    if (Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var method) && 
+                       (method == PaymentMethod.CreditCard || method == PaymentMethod.DebitCard))
+                    {
+                        // El monto que llega (p.Amount) ya incluye el recargo. Desglosamos para sumar al total.
+                        decimal rateFactor = 1 + (surchargePercentage / 100m);
+                        decimal principal = p.Amount / rateFactor;
+                        totalSurcharge += (p.Amount - principal);
+                    }
+                }
+            }
+            total += totalSurcharge;
 
             // Desglosar IVA: Total = Subtotal * (1 + Tasa) => Subtotal = Total / (1 + Tasa)
             decimal subtotal = total / (1 + taxRate);
