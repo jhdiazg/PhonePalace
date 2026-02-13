@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Options;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
@@ -18,7 +19,13 @@ var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"
                        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
+    }));
 
 if (builder.Environment.IsDevelopment())
 {
@@ -48,6 +55,14 @@ builder.Services.AddSession(options =>
 // Configuración de Plemsi API
 builder.Services.Configure<PlemsiConfig>(builder.Configuration.GetSection("Plemsi"));
 builder.Services.Configure<CompanySettings>(builder.Configuration.GetSection("CompanySettings"));
+
+// Registro del Servicio Plemsi con HttpClient tipado
+builder.Services.AddHttpClient<IPlemsiService, PlemsiService>((serviceProvider, client) =>
+{
+    var config = serviceProvider.GetRequiredService<IOptions<PlemsiConfig>>().Value;
+    client.BaseAddress = new Uri(config.BaseUrl);
+    client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config.Token);
+});
 
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
@@ -80,6 +95,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromMinutes(60); // La sesión expira después de 60 minutos.
     options.SlidingExpiration = false; // Impide que la cookie se renueve con cada petición.
 });
+
+// Plemsi
+builder.Services.Configure<PhonePalace.Infrastructure.Configuration.PlemsiConfig>(
+    builder.Configuration.GetSection("Plemsi"));
+
 
 // Configuración de la licencia de QuestPDF
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;

@@ -36,6 +36,11 @@
         <div class="col-md">
             <input type="text" name="searchString" class="form-control" placeholder="Buscar por nombre, SKU o código..." value="@ViewData["CurrentFilter"]" />
         </div>
+        <div class="col-auto">
+            <input type="hidden" name="showActiveOnly" value="false" />
+            <input class="form-check-input" type="checkbox" id="showActiveOnly" name="showActiveOnly" value="true" @((bool?)ViewData["ShowActiveOnly"] == true ? "checked" : "") onchange="this.form.submit()">
+            <label class="form-check-label" for="showActiveOnly">Ver sólo activos</label>
+        </div>
         <div class="col-auto d-flex gap-2">
             <button type="submit" class="btn btn-primary">Buscar</button>
             <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
@@ -72,7 +77,8 @@
                                asp-route-sortOrder="@ViewData["DaysSortParm"]"
                                asp-route-searchString="@ViewData["CurrentFilter"]"
                                asp-route-categoryId="@ViewData["CurrentCategory"]"
-                               asp-route-pageSize="@ViewData["PageSize"]">
+                               asp-route-pageSize="@ViewData["PageSize"]"
+                               asp-route-showActiveOnly="@ViewData["ShowActiveOnly"]">
                                 Días @(ViewData["CurrentSort"] as string == "days_desc" ? "▼" : (ViewData["CurrentSort"] as string == "days_asc" ? "▲" : ""))
                             </a>
                         </th>
@@ -134,6 +140,7 @@
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-categoryId="@ViewData["CurrentCategory"]"
        asp-route-sortOrder="@ViewData["CurrentSort"]"
+       asp-route-showActiveOnly="@ViewData["ShowActiveOnly"]"
        class="btn btn-secondary @prevDisabled">
         Anterior
     </a>
@@ -144,6 +151,7 @@
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-categoryId="@ViewData["CurrentCategory"]"
        asp-route-sortOrder="@ViewData["CurrentSort"]"
+       asp-route-showActiveOnly="@ViewData["ShowActiveOnly"]"
        class="btn btn-secondary @nextDisabled">
         Siguiente
     </a>

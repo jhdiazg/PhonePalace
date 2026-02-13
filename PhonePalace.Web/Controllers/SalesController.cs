@@ -25,8 +25,9 @@ namespace PhonePalace.Web.Controllers
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly CompanySettings _companySettings;
+        private readonly IPlemsiService _plemsiService;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService)
         {
             _context = context;
             _cashService = cashService;
@@ -34,6 +35,7 @@ namespace PhonePalace.Web.Controllers
             _config = config;
             _webHostEnvironment = webHostEnvironment;
             _companySettings = companySettings.Value;
+            _plemsiService = plemsiService;
         }
 
     [HttpGet]
@@ -184,6 +186,14 @@ namespace PhonePalace.Web.Controllers
 
             ViewBag.CreditInfo = creditInfo;
 
+            // Cargar información de Factura Electrónica si existe (Entidad Independiente)
+            if (sale.Invoice != null)
+            {
+                ViewBag.ElectronicInvoice = await _context.Set<ElectronicInvoice>()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID);
+            }
+
             return View(sale);
         }
     [HttpGet]
@@ -213,7 +223,7 @@ namespace PhonePalace.Web.Controllers
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
-            ViewBag.PriceListTypes = new SelectList(EnumHelper.ToSelectList<PriceListType>(), "Value", "Text");
+            ViewBag.PriceListTypes = new SelectList(Enum.GetValues(typeof(PriceListType)).Cast<PriceListType>().Select(e => new { Value = (int)e, Text = EnumHelper.GetDisplayName(e) }), "Value", "Text");
             ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(), "CategoryID", "Name");
             ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
@@ -254,7 +264,7 @@ namespace PhonePalace.Web.Controllers
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
-            ViewBag.PriceListTypes = new SelectList(EnumHelper.ToSelectList<PriceListType>(), "Value", "Text");
+            ViewBag.PriceListTypes = new SelectList(Enum.GetValues(typeof(PriceListType)).Cast<PriceListType>().Select(e => new { Value = (int)e, Text = EnumHelper.GetDisplayName(e) }), "Value", "Text");
             ViewBag.Categories = new SelectList(await _context.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(), "CategoryID", "Name");
             ViewBag.AllProducts = _context.Products.Where(p => p.IsActive).ToList();
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
@@ -316,224 +326,239 @@ namespace PhonePalace.Web.Controllers
                 return View(viewModel);
             }
 
-            // Obtener el cliente
-            var client = await _context.Clients.FindAsync(viewModel.ClientID!.Value);
-            if (client == null)
-            {
-                ModelState.AddModelError("ClientID", "Cliente no encontrado.");
-                return View(viewModel);
-            }
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
             try
             {
-            // Calcular totales (El precio unitario YA INCLUYE IVA)
-            decimal total = 0;
-            if (viewModel.Details != null)
-            {
-                foreach (var detailVM in viewModel.Details)
+                return await strategy.ExecuteAsync<IActionResult>(async () =>
                 {
-                    var product = await _context.Products.FindAsync(detailVM.ProductID);
-                    if (product == null) continue;
+                    // Limpiar ChangeTracker para evitar duplicados en caso de reintento
+                    _context.ChangeTracker.Clear();
 
-                    // Validar rango de precio (Costo <= Precio <= Costo * 3)
-                    if (detailVM.UnitPrice < product.Cost || detailVM.UnitPrice > product.Cost * 3)
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        ModelState.AddModelError("", $"El precio del producto '{product.Name}' debe estar entre {product.Cost:C} y {(product.Cost * 3):C}.");
-                        return View(viewModel);
-                    }
-
-                    decimal price = detailVM.UnitPrice; // Usar el precio definido por el usuario
-                    total += detailVM.Quantity * price;
-                }
-            }
-
-            // Calcular Recargo por Tarjeta (Si aplica)
-            decimal surchargePercentage = _config.GetValue<decimal>("SalesSettings:CardSurchargePercentage");
-            decimal totalSurcharge = 0;
-
-            if (viewModel.Payments != null && surchargePercentage > 0)
-            {
-                foreach (var p in viewModel.Payments)
-                {
-                    if (Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var method) && 
-                       (method == PaymentMethod.CreditCard || method == PaymentMethod.DebitCard))
-                    {
-                        // El monto que llega (p.Amount) ya incluye el recargo. Desglosamos para sumar al total.
-                        decimal rateFactor = 1 + (surchargePercentage / 100m);
-                        decimal principal = p.Amount / rateFactor;
-                        totalSurcharge += (p.Amount - principal);
-                    }
-                }
-            }
-            total += totalSurcharge;
-
-            // Desglosar IVA: Total = Subtotal * (1 + Tasa) => Subtotal = Total / (1 + Tasa)
-            decimal subtotal = total / (1 + taxRate);
-            decimal tax = total - subtotal;
-
-            // Crear la factura (Invoice) asociada
-            var invoice = new Invoice
-            {
-                ClientID = client.ClientID,
-                Client = client,
-                SaleDate = viewModel.SaleDate,
-                SaleChannel = viewModel.SaleChannel ?? SaleChannel.InStore,
-                UserId = User?.Identity?.Name,
-                Subtotal = subtotal,
-                Tax = tax,
-                Total = total,
-                Status = InvoiceStatus.Completed
-            };
-            _context.Invoices.Add(invoice);
-            await _context.SaveChangesAsync();
-
-            // Crear payments si hay
-            var payments = new List<Payment>();
-            if (viewModel.Payments != null && viewModel.Payments.Any())
-            {
-                foreach (var paymentVM in viewModel.Payments)
-                {
-                    if (!Enum.TryParse<PaymentMethod>(paymentVM.PaymentMethod, out var paymentMethod))
-                    {
-                        continue; // Skip invalid payment methods
-                    }
-                    var payment = new Payment
-                    {
-                        InvoiceID = invoice.InvoiceID,
-                        Invoice = invoice,
-                        PaymentMethod = paymentMethod,
-                        Amount = paymentVM.Amount,
-                        ReferenceNumber = paymentVM.ReferenceNumber,
-                        BankID = paymentVM.BankID
-                    };
-                    payments.Add(payment);
-                    _context.Payments.Add(payment);
-                }
-                await _context.SaveChangesAsync();
-            }
-
-            // Crear la venta
-            var sale = new Sale
-            {
-                ClientID = client.ClientID,
-                Client = client,
-                InvoiceID = invoice.InvoiceID,
-                Invoice = invoice,
-                SaleDate = viewModel.SaleDate,
-                TotalAmount = total,
-                Details = new List<SaleDetail>()
-            };
-
-            // Crear los detalles de la venta
-            if (viewModel.Details != null)
-            {
-                foreach (var detailVM in viewModel.Details)
-                {
-                    var product = await _context.Products.FindAsync(detailVM.ProductID);
-                    if (product == null) continue;
-                    var detail = new SaleDetail
-                    {
-                        ProductID = detailVM.ProductID,
-                        Product = product,
-                        Quantity = detailVM.Quantity,
-                        UnitPrice = detailVM.UnitPrice, // Usar el precio validado
-                        Sale = sale,
-                        IMEI = detailVM.IMEI?.ToUpper(),
-                        Serial = detailVM.Serial?.ToUpper()
-                    };
-                    sale.Details.Add(detail);
-                }
-            }
-
-            _context.Sales.Add(sale);
-            await _context.SaveChangesAsync();
-
-            // Registrar ingresos en caja, bancos o crear verificaciones de tarjeta de crédito
-            if (payments.Any())
-            {
-                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    // The 'payments' list now contains entities with their IDs after SaveChangesAsync
-                    foreach (var p in payments)
-                    {
-                        if (p.PaymentMethod == PaymentMethod.Cash)
+                        // Obtener el cliente
+                        var client = await _context.Clients.FindAsync(viewModel.ClientID!.Value);
+                        if (client == null)
                         {
-                            await _cashService.RegisterIncomeAsync(p.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", userId, p.PaymentID);
+                            ModelState.AddModelError("ClientID", "Cliente no encontrado.");
+                            return View(viewModel);
                         }
-                        else if (p.PaymentMethod == PaymentMethod.CreditCard && p.BankID.HasValue)
+
+                        // Calcular totales (El precio unitario YA INCLUYE IVA)
+                        decimal total = 0;
+                        if (viewModel.Details != null)
                         {
-                            var verification = new CreditCardVerification
+                            foreach (var detailVM in viewModel.Details)
                             {
-                                SaleID = sale.SaleID,
-                                PaymentID = p.PaymentID,
-                                BankID = p.BankID.Value,
-                                Amount = p.Amount,
-                                CreationDate = DateTime.Now,
-                                Status = VerificationStatus.Pending
-                            };
-                            _context.CreditCardVerifications.Add(verification);
+                                var product = await _context.Products.FindAsync(detailVM.ProductID);
+                                if (product == null) continue;
+
+                                // Validar rango de precio (Costo <= Precio <= Costo * 3)
+                                if (detailVM.UnitPrice < product.Cost || detailVM.UnitPrice > product.Cost * 3)
+                                {
+                                    ModelState.AddModelError("", $"El precio del producto '{product.Name}' debe estar entre {product.Cost:C} y {(product.Cost * 3):C}.");
+                                    return View(viewModel);
+                                }
+
+                                decimal price = detailVM.UnitPrice; // Usar el precio definido por el usuario
+                                total += detailVM.Quantity * price;
+                            }
                         }
-                        else if (p.BankID.HasValue) // Otros pagos bancarios
+
+                        // Calcular Recargo por Tarjeta (Si aplica)
+                        decimal surchargePercentage = _config.GetValue<decimal>("SalesSettings:CardSurchargePercentage");
+                        decimal totalSurcharge = 0;
+
+                        if (viewModel.Payments != null && surchargePercentage > 0)
                         {
-                            await _bankService.RegisterIncomeFromPaymentAsync(p);
+                            foreach (var p in viewModel.Payments)
+                            {
+                                if (Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var method) && 
+                                   (method == PaymentMethod.CreditCard || method == PaymentMethod.DebitCard))
+                                {
+                                    // El monto que llega (p.Amount) ya incluye el recargo. Desglosamos para sumar al total.
+                                    decimal rateFactor = 1 + (surchargePercentage / 100m);
+                                    decimal principal = p.Amount / rateFactor;
+                                    totalSurcharge += (p.Amount - principal);
+                                }
+                            }
                         }
+                        total += totalSurcharge;
+
+                        // Desglosar IVA: Total = Subtotal * (1 + Tasa) => Subtotal = Total / (1 + Tasa)
+                        decimal subtotal = total / (1 + taxRate);
+                        decimal tax = total - subtotal;
+
+                        // Crear la factura (Invoice) asociada
+                        var invoice = new Invoice
+                        {
+                            ClientID = client.ClientID,
+                            Client = client,
+                            SaleDate = viewModel.SaleDate,
+                            SaleChannel = viewModel.SaleChannel ?? SaleChannel.InStore,
+                            UserId = User?.Identity?.Name,
+                            Subtotal = subtotal,
+                            Tax = tax,
+                            Total = total,
+                            Status = InvoiceStatus.Completed // Inicialmente es una Remisión / Venta Local
+                            // IsElectronic = false (Por defecto)
+                        };
+                        _context.Invoices.Add(invoice);
+                        await _context.SaveChangesAsync();
+
+                        // Crear payments si hay
+                        var payments = new List<Payment>();
+                        if (viewModel.Payments != null && viewModel.Payments.Any())
+                        {
+                            foreach (var paymentVM in viewModel.Payments)
+                            {
+                                if (!Enum.TryParse<PaymentMethod>(paymentVM.PaymentMethod, out var paymentMethod))
+                                {
+                                    continue; // Skip invalid payment methods
+                                }
+                                var payment = new Payment
+                                {
+                                    InvoiceID = invoice.InvoiceID,
+                                    Invoice = invoice,
+                                    PaymentMethod = paymentMethod,
+                                    Amount = paymentVM.Amount,
+                                    ReferenceNumber = paymentVM.ReferenceNumber,
+                                    BankID = paymentVM.BankID
+                                };
+                                payments.Add(payment);
+                                _context.Payments.Add(payment);
+                            }
+                            await _context.SaveChangesAsync();
+                        }
+
+                        // Crear la venta
+                        var sale = new Sale
+                        {
+                            ClientID = client.ClientID,
+                            Client = client,
+                            InvoiceID = invoice.InvoiceID,
+                            Invoice = invoice,
+                            SaleDate = viewModel.SaleDate,
+                            TotalAmount = total,
+                            Details = new List<SaleDetail>()
+                        };
+
+                        // Crear los detalles de la venta
+                        if (viewModel.Details != null)
+                        {
+                            foreach (var detailVM in viewModel.Details)
+                            {
+                                var product = await _context.Products.FindAsync(detailVM.ProductID);
+                                if (product == null) continue;
+                                var detail = new SaleDetail
+                                {
+                                    ProductID = detailVM.ProductID,
+                                    Product = product,
+                                    Quantity = detailVM.Quantity,
+                                    UnitPrice = detailVM.UnitPrice, // Usar el precio validado
+                                    Sale = sale,
+                                    IMEI = detailVM.IMEI?.ToUpper(),
+                                    Serial = detailVM.Serial?.ToUpper()
+                                };
+                                sale.Details.Add(detail);
+                            }
+                        }
+
+                        _context.Sales.Add(sale);
+                        await _context.SaveChangesAsync();
+
+                        // Registrar ingresos en caja, bancos o crear verificaciones de tarjeta de crédito
+                        if (payments.Any())
+                        {
+                            var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier);
+                            if (!string.IsNullOrEmpty(userId))
+                            {
+                                // The 'payments' list now contains entities with their IDs after SaveChangesAsync
+                                foreach (var p in payments)
+                                {
+                                    if (p.PaymentMethod == PaymentMethod.Cash)
+                                    {
+                                        await _cashService.RegisterIncomeAsync(p.Amount, $"Pago en efectivo por venta #{invoice.InvoiceID}", userId, p.PaymentID);
+                                    }
+                                    else if (p.PaymentMethod == PaymentMethod.CreditCard && p.BankID.HasValue)
+                                    {
+                                        var verification = new CreditCardVerification
+                                        {
+                                            SaleID = sale.SaleID,
+                                            PaymentID = p.PaymentID,
+                                            BankID = p.BankID.Value,
+                                            Amount = p.Amount,
+                                            CreationDate = DateTime.Now,
+                                            Status = VerificationStatus.Pending
+                                        };
+                                        _context.CreditCardVerifications.Add(verification);
+                                    }
+                                    else if (p.BankID.HasValue) // Otros pagos bancarios
+                                    {
+                                        await _bankService.RegisterIncomeFromPaymentAsync(p);
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- INICIO: Generar Cuenta por Cobrar si hay saldo ---
+                        // Excluir pagos de tipo "Credit" (Crédito) del cálculo de lo pagado, 
+                        // para que se genere la cuenta por cobrar por ese monto.
+                        decimal totalPaid = viewModel.Payments?
+                            .Where(p => p.PaymentMethod != PaymentMethod.Credit.ToString())
+                            .Sum(p => p.Amount) ?? 0;
+                        decimal balance = total - totalPaid;
+
+                        if (balance > 0.01m)
+                        {
+                            var accountReceivable = new AccountReceivable
+                            {
+                                ClientID = client.ClientID,
+                                Client = client,
+                                Date = viewModel.SaleDate,
+                                TotalAmount = balance,
+                                Balance = balance,
+                                Type = "Venta",
+                                SaleID = sale.SaleID,
+                                Sale = sale,
+                                Description = $"Saldo pendiente venta #{invoice.InvoiceID}",
+                                IsPaid = false
+                            };
+                            _context.AccountReceivables.Add(accountReceivable);
+                            await _context.SaveChangesAsync();
+                        }
+                        // --- FIN: Generar Cuenta por Cobrar ---
+
+                        // Reducir inventario
+                        foreach (var detail in sale.Details)
+                        {
+                            var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
+                            if (inventory != null)
+                            {
+                                inventory.Stock -= detail.Quantity;
+                                _context.Update(inventory);
+                            }
+                            else
+                            {
+                                // Esto no debería ocurrir gracias a la validación previa, pero es bueno tenerlo controlado
+                                throw new Exception($"Error crítico: No se encontró inventario para el producto {detail.ProductID} al finalizar la venta.");
+                            }
+                        }
+                        await _context.SaveChangesAsync();
+
+                        await transaction.CommitAsync();
+                        return RedirectToAction(nameof(Index));
                     }
-                }
-            }
-
-            // --- INICIO: Generar Cuenta por Cobrar si hay saldo ---
-            // Excluir pagos de tipo "Credit" (Crédito) del cálculo de lo pagado, 
-            // para que se genere la cuenta por cobrar por ese monto.
-            decimal totalPaid = viewModel.Payments?
-                .Where(p => p.PaymentMethod != PaymentMethod.Credit.ToString())
-                .Sum(p => p.Amount) ?? 0;
-            decimal balance = total - totalPaid;
-
-            if (balance > 0.01m)
-            {
-                var accountReceivable = new AccountReceivable
-                {
-                    ClientID = client.ClientID,
-                    Client = client,
-                    Date = viewModel.SaleDate,
-                    TotalAmount = balance,
-                    Balance = balance,
-                    Type = "Venta",
-                    SaleID = sale.SaleID,
-                    Sale = sale,
-                    Description = $"Saldo pendiente venta #{invoice.InvoiceID}",
-                    IsPaid = false
-                };
-                _context.AccountReceivables.Add(accountReceivable);
-                await _context.SaveChangesAsync();
-            }
-            // --- FIN: Generar Cuenta por Cobrar ---
-
-            // Reducir inventario
-            foreach (var detail in sale.Details)
-            {
-                var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
-                if (inventory != null)
-                {
-                    inventory.Stock -= detail.Quantity;
-                    _context.Update(inventory);
-                }
-                else
-                {
-                    // Esto no debería ocurrir gracias a la validación previa, pero es bueno tenerlo controlado
-                    throw new Exception($"Error crítico: No se encontró inventario para el producto {detail.ProductID} al finalizar la venta.");
-                }
-            }
-            await _context.SaveChangesAsync();
-
-            await transaction.CommitAsync();
-            return RedirectToAction(nameof(Index));
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 ModelState.AddModelError("", $"Error al procesar la venta: {ex.Message}");
                 return View(viewModel);
             }
@@ -712,6 +737,70 @@ namespace PhonePalace.Web.Controllers
                         $"Plantilla_Ventas_{DateTime.Now:yyyyMMdd}.xlsx");
                 }
             }
+        }
+
+        [HttpPost]
+        [Route("EmitirElectronica/{id}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EmitirFacturaElectronica(int id)
+        {
+            // 1. Obtener la venta y sus detalles
+            var sale = await _context.Sales
+                .Include(s => s.Client)
+                .Include(s => s.Invoice)
+                .Include(s => s.Details)
+                    .ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(s => s.SaleID == id);
+
+            if (sale == null || sale.Invoice == null)
+            {
+                return NotFound();
+            }
+
+            // 2. Validar si ya fue emitida consultando la entidad independiente
+            var existingElectronic = await _context.Set<ElectronicInvoice>()
+                .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
+
+            if (existingElectronic != null)
+            {
+                TempData["Warning"] = $"Esta venta ya tiene la factura electrónica {existingElectronic.DianNumber}.";
+                return RedirectToAction(nameof(Details), new { id = sale.SaleID });
+            }
+
+            try
+            {
+                // 3. Lógica de integración con Plemsi
+                var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale);
+
+                if (plemsiResponse.Success)
+                {
+                    // 4. Crear el registro en la entidad independiente
+                    var electronicInvoice = new ElectronicInvoice
+                    {
+                        InvoiceID = sale.Invoice.InvoiceID,
+                        CUFE = plemsiResponse.Cufe,
+                        DianNumber = plemsiResponse.Number,
+                        QRCodeUrl = plemsiResponse.QrUrl,
+                        Status = "Accepted",
+                        IssueDate = DateTime.Now
+                    };
+
+                    _context.Add(electronicInvoice);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
+                }
+                else
+                {
+                    TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = sale.SaleID });
         }
     }
 }

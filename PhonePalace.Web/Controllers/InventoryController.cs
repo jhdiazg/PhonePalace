@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -27,7 +27,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Inventario")]
-        public async Task<IActionResult> Index(string? sortOrder, string? searchString, int? categoryId, int? pageNumber, int? pageSize)
+        public async Task<IActionResult> Index(string? sortOrder, string? searchString, int? categoryId, bool showActiveOnly = true, int? pageNumber = null, int? pageSize = null)
         {
             ViewData["PageSize"] = pageSize ?? 10;
             ViewData["CurrentFilter"] = searchString;
@@ -37,7 +37,14 @@ namespace PhonePalace.Web.Controllers
             // Por defecto (null) ordena descendente en días (más antiguos primero = fecha ascendente)
             ViewData["DaysSortParm"] = string.IsNullOrEmpty(sortOrder) ? "days_desc" : (sortOrder == "days_desc" ? "days_asc" : "days_desc");
 
+            ViewData["ShowActiveOnly"] = showActiveOnly;
+
             var inventoryQuery = _context.Inventories.AsQueryable();
+
+            if (showActiveOnly)
+            {
+                inventoryQuery = inventoryQuery.Where(i => i.Product.IsActive);
+            }
 
             if (categoryId.HasValue)
             {

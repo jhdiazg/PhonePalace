@@ -705,6 +705,46 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.ElectronicInvoice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CUFE")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DianNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("InvoiceID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("QRCodeUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceID");
+
+                    b.ToTable("ElectronicInvoices");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpense", b =>
                 {
                     b.Property<int>("Id")
@@ -997,11 +1037,16 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(13)");
 
                     b.Property<string>("SKU")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.HasKey("ProductID");
 
                     b.HasIndex("CategoryID");
+
+                    b.HasIndex("SKU")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Products_SKU")
+                        .HasFilter("[SKU] IS NOT NULL AND [SKU] <> ''");
 
                     b.ToTable("Products");
 
@@ -1602,6 +1647,17 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Payment");
 
                     b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.ElectronicInvoice", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.FixedExpensePayment", b =>

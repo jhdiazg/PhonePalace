@@ -45,7 +45,7 @@
                         </div>
                         <div class="col-md-4 form-group">
                             <label for="price-list-select" class="control-label">Lista de Precios</label>
-                            <select id="price-list-select" class="form-control" asp-items="@(new SelectList(ViewBag.PriceListTypes, "Value", "Text"))">
+                            <select id="price-list-select" class="form-control" asp-items="ViewBag.PriceListTypes">
                                 <option value="">-- Manual / Predeterminado --</option>
                             </select>
                         </div>
@@ -223,6 +223,16 @@
                 if (isNaN(num)) return 0;
                 return Math.round(num / 1000) * 1000;
             }
+            
+            // Función centralizada para calcular precio
+            function calculatePrice(productInfo, priceListVal) {
+                if (productInfo && priceListVal !== "" && productInfo.cost > 0 && !isNaN(parseFloat(priceListVal))) {
+                    const percentage = parseFloat(priceListVal);
+                    const rawPrice = productInfo.cost * (1 + percentage / 100);
+                    return roundToNearestThousand(rawPrice);
+                }
+                return productInfo ? productInfo.price : 0;
+            }
 
             const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0.19m);
             const defaultCardBankId = @Json.Serialize(ViewBag.DefaultCardBankId);
@@ -351,8 +361,26 @@
             });
 
             $('#price-list-select').on('change', function() {
+                const priceListPercentage = $(this).val();
+
+                // Recalcular precios de productos ya agregados a la tabla
+                if (products.length > 0) {
+                    products.forEach(p => {
+                        const productInfo = allProductsDict[String(p.id)];
+                        if (productInfo) {
+                            p.price = calculatePrice(productInfo, priceListPercentage);
+                        }
+                    });
+                    renderProducts();
+                    updateTotals();
+                }
+
                 // Recalculate price if a product is already selected
-                $('#product-select').trigger('change');
+                const currentProductId = $('#product-select').val();
+                if (currentProductId && allProductsDict[currentProductId]) {
+                    const productInfo = allProductsDict[currentProductId];
+                    $('#price-input').val(calculatePrice(productInfo, priceListPercentage));
+                }
             });
 
             // --- DYNAMIC FIELDS LOGIC ---
@@ -375,14 +403,7 @@
 
                     // --- Price Calculation Logic ---
                     const priceListPercentage = $('#price-list-select').val();
-                    if (priceListPercentage && productInfo.cost > 0 && !isNaN(parseFloat(priceListPercentage))) {
-                        const percentage = parseFloat(priceListPercentage);
-                        const rawPrice = productInfo.cost * (1 + percentage / 100);
-                        priceInput.val(roundToNearestThousand(rawPrice));
-                    } else {
-                        // Set default price if no list is selected
-                        priceInput.val(productInfo.price);
-                    }
+                    priceInput.val(calculatePrice(productInfo, priceListPercentage));
                 }
             });
 
@@ -400,14 +421,7 @@
                     
                     // Restore the calculated price
                     const priceListPercentage = $('#price-list-select').val();
-                    let restoredPrice;
-                    if (priceListPercentage && productInfo.cost > 0 && !isNaN(parseFloat(priceListPercentage))) {
-                        const percentage = parseFloat(priceListPercentage);
-                        const rawPrice = productInfo.cost * (1 + percentage / 100);
-                        restoredPrice = roundToNearestThousand(rawPrice);
-                    } else {
-                        restoredPrice = productInfo.price;
-                    }
+                    const restoredPrice = calculatePrice(productInfo, priceListPercentage);
                     $(this).val(restoredPrice);
                 }
             });

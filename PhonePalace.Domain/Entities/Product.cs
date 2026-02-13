@@ -26,6 +26,7 @@ namespace PhonePalace.Domain.Entities
         [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
         public decimal Cost { get; set; }
         [DisplayName("SKU")]
+        [StringLength(50)]
         public string? SKU { get; set; }
 
         [DisplayName("Código")]

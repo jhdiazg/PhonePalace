@@ -67,6 +67,8 @@ namespace PhonePalace.Web.Controllers
             return View(viewModel);
         }
 
+        // En HomeController.cs
+        [AllowAnonymous] // <--- AGREGAR ESTO
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {

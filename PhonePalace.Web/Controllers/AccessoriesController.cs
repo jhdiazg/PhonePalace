@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿using PhonePalace.Web.Helpers;
+﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -78,6 +78,14 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(AccessoryViewModel viewModel)
         {
+            if (!string.IsNullOrEmpty(viewModel.SKU))
+            {
+                if (await _context.Products.AnyAsync(p => p.SKU == viewModel.SKU.ToUpper()))
+                {
+                    ModelState.AddModelError("SKU", "Este SKU ya está registrado en otro producto.");
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 var accessory = new Accessory
@@ -159,6 +167,14 @@ namespace PhonePalace.Web.Controllers
             if (id != viewModel.ProductID)
             {
                 return NotFound();
+            }
+
+            if (!string.IsNullOrEmpty(viewModel.SKU))
+            {
+                if (await _context.Products.AnyAsync(p => p.SKU == viewModel.SKU.ToUpper() && p.ProductID != id))
+                {
+                    ModelState.AddModelError("SKU", "Este SKU ya está registrado en otro producto.");
+                }
             }
 
             if (ModelState.IsValid)

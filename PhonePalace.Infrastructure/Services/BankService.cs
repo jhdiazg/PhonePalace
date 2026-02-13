@@ -32,42 +32,45 @@ namespace PhonePalace.Infrastructure.Services
             else
             {
                 // Si no hay transacción, creamos una nueva con bloqueo Serializable
-                using (var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable))
+                using var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
                 {
-                    try
-                    {
-                        await ProcessIncomeInternalAsync(payment);
-                        await dbTransaction.CommitAsync();
-                    }
-                    catch (Exception)
-                    {
-                        await dbTransaction.RollbackAsync();
-                        throw;
-                    }
+                    await ProcessIncomeInternalAsync(payment);
+                    await dbTransaction.CommitAsync();
+                }
+                catch (Exception)
+                {
+                    await dbTransaction.RollbackAsync();
+                    throw;
                 }
             }
         }
 
         private async Task ProcessIncomeInternalAsync(Payment payment)
         {
-            var bankToUpdate = await _context.Banks.FindAsync(payment.BankID.Value);
-            if (bankToUpdate == null) throw new InvalidOperationException($"Banco con ID {payment.BankID.Value} no encontrado.");
-
-            bankToUpdate.Balance += payment.Amount;
-
-            var bankTransaction = new BankTransaction
+            if (payment.BankID.HasValue)
             {
-                BankID = bankToUpdate.BankID,
-                Date = DateTime.Now,
-                Type = BankTransactionType.SaleIncome,
-                Amount = payment.Amount,
-                Description = $"Ingreso por venta #{payment.InvoiceID}",
-                BalanceAfterTransaction = bankToUpdate.Balance,
-                PaymentID = payment.PaymentID
-            };
+                var bankToUpdate = await _context.Banks.FindAsync(payment.BankID.Value) ?? throw new InvalidOperationException($"Banco con ID {payment.BankID.Value} no encontrado.");
+                bankToUpdate.Balance += payment.Amount;
 
-            _context.BankTransactions.Add(bankTransaction);
-            await _context.SaveChangesAsync();
+                var bankTransaction = new BankTransaction
+                {
+                    BankID = bankToUpdate.BankID,
+                    Date = DateTime.Now,
+                    Type = BankTransactionType.SaleIncome,
+                    Amount = payment.Amount,
+                    Description = $"Ingreso por venta #{payment.InvoiceID}",
+                    BalanceAfterTransaction = bankToUpdate.Balance,
+                    PaymentID = payment.PaymentID
+                };
+
+                _context.BankTransactions.Add(bankTransaction);
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                throw new InvalidOperationException("El pago no tiene un banco asociado para registrar el ingreso.");
+            }
         }
 
         // Implementación de transferencias entre bancos
@@ -81,31 +84,28 @@ namespace PhonePalace.Infrastructure.Services
             }
             else
             {
-                using (var transaction = await _context.Database.BeginTransactionAsync())
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    try
-                    {
-                        await RegisterManualMovementAsync(sourceBankId, BankTransactionType.TransferOut, amount, $"{description} (A Banco ID: {targetBankId})");
-                        await RegisterManualMovementAsync(targetBankId, BankTransactionType.TransferIn, amount, $"{description} (De Banco ID: {sourceBankId})");
-                        await transaction.CommitAsync();
-                    }
-                    catch
-                    {
-                        await transaction.RollbackAsync();
-                        throw;
-                    }
+                    await RegisterManualMovementAsync(sourceBankId, BankTransactionType.TransferOut, amount, $"{description} (A Banco ID: {targetBankId})");
+                    await RegisterManualMovementAsync(targetBankId, BankTransactionType.TransferIn, amount, $"{description} (De Banco ID: {sourceBankId})");
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
                 }
             }
         }
 
         public async Task RegisterManualMovementAsync(int bankId, BankTransactionType type, decimal amount, string description)
         {
-            var bank = await _context.Banks.FindAsync(bankId);
-            if (bank == null) throw new InvalidOperationException($"Banco con ID {bankId} no encontrado.");
+            var bank = await _context.Banks.FindAsync(bankId) ?? throw new InvalidOperationException($"Banco con ID {bankId} no encontrado.");
 
             // Determinar si el movimiento suma o resta al saldo
-            bool isIncome = type == BankTransactionType.SaleIncome || 
-                            type == BankTransactionType.TransferIn || 
+            bool isIncome = type == BankTransactionType.SaleIncome ||
+                            type == BankTransactionType.TransferIn ||
                             type == BankTransactionType.ManualIncome;
 
             // Validar que el saldo sea suficiente para movimientos de egreso

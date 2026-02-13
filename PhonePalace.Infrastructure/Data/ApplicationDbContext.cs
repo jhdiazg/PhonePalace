@@ -54,7 +54,7 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<FixedExpensePayment> FixedExpensePayments { get; set; }
         public DbSet<CreditCardVerification> CreditCardVerifications { get; set; }
         public DbSet<Asset> Assets { get; set; }
-        
+        public DbSet<ElectronicInvoice> ElectronicInvoices { get; set; }
 
         // ... (otros DbSets)
         // ...
@@ -69,6 +69,15 @@ namespace PhonePalace.Infrastructure.Data
                 .HasDiscriminator<string>("ProductType")
                 .HasValue<CellPhone>("CellPhone")
                 .HasValue<Accessory>("Accessory");
+
+            // Configuración de índices únicos para Product
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasIndex(p => p.SKU)
+                    .IsUnique()
+                    .HasDatabaseName("IX_Products_SKU")
+                    .HasFilter("[SKU] IS NOT NULL AND [SKU] <> ''");
+            });
 
             modelBuilder.Entity<Client>()
                 .HasDiscriminator<string>("ClientType")

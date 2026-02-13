@@ -1,4 +1,3 @@
-D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\rpswa.dswa.cache.json
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\site.webmanifest.gz
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.svg.gz
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.ico.gz
@@ -347,6 +346,7 @@ D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\PhonePalace.Infrastructure.dll
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\PhonePalace.Domain.pdb
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\PhonePalace.Infrastructure.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.csproj.AssemblyReference.cache
+D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\rpswa.dswa.cache.json
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.GeneratedMSBuildEditorConfig.editorconfig
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.AssemblyInfoInputs.cache
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.AssemblyInfo.cs
