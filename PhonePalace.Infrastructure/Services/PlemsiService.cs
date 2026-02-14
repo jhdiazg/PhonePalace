@@ -40,16 +40,6 @@ namespace PhonePalace.Infrastructure.Services
 
         public async Task<PlemsiResponse> SendInvoiceAsync(Sale sale)
         {
-            // Validar que el consecutivo esté dentro del rango autorizado
-            if (sale.Invoice.InvoiceID < _config.StartRange || sale.Invoice.InvoiceID > _config.EndRange)
-            {
-                return new PlemsiResponse
-                {
-                    Success = false,
-                    ErrorMessage = $"El consecutivo {sale.Invoice.InvoiceID} está fuera del rango autorizado ({_config.StartRange} - {_config.EndRange}). Verifique la configuración."
-                };
-            }
-
             try
             {
                 var payload = BuildPayload(sale);
@@ -84,10 +74,6 @@ namespace PhonePalace.Infrastructure.Services
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    
-                    // Loguear el payload para depuración de errores genéricos
-                    var jsonPayload = JsonSerializer.Serialize(payload);
-                    _logger.LogError("Plemsi Error. Payload enviado: {Payload}", jsonPayload);
                     _logger.LogError("Plemsi API Error: {StatusCode} - {Content}", response.StatusCode, errorContent);
                     
                     string friendlyMessage = $"Error HTTP {response.StatusCode}";
@@ -97,51 +83,21 @@ namespace PhonePalace.Infrastructure.Services
                         using (JsonDocument doc = JsonDocument.Parse(errorContent))
                         {
                             var root = doc.RootElement;
-                            string? detailedError = null;
-
-                            // 1. Buscar detalles específicos en 'data'
-                            if (root.TryGetProperty("data", out var data))
-                            {
-                                // Caso: Respuesta de la DIAN (Objeto con StatusDescription) - AQUÍ ESTÁ TU ERROR ACTUAL
-                                if (data.ValueKind == JsonValueKind.Object && data.TryGetProperty("StatusDescription", out var statusDesc))
-                                {
-                                    detailedError = statusDesc.GetString();
-                                }
-                                // Caso: Errores de validación (Array de strings)
-                                else if (data.ValueKind == JsonValueKind.Array)
-                                {
-                                    detailedError = string.Join("; ", data.EnumerateArray().Select(x => x.GetString()));
-                                }
-                            }
                             
-                            // 2. Obtener mensaje principal ('info' o 'message')
+                            // Caso 1: Error de negocio (ej. EFVE001)
                             if (root.TryGetProperty("info", out var info))
                             {
                                 friendlyMessage = info.GetString() ?? friendlyMessage;
                             }
+                            // Caso 2: Error de validación (Array de errores en 'data')
+                            else if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                            {
+                                friendlyMessage = string.Join("; ", data.EnumerateArray().Select(x => x.GetString()));
+                            }
+                            // Caso 3: Error genérico
                             else if (root.TryGetProperty("message", out var message))
                             {
                                 friendlyMessage = message.GetString() ?? friendlyMessage;
-                            }
-
-                            // 3. Combinar mensaje principal con detalle
-                            if (!string.IsNullOrEmpty(detailedError))
-                            {
-                                friendlyMessage = $"{friendlyMessage}: {detailedError}";
-                            }
-
-                            // 4. Sugerencias automáticas
-                            if (friendlyMessage.Contains("EFVE001") || friendlyMessage.Contains("Software yet"))
-                            {
-                                friendlyMessage += ". IMPORTANTE: Debe configurar el TestSetID en el panel de Plemsi.";
-                            }
-                            if (friendlyMessage.Contains("resolution is not available"))
-                            {
-                                friendlyMessage += $". Verifique en Plemsi que exista una resolución ACTIVA con el prefijo '{_config.Prefix}'.";
-                            }
-                            if (friendlyMessage.Contains("no autorizado a enviar documentos"))
-                            {
-                                friendlyMessage += ". ERROR DE HABILITACIÓN: El emisor no ha autorizado al proveedor tecnológico (Plemsi) en el portal de la DIAN.";
                             }
                         }
                     }
@@ -226,13 +182,8 @@ namespace PhonePalace.Infrastructure.Services
             var firstPayment = invoice.Payments.FirstOrDefault();
             var paymentMethodId = firstPayment != null ? GetPaymentMethodId(firstPayment.PaymentMethod) : 10;
             
-            // Determinar Forma de Pago (1: Contado, 2: Crédito)
-            // Si el método es Crédito (30), la forma es Crédito (2). De lo contrario es Contado (1).
-            int paymentFormId = (paymentMethodId == 30) ? 2 : 1;
-
             var payment = new
             {
-                payment_form_id = paymentFormId,
                 payment_method_id = paymentMethodId,
                 payment_due_date = sale.SaleDate.ToString("yyyy-MM-dd"),
                 duration_measure = 0
@@ -244,7 +195,6 @@ namespace PhonePalace.Infrastructure.Services
                 date = sale.SaleDate.ToString("yyyy-MM-dd"),
                 time = sale.SaleDate.ToString("HH:mm:ss"),
                 prefix = _config.Prefix,
-                resolution = _config.ResolutionNumber,
                 customer = customer,
                 items = items,
                 payment = payment,

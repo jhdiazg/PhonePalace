@@ -475,121 +475,134 @@ namespace PhonePalace.Web.Controllers
         {
             if (id != model.PurchaseId) return NotFound();
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
             try
             {
-                var purchase = await _context.Purchases
-                    .Include(p => p.PurchaseDetails)
-                    .ThenInclude(d => d.Product)
-                    .FirstOrDefaultAsync(p => p.Id == id);
-
-                if (purchase == null)
+                return await strategy.ExecuteAsync<IActionResult>(async () =>
                 {
-                    return NotFound();
-                }
-
-                // Actualizar información de factura del proveedor al momento de recibir
-                if (!string.IsNullOrEmpty(model.SupplierInvoiceNumber))
-                {
-                    purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber.ToUpper();
-                }
-                purchase.DocumentType = model.DocumentType;
-
-                decimal receivedAmount = 0;
-                bool anyItemReceived = false;
-
-                // Cargar manualmente los InventoryLevels para cada producto
-                foreach (var itemModel in model.Details)
-                {
-                    var detail = purchase.PurchaseDetails.FirstOrDefault(d => d.Id == itemModel.PurchaseDetailId);
-                    if (detail != null && detail.Product != null && itemModel.QuantityToReceive > 0)
+                    await using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        // Validar que no se reciba más de lo ordenado
-                        if (detail.ReceivedQuantity + itemModel.QuantityToReceive > detail.Quantity)
+                        var purchase = await _context.Purchases
+                            .Include(p => p.PurchaseDetails)
+                            .ThenInclude(d => d.Product)
+                            .FirstOrDefaultAsync(p => p.Id == id);
+
+                        if (purchase == null)
                         {
-                            throw new InvalidOperationException($"No puede recibir más de lo ordenado para el producto {detail.Product.Name}.");
+                            return NotFound();
                         }
 
-                        anyItemReceived = true;
+                        // Actualizar información de factura del proveedor al momento de recibir
+                        if (!string.IsNullOrEmpty(model.SupplierInvoiceNumber))
+                        {
+                            purchase.SupplierInvoiceNumber = model.SupplierInvoiceNumber.ToUpper();
+                        }
+                        purchase.DocumentType = model.DocumentType;
+
+                        decimal receivedAmount = 0;
+                        bool anyItemReceived = false;
+
+                        // Cargar manualmente los InventoryLevels para cada producto
+                        foreach (var itemModel in model.Details)
+                        {
+                            var detail = purchase.PurchaseDetails.FirstOrDefault(d => d.Id == itemModel.PurchaseDetailId);
+                            if (detail != null && detail.Product != null && itemModel.QuantityToReceive > 0)
+                            {
+                                // Validar que no se reciba más de lo ordenado
+                                if (detail.ReceivedQuantity + itemModel.QuantityToReceive > detail.Quantity)
+                                {
+                                    throw new InvalidOperationException($"No puede recibir más de lo ordenado para el producto {detail.Product.Name}.");
+                                }
+
+                                anyItemReceived = true;
+                                
+                                var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
+                                
+                                // Calcular Costo Promedio Ponderado
+                                var currentStock = inventoryLevels.Sum(i => i.Stock);
+                                var currentCost = detail.Product.Cost;
+                                var incomingQuantity = itemModel.QuantityToReceive;
+                                var incomingCost = detail.UnitPrice; // Costo entrante sin IVA
+
+                                if (currentStock + incomingQuantity > 0)
+                                {
+                                    var newCost = ((currentStock * currentCost) + (incomingQuantity * incomingCost)) / (currentStock + incomingQuantity);
+                                    detail.Product.Cost = newCost;
+                                    _context.Update(detail.Product);
+                                }
+
+                                var inventory = inventoryLevels.FirstOrDefault();
+                                if (inventory != null)
+                                {
+                                    inventory.Stock += itemModel.QuantityToReceive;
+                                    inventory.LastUpdated = DateTime.Now;
+                                }
+                                else
+                                {
+                                    _context.Inventories.Add(new Inventory { ProductID = detail.ProductId, Stock = itemModel.QuantityToReceive, LastUpdated = DateTime.Now });
+                                }
+
+                                // Actualizar cantidad recibida en el detalle
+                                detail.ReceivedQuantity += itemModel.QuantityToReceive;
+                                
+                                // Calcular monto de lo recibido para la cuenta por pagar (incluyendo IVA proporcional si aplica)
+                                // Nota: Usamos el TaxRate del detalle para calcular el total de esta recepción
+                                decimal lineTotal = itemModel.QuantityToReceive * detail.UnitPrice;
+                                decimal lineTax = lineTotal * detail.TaxRate / 100;
+                                receivedAmount += lineTotal + lineTax;
+                            }
+                        }
+
+                        if (!anyItemReceived)
+                        {
+                            // Nota: No podemos retornar View(model) directamente dentro de ExecuteAsync si queremos reintentos limpios,
+                            // pero para errores de validación lógica está bien lanzar excepción o manejarlo así.
+                            // Aquí lanzamos excepción para que caiga en el catch externo y muestre el error.
+                            throw new InvalidOperationException("Debe recibir al menos un producto.");
+                        }
+
+                        // Determinar el nuevo estado de la compra
+                        bool allFullyReceived = purchase.PurchaseDetails.All(d => d.ReceivedQuantity >= d.Quantity);
+                        purchase.Status = allFullyReceived ? PurchaseStatus.Received : PurchaseStatus.PartiallyReceived;
+
+                        // Create AccountPayable entry
+                        // Generar Cuenta por Pagar si la forma de pago es Crédito o Transferencia
+                        if (purchase.PaymentMethod == PurchasePaymentMethod.Credit || 
+                            purchase.PaymentMethod == PurchasePaymentMethod.Transfer)
+                        {
+                            var accountPayable = new AccountPayable
+                            {
+                                PurchaseId = purchase.Id,
+                                Purchase = purchase,
+                                Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
+                                DueDate = DateTime.Now.AddDays(30), // Example: Due in 30 days
+                                IsPaid = false,
+                                DocumentType = model.DocumentType, 
+                                DocumentNumber = !string.IsNullOrEmpty(model.SupplierInvoiceNumber) ? model.SupplierInvoiceNumber : purchase.Id.ToString() + (purchase.Status == PurchaseStatus.PartiallyReceived ? "-P" : ""),
+                                CreatedDate = DateTime.Now
+                            };
+                            _context.AccountPayables.Add(accountPayable);
+                        }
+
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
                         
-                        var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
-                        
-                        // Calcular Costo Promedio Ponderado
-                        var currentStock = inventoryLevels.Sum(i => i.Stock);
-                        var currentCost = detail.Product.Cost;
-                        var incomingQuantity = itemModel.QuantityToReceive;
-                        var incomingCost = detail.UnitPrice; // Costo entrante sin IVA
+                        string statusMsg = purchase.Status == PurchaseStatus.Received ? "Totalmente Recibida" : "Parcialmente Recibida";
+                        await _auditService.LogAsync("Compras", $"Recepción de compra #{purchase.Id} ({statusMsg}). Inventario actualizado.");
 
-                        if (currentStock + incomingQuantity > 0)
-                        {
-                            var newCost = ((currentStock * currentCost) + (incomingQuantity * incomingCost)) / (currentStock + incomingQuantity);
-                            detail.Product.Cost = newCost;
-                            _context.Update(detail.Product);
-                        }
-
-                        var inventory = inventoryLevels.FirstOrDefault();
-                        if (inventory != null)
-                        {
-                            inventory.Stock += itemModel.QuantityToReceive;
-                            inventory.LastUpdated = DateTime.Now;
-                        }
-                        else
-                        {
-                            _context.Inventories.Add(new Inventory { ProductID = detail.ProductId, Stock = itemModel.QuantityToReceive, LastUpdated = DateTime.Now });
-                        }
-
-                        // Actualizar cantidad recibida en el detalle
-                        detail.ReceivedQuantity += itemModel.QuantityToReceive;
-                        
-                        // Calcular monto de lo recibido para la cuenta por pagar (incluyendo IVA proporcional si aplica)
-                        // Nota: Usamos el TaxRate del detalle para calcular el total de esta recepción
-                        decimal lineTotal = itemModel.QuantityToReceive * detail.UnitPrice;
-                        decimal lineTax = lineTotal * detail.TaxRate / 100;
-                        receivedAmount += lineTotal + lineTax;
+                        TempData["SuccessMessage"] = $"La recepción se procesó correctamente. Estado: {statusMsg}.";
+                        return RedirectToAction(nameof(Details), new { id });
                     }
-                }
-
-                if (!anyItemReceived)
-                {
-                    TempData["ErrorMessage"] = "Debe recibir al menos un producto.";
-                    return View(model);
-                }
-
-                // Determinar el nuevo estado de la compra
-                bool allFullyReceived = purchase.PurchaseDetails.All(d => d.ReceivedQuantity >= d.Quantity);
-                purchase.Status = allFullyReceived ? PurchaseStatus.Received : PurchaseStatus.PartiallyReceived;
-
-                // Create AccountPayable entry
-                // Generar Cuenta por Pagar si la forma de pago es Crédito o Transferencia
-                if (purchase.PaymentMethod == PurchasePaymentMethod.Credit || 
-                    purchase.PaymentMethod == PurchasePaymentMethod.Transfer)
-                {
-                    var accountPayable = new AccountPayable
+                    catch
                     {
-                        PurchaseId = purchase.Id,
-                        Purchase = purchase,
-                        Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
-                        DueDate = DateTime.Now.AddDays(30), // Example: Due in 30 days
-                        IsPaid = false,
-                        DocumentType = model.DocumentType, 
-                        DocumentNumber = !string.IsNullOrEmpty(model.SupplierInvoiceNumber) ? model.SupplierInvoiceNumber : purchase.Id.ToString() + (purchase.Status == PurchaseStatus.PartiallyReceived ? "-P" : ""),
-                        CreatedDate = DateTime.Now
-                    };
-                    _context.AccountPayables.Add(accountPayable);
-                }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                
-                string statusMsg = purchase.Status == PurchaseStatus.Received ? "Totalmente Recibida" : "Parcialmente Recibida";
-                await _auditService.LogAsync("Compras", $"Recepción de compra #{purchase.Id} ({statusMsg}). Inventario actualizado.");
-
-                TempData["SuccessMessage"] = $"La recepción se procesó correctamente. Estado: {statusMsg}.";
-                return RedirectToAction(nameof(Details), new { id });
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 TempData["ErrorMessage"] = $"Ocurrió un error inesperado al recibir la compra: {ex.Message}";
                 return RedirectToAction(nameof(Details), new { id });
             }

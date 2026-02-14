@@ -1,4 +1,4 @@
-﻿﻿using PhonePalace.Web.Helpers;
+﻿﻿﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,14 +31,28 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: Accessories
-        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize, bool showActiveOnly = true)
         {
             ViewData["PageSize"] = pageSize ?? 10;
+            ViewData["ShowActiveOnly"] = showActiveOnly;
 
-            var accessoriesQuery = _context.Accessories
+            // Usar el DbSet específico en lugar de Products.OfType
+            var accessoriesQuery = _context.Accessories.AsQueryable();
+
+            if (!showActiveOnly)
+            {
+                accessoriesQuery = accessoriesQuery.IgnoreQueryFilters();
+            }
+            else
+            {
+                accessoriesQuery = accessoriesQuery.Where(a => a.IsActive);
+            }
+
+            accessoriesQuery = accessoriesQuery
                 .Include(a => a.Images)
                 .Include(a => a.Category)
-                .Include(a => a.Brand)
+                //.Include(a => a.Brand) // Comentado temporalmente para evitar filtrado por FK inválida
+                .OrderByDescending(a => a.ProductID)
                 .AsNoTracking();
 
             return View(await PaginatedList<Accessory>.CreateAsync(accessoriesQuery, pageNumber ?? 1, pageSize ?? 10));

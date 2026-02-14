@@ -116,85 +116,89 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Validar caja abierta SOLO si el desembolso es en Efectivo
-                if (disbursementMethod == PaymentMethod.Cash)
+                var strategy = _context.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync<IActionResult>(async () =>
                 {
-                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                    if (currentCash == null)
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        ModelState.AddModelError("", "Debe abrir la caja antes de registrar un préstamo en efectivo.");
-                        ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
-                            .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
-                        ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
-                        return View(model);
-                    }
-
-                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-                    // 1. Registrar Egreso de Caja
-                    await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
-                }
-                else if (disbursementMethod == PaymentMethod.Transfer)
-                {
-                    // Desembolso por Banco (Egreso)
-                    if (!bankId.HasValue)
-                    {
-                        ModelState.AddModelError("", "Debe seleccionar un banco para el desembolso.");
-                        ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
-                            .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
-                        ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
-                        return View(model);
-                    }
-
-                    var bank = await _context.Banks.FindAsync(bankId.Value);
-                    if (bank != null)
-                    {
-                        var transaction = new BankTransaction
+                        // Validar caja abierta SOLO si el desembolso es en Efectivo
+                        if (disbursementMethod == PaymentMethod.Cash)
                         {
-                            BankID = bank.BankID,
-                            Date = DateTime.Now,
-                            Amount = -model.Amount, // Egreso es negativo
-                            Description = $"Desembolso Préstamo: {model.Description}",
-                            BalanceAfterTransaction = bank.Balance - model.Amount
+                            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                            if (currentCash == null)
+                            {
+                                throw new InvalidOperationException("Debe abrir la caja antes de registrar un préstamo en efectivo.");
+                            }
+
+                            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                            // 1. Registrar Egreso de Caja
+                            await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
+                        }
+                        else if (disbursementMethod == PaymentMethod.Transfer)
+                        {
+                            // Desembolso por Banco (Egreso)
+                            if (!bankId.HasValue)
+                            {
+                                throw new InvalidOperationException("Debe seleccionar un banco para el desembolso.");
+                            }
+
+                            var bank = await _context.Banks.FindAsync(bankId.Value);
+                            if (bank != null)
+                            {
+                                var bankTransaction = new BankTransaction
+                                {
+                                    BankID = bank.BankID,
+                                    Date = DateTime.Now,
+                                    Amount = -model.Amount, // Egreso es negativo
+                                    Description = $"Desembolso Préstamo: {model.Description}",
+                                    BalanceAfterTransaction = bank.Balance - model.Amount
+                                };
+                                _context.BankTransactions.Add(bankTransaction);
+                                bank.Balance -= model.Amount;
+                                _context.Update(bank);
+                            }
+                        }
+
+                        // 2. Obtener el cliente
+                        var client = await _context.Clients.FindAsync(model.ClientID);
+                        if (client == null)
+                        {
+                            throw new InvalidOperationException("Cliente no encontrado.");
+                        }
+
+                        // 3. Crear Cuenta por Cobrar
+                        var ar = new AccountReceivable
+                        {
+                            ClientID = model.ClientID,
+                            Client = client,
+                            Date = model.Date,
+                            TotalAmount = model.Amount,
+                            Balance = model.Amount,
+                            Type = "Prestamo",
+                            Description = $"{model.Description?.ToUpper()} ({EnumHelper.GetDisplayName(disbursementMethod)})",
+                            IsPaid = false
                         };
-                        _context.BankTransactions.Add(transaction);
-                        bank.Balance -= model.Amount;
-                        _context.Update(bank);
+
+                        _context.AccountReceivables.Add(ar);
+                        await _context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return RedirectToAction(nameof(Index));
                     }
-                }
-
-                // 2. Obtener el cliente
-                var client = await _context.Clients.FindAsync(model.ClientID);
-                if (client == null)
-                {
-                    ModelState.AddModelError("", "Cliente no encontrado.");
-                    ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
-                    ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
-                        .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
-                    ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
-                    return View(model);
-                }
-
-                // 3. Crear Cuenta por Cobrar
-                var ar = new AccountReceivable
-                {
-                    ClientID = model.ClientID,
-                    Client = client,
-                    Date = model.Date,
-                    TotalAmount = model.Amount,
-                    Balance = model.Amount,
-                    Type = "Prestamo",
-                    Description = $"{model.Description?.ToUpper()} ({EnumHelper.GetDisplayName(disbursementMethod)})",
-                    IsPaid = false
-                };
-
-                _context.AccountReceivables.Add(ar);
-                await _context.SaveChangesAsync();
-
-                return RedirectToAction(nameof(Index));
+                    catch (Exception ex)
+                    {
+                        await transaction.RollbackAsync();
+                        ModelState.AddModelError("", ex.Message);
+                        ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
+                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                            .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
+                        ViewBag.Banks = new SelectList(_context.Banks.Where(b => b.IsActive), "BankID", "Name");
+                        return View(model);
+                    }
+                });
             }
 
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
@@ -229,6 +233,12 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddPayment(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
             var ar = await _context.AccountReceivables.FindAsync(id);
             if (ar == null) return NotFound();
 
@@ -302,7 +312,7 @@ namespace PhonePalace.Web.Controllers
                 var bank = await _context.Banks.FindAsync(bankId.Value);
                 if (bank != null)
                 {
-                    var transaction = new BankTransaction
+                            var bankTransaction = new BankTransaction
                     {
                         BankID = bank.BankID,
                         Date = DateTime.Now,
@@ -310,7 +320,7 @@ namespace PhonePalace.Web.Controllers
                         Description = $"Abono CxC #{ar.AccountReceivableID} ({ar.Type}) - {EnumHelper.GetDisplayName(paymentMethod)}",
                         BalanceAfterTransaction = bank.Balance + amount
                     };
-                    _context.BankTransactions.Add(transaction);
+                            _context.BankTransactions.Add(bankTransaction);
                     bank.Balance += amount;
                     _context.Update(bank);
                 }
@@ -329,6 +339,14 @@ namespace PhonePalace.Web.Controllers
             TempData["Success"] = "Abono registrado correctamente.";
 
             return RedirectToAction(nameof(Details), new { id });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = ex.Message;
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+            });
         }
 
         [HttpPost("Delete/{id}")]

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿using PhonePalace.Web.Helpers;
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,18 +31,32 @@ namespace PhonePalace.Web.Controllers
         }
 
         // GET: CellPhones
-        public async Task<IActionResult> Index(int? pageNumber, int? pageSize)
+        public async Task<IActionResult> Index(int? pageNumber, int? pageSize, bool showActiveOnly = true)
         {
             ViewData["PageSize"] = pageSize ?? 10;
+            ViewData["ShowActiveOnly"] = showActiveOnly;
 
-            var cellPhones = _context.CellPhones
+            // Usar el DbSet específico en lugar de Products.OfType
+            var cellPhonesQuery = _context.CellPhones.AsQueryable();
+
+            if (!showActiveOnly)
+            {
+                cellPhonesQuery = cellPhonesQuery.IgnoreQueryFilters();
+            }
+            else
+            {
+                cellPhonesQuery = cellPhonesQuery.Where(c => c.IsActive);
+            }
+
+            cellPhonesQuery = cellPhonesQuery
                 .Include(c => c.Images)
                 .Include(c => c.Category)
-                .Include(c => c.Model)
-                .ThenInclude(m => m.Brand)
+                //.Include(c => c.Model) // Comentado temporalmente: Si el ModelID no existe, el producto se oculta
+                //.ThenInclude(m => m.Brand)
+                .OrderByDescending(c => c.ProductID)
                 .AsNoTracking();
 
-            return View(await PaginatedList<CellPhone>.CreateAsync(cellPhones, pageNumber ?? 1, pageSize ?? 10));
+            return View(await PaginatedList<CellPhone>.CreateAsync(cellPhonesQuery, pageNumber ?? 1, pageSize ?? 10));
         }
 
         // GET: CellPhones/Details/5

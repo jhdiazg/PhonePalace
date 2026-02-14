@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -152,11 +152,16 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("Inventario/Imprimir")]
-        public async Task<IActionResult> PrintInventory(string? searchString, int? categoryId)
+        public async Task<IActionResult> PrintInventory(string? searchString, int? categoryId, bool showActiveOnly = true)
         {
             var inventoryQuery = _context.Inventories
                 .Include(i => i.Product)
                 .AsQueryable();
+
+            if (showActiveOnly)
+            {
+                inventoryQuery = inventoryQuery.Where(i => i.Product.IsActive);
+            }
 
             if (categoryId.HasValue)
             {

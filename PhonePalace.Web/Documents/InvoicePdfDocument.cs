@@ -34,7 +34,7 @@ namespace PhonePalace.Web.Documents
             container
                 .Page(page =>
                 {
-                    page.Margin(30);
+                    page.Margin(20);
                     
                     if (isHalfLetter)
                     {
@@ -45,7 +45,7 @@ namespace PhonePalace.Web.Documents
                         page.Size(PageSizes.Letter);
                     }
 
-                    page.DefaultTextStyle(x => x.FontSize(9));
+                    page.DefaultTextStyle(x => x.FontSize(8));
 
                     page.Header().Element(ComposeHeader);
                     page.Content().Element(ComposeContent);
@@ -84,9 +84,9 @@ namespace PhonePalace.Web.Documents
 
         void ComposeContent(IContainer container)
         {
-            container.PaddingVertical(20).Column(column =>
+            container.PaddingVertical(10).Column(column =>
             {
-                column.Spacing(10);
+                column.Spacing(5);
                 column.Item().Row(row =>
                 {
                     row.RelativeItem().Column(clientColumn =>
@@ -151,8 +151,8 @@ namespace PhonePalace.Web.Documents
                     row.RelativeItem().AlignRight().Column(totalsCol =>
                     {
                         totalsCol.Spacing(2);
-                        totalsCol.Item().AlignRight().Text($"Subtotal: {_invoice.Subtotal:C}").FontSize(8);
-                        totalsCol.Item().AlignRight().Text($"IVA ({(_invoice.Subtotal > 0 ? Math.Round((_invoice.Tax / _invoice.Subtotal) * 100, 1) : 0)}%): {_invoice.Tax:C}").FontSize(8);
+                        //totalsCol.Item().AlignRight().Text($"Subtotal: {_invoice.Subtotal:C}").FontSize(8);
+                        //totalsCol.Item().AlignRight().Text($"IVA ({(_invoice.Subtotal > 0 ? Math.Round((_invoice.Tax / _invoice.Subtotal) * 100, 1) : 0)}%): {_invoice.Tax:C}").FontSize(8);
                         totalsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
                         totalsCol.Item().AlignRight().Text($"Total: {_invoice.Total:C}").FontSize(10).Bold();
                     });

@@ -197,61 +197,63 @@ namespace PhonePalace.Web.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
             try
             {
-                var payment = new FixedExpensePayment
+                return await strategy.ExecuteAsync(async () =>
                 {
-                    FixedExpenseId = id,
-                    Period = new DateTime(model.Year, model.Month, 1),
-                    PaymentDate = model.PaymentDate,
-                    Amount = model.Amount,
-                    PaymentMethod = model.PaymentMethod,
-                    Notes = model.Notes
-                };
-
-                // Solo afectar caja si es Efectivo
-                if (model.PaymentMethod == PaymentMethod.Cash)
-                {
-                    // Validar si la caja está abierta (opcional, pero recomendado)
-                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                    if (currentCash == null)
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
                     {
-                        ModelState.AddModelError("", "La caja debe estar abierta para realizar pagos en efectivo.");
-                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
-                        return View(model);
+                        var payment = new FixedExpensePayment
+                        {
+                            FixedExpenseId = id,
+                            Period = new DateTime(model.Year, model.Month, 1),
+                            PaymentDate = model.PaymentDate,
+                            Amount = model.Amount,
+                            PaymentMethod = model.PaymentMethod,
+                            Notes = model.Notes
+                        };
+
+                        // Solo afectar caja si es Efectivo
+                        if (model.PaymentMethod == PaymentMethod.Cash)
+                        {
+                            // Validar si la caja está abierta (opcional, pero recomendado)
+                            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                            if (currentCash == null)
+                            {
+                                throw new InvalidOperationException("La caja debe estar abierta para realizar pagos en efectivo.");
+                            }
+
+                            var cashMovement = await _cashService.RegisterExpenseAsync(model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}", userId);
+                            payment.CashMovementId = cashMovement.CashMovementID;
+                        }
+                        else if (bankId.HasValue)
+                        {
+                            // Registrar egreso bancario
+                            await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.ManualExpense, model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}");
+                        }
+
+                        _context.FixedExpensePayments.Add(payment);
+                        await _context.SaveChangesAsync();
+                        
+                        await _auditService.LogAsync("Gastos Fijos", $"Registró pago de '{fixedExpense.Concept}' por {model.Amount:C} para el periodo {model.Month}/{model.Year}.");
+                        await transaction.CommitAsync();
+                        TempData["Success"] = "Pago registrado exitosamente.";
+                        return RedirectToAction(nameof(Index));
                     }
-
-                    var cashMovement = await _cashService.RegisterExpenseAsync(model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}", userId);
-                    payment.CashMovementId = cashMovement.CashMovementID;
-                }
-                else if (bankId.HasValue)
-                {
-                    // Registrar egreso bancario
-                    await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.ManualExpense, model.Amount, $"PAGO GASTO FIJO: {fixedExpense.Concept.ToUpper()}");
-                }
-
-                _context.FixedExpensePayments.Add(payment);
-                await _context.SaveChangesAsync();
-                
-                await _auditService.LogAsync("Gastos Fijos", $"Registró pago de '{fixedExpense.Concept}' por {model.Amount:C} para el periodo {model.Month}/{model.Year}.");
-                await transaction.CommitAsync();
-                TempData["Success"] = "Pago registrado exitosamente.";
-            }
-            catch (InvalidOperationException ex)
-            {
-                await transaction.RollbackAsync();
-                TempData["Error"] = ex.Message;
-                return RedirectToAction(nameof(Index));
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 TempData["Error"] = $"Ocurrió un error: {ex.Message}";
                 return RedirectToAction(nameof(Index));
             }
-
-            return RedirectToAction(nameof(Index));
         }
     }
 }

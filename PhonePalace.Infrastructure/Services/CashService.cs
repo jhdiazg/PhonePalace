@@ -28,47 +28,58 @@ namespace PhonePalace.Infrastructure.Services
 
         public async Task<CashRegister> OpenCashRegisterAsync(decimal openingAmount, string userId)
         {
-            // Verificar si ya hay una caja abierta
-            var existingOpen = await GetCurrentCashRegisterAsync();
-            if (existingOpen != null)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                throw new InvalidOperationException("Ya hay una caja abierta.");
-            }
+                // Verificar si ya hay una caja abierta (dentro de la estrategia para reintentos)
+                var existingOpen = await GetCurrentCashRegisterAsync();
+                if (existingOpen != null)
+                {
+                    throw new InvalidOperationException("Ya hay una caja abierta.");
+                }
 
-            var cashRegister = new CashRegister
-            {
-                OpeningDate = DateTime.Now,
-                OpeningAmount = openingAmount,
-                OpenedByUserId = userId,
-                IsOpen = true
-            };
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var cashRegister = new CashRegister
+                    {
+                        OpeningDate = DateTime.Now,
+                        OpeningAmount = openingAmount,
+                        OpenedByUserId = userId,
+                        IsOpen = true
+                    };
 
-            _context.CashRegisters.Add(cashRegister);
-            await _context.SaveChangesAsync();
+                    _context.CashRegisters.Add(cashRegister);
+                    await _context.SaveChangesAsync();
 
-            // Registrar movimiento de apertura
-            var openingMovement = new CashMovement
-            {
-                CashRegisterID = cashRegister.CashRegisterID,
-                MovementType = CashMovementType.Opening,
-                Amount = openingAmount,
-                Description = "Apertura de caja",
-                UserId = userId,
-                MovementDate = DateTime.Now
-            };
-            _context.CashMovements.Add(openingMovement);
-            await _context.SaveChangesAsync();
+                    // Registrar movimiento de apertura
+                    var openingMovement = new CashMovement
+                    {
+                        CashRegisterID = cashRegister.CashRegisterID,
+                        MovementType = CashMovementType.Opening,
+                        Amount = openingAmount,
+                        Description = "Apertura de caja",
+                        UserId = userId,
+                        MovementDate = DateTime.Now
+                    };
+                    _context.CashMovements.Add(openingMovement);
+                    await _context.SaveChangesAsync();
 
-            try
-            {
-                await _auditService.LogAsync("Caja", $"Apertura de caja con monto inicial: {openingAmount:C}");
-            }
-            catch
-            {
-                // Log error silently
-            }
+                    try
+                    {
+                        await _auditService.LogAsync("Caja", $"Apertura de caja con monto inicial: {openingAmount:C}");
+                    }
+                    catch { /* Log error silently */ }
 
-            return cashRegister;
+                    await transaction.CommitAsync();
+                    return cashRegister;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task CloseCashRegisterAsync(decimal closingAmount, string userId)

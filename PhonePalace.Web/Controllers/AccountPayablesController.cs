@@ -194,44 +194,57 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Pay(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
-            var ap = await _context.AccountPayables.FindAsync(id);
-            if (ap == null) return NotFound();
-
-            if (ap.IsPaid)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                TempData["Error"] = "Esta cuenta ya está pagada.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-            // 1. Registrar Egreso (Caja o Banco)
-            if (paymentMethod == PaymentMethod.Cash)
-            {
-                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                if (currentCash == null)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    TempData["Error"] = "Debe abrir la caja para realizar pagos en efectivo.";
+                    var ap = await _context.AccountPayables.FindAsync(id);
+                    if (ap == null) return NotFound();
+
+                    if (ap.IsPaid)
+                    {
+                        TempData["Error"] = "Esta cuenta ya está pagada.";
+                        return RedirectToAction(nameof(Details), new { id });
+                    }
+
+                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                    // 1. Registrar Egreso (Caja o Banco)
+                    if (paymentMethod == PaymentMethod.Cash)
+                    {
+                        var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                        if (currentCash == null)
+                        {
+                            throw new InvalidOperationException("Debe abrir la caja para realizar pagos en efectivo.");
+                        }
+                        await _cashService.RegisterExpenseAsync(amount, $"Pago de CxP #{ap.Id} - {note}", userId);
+                    }
+                    else if (bankId.HasValue)
+                    {
+                        // Registrar movimiento bancario de salida (TransferOut)
+                        await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.TransferOut, amount, $"Pago de CxP #{ap.Id} ({EnumHelper.GetDisplayName(paymentMethod)}) - {note}");
+                    }
+
+                    // 2. Actualizar estado de la cuenta
+                    ap.IsPaid = true;
+                    
+                    await _context.SaveChangesAsync();
+                    await _auditService.LogAsync("CuentasPorPagar", $"Pagó la cuenta #{ap.Id} por {amount:C}.");
+                    await transaction.CommitAsync();
+                    TempData["Success"] = "Pago registrado correctamente.";
+
                     return RedirectToAction(nameof(Details), new { id });
                 }
-                await _cashService.RegisterExpenseAsync(amount, $"Pago de CxP #{ap.Id} - {note}", userId);
-            }
-            else if (bankId.HasValue)
-            {
-                // Registrar movimiento bancario de salida (TransferOut)
-                await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.TransferOut, amount, $"Pago de CxP #{ap.Id} ({EnumHelper.GetDisplayName(paymentMethod)}) - {note}");
-            }
-
-            // 2. Actualizar estado de la cuenta
-            // Nota: Asumimos pago total ya que la entidad AccountPayable actual no maneja saldo pendiente explícito en este contexto.
-            ap.IsPaid = true;
-            
-            await _context.SaveChangesAsync();
-            await _auditService.LogAsync("CuentasPorPagar", $"Pagó la cuenta #{ap.Id} por {amount:C}.");
-            TempData["Success"] = "Pago registrado correctamente.";
-
-            return RedirectToAction(nameof(Details), new { id });
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = ex.Message;
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+            });
         }
     }
 }

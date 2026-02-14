@@ -46,58 +46,73 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Verify(int id)
         {
-            var verification = await _context.CreditCardVerifications
-                .Include(v => v.AccountReceivablePayment)
-                    .ThenInclude(arp => arp!.AccountReceivable)
-                .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
-
-            if (verification == null || verification.Status != VerificationStatus.Pending)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                TempData["Error"] = "La verificación no se encontró o ya fue procesada.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Escenario 1: Verificación de Venta (PaymentID existe)
-            if (verification.PaymentID.HasValue)
-            {
-                var payment = await _context.Payments.FindAsync(verification.PaymentID);
-                if (payment == null)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    TempData["Error"] = "No se encontró el pago de venta asociado.";
+                    var verification = await _context.CreditCardVerifications
+                        .Include(v => v.AccountReceivablePayment)
+                            .ThenInclude(arp => arp!.AccountReceivable)
+                        .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
+
+                    if (verification == null || verification.Status != VerificationStatus.Pending)
+                    {
+                        TempData["Error"] = "La verificación no se encontró o ya fue procesada.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    // Escenario 1: Verificación de Venta (PaymentID existe)
+                    if (verification.PaymentID.HasValue)
+                    {
+                        var payment = await _context.Payments.FindAsync(verification.PaymentID);
+                        if (payment == null)
+                        {
+                            TempData["Error"] = "No se encontró el pago de venta asociado.";
+                            return RedirectToAction(nameof(Index));
+                        }
+                        // Afectar el banco usando el servicio de pagos (usará la transacción actual)
+                        await _bankService.RegisterIncomeFromPaymentAsync(payment);
+                    }
+                    // Escenario 2: Verificación de Abono a CxC (AccountReceivablePaymentID existe)
+                    else if (verification.AccountReceivablePaymentID.HasValue && verification.AccountReceivablePayment != null)
+                    {
+                        // Registrar ingreso manual en el banco
+                        await _bankService.RegisterManualMovementAsync(
+                            verification.BankID,
+                            BankTransactionType.TransferIn, // Ingreso
+                            verification.Amount,
+                            $"Abono CxC #{verification.AccountReceivablePayment.AccountReceivableID} (TC Verificada) - Ref: {verification.CreditCardVerificationID}"
+                        );
+                    }
+                    else
+                    {
+                        TempData["Error"] = "La verificación no tiene un origen de pago válido.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    // Actualizar estado de la verificación
+                    verification.Status = VerificationStatus.Verified;
+                    verification.VerificationDate = DateTime.Now;
+                    _context.Update(verification);
+
+                    await _context.SaveChangesAsync();
+                    
+                    string sourceRef = verification.SaleID.HasValue ? $"Venta #{verification.SaleID}" : $"CxC #{verification.AccountReceivablePayment?.AccountReceivableID}";
+                    await _auditService.LogAsync("VerificacionTarjeta", $"Verificó y aplicó pago TC para {sourceRef} por {verification.Amount:C}.");
+
+                    await transaction.CommitAsync();
+                    TempData["Success"] = "Pago verificado y aplicado al banco correctamente.";
                     return RedirectToAction(nameof(Index));
                 }
-                // Afectar el banco usando el servicio de pagos
-                await _bankService.RegisterIncomeFromPaymentAsync(payment);
-            }
-            // Escenario 2: Verificación de Abono a CxC (AccountReceivablePaymentID existe)
-            else if (verification.AccountReceivablePaymentID.HasValue && verification.AccountReceivablePayment != null)
-            {
-                // Registrar ingreso manual en el banco
-                await _bankService.RegisterManualMovementAsync(
-                    verification.BankID,
-                    BankTransactionType.TransferIn, // Ingreso
-                    verification.Amount,
-                    $"Abono CxC #{verification.AccountReceivablePayment.AccountReceivableID} (TC Verificada) - Ref: {verification.CreditCardVerificationID}"
-                );
-            }
-            else
-            {
-                TempData["Error"] = "La verificación no tiene un origen de pago válido.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // Actualizar estado de la verificación
-            verification.Status = VerificationStatus.Verified;
-            verification.VerificationDate = DateTime.Now;
-            _context.Update(verification);
-
-            await _context.SaveChangesAsync();
-            
-            string sourceRef = verification.SaleID.HasValue ? $"Venta #{verification.SaleID}" : $"CxC #{verification.AccountReceivablePayment?.AccountReceivableID}";
-            await _auditService.LogAsync("VerificacionTarjeta", $"Verificó y aplicó pago TC para {sourceRef} por {verification.Amount:C}.");
-
-            TempData["Success"] = "Pago verificado y aplicado al banco correctamente.";
-            return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = $"Error: {ex.Message}";
+                    return RedirectToAction(nameof(Index));
+                }
+            });
         }
 
         [HttpPost("Reject/{id}")]

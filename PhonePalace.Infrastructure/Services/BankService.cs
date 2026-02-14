@@ -32,17 +32,21 @@ namespace PhonePalace.Infrastructure.Services
             else
             {
                 // Si no hay transacción, creamos una nueva con bloqueo Serializable
-                using var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-                try
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    await ProcessIncomeInternalAsync(payment);
-                    await dbTransaction.CommitAsync();
-                }
-                catch (Exception)
-                {
-                    await dbTransaction.RollbackAsync();
-                    throw;
-                }
+                    using var dbTransaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                    try
+                    {
+                        await ProcessIncomeInternalAsync(payment);
+                        await dbTransaction.CommitAsync();
+                    }
+                    catch (Exception)
+                    {
+                        await dbTransaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
         }
 
@@ -84,18 +88,22 @@ namespace PhonePalace.Infrastructure.Services
             }
             else
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    await RegisterManualMovementAsync(sourceBankId, BankTransactionType.TransferOut, amount, $"{description} (A Banco ID: {targetBankId})");
-                    await RegisterManualMovementAsync(targetBankId, BankTransactionType.TransferIn, amount, $"{description} (De Banco ID: {sourceBankId})");
-                    await transaction.CommitAsync();
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
+                    using var transaction = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        await RegisterManualMovementAsync(sourceBankId, BankTransactionType.TransferOut, amount, $"{description} (A Banco ID: {targetBankId})");
+                        await RegisterManualMovementAsync(targetBankId, BankTransactionType.TransferIn, amount, $"{description} (De Banco ID: {sourceBankId})");
+                        await transaction.CommitAsync();
+                    }
+                    catch
+                    {
+                        await transaction.RollbackAsync();
+                        throw;
+                    }
+                });
             }
         }
 
