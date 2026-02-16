@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -34,6 +34,10 @@ namespace PhonePalace.Domain.Entities
         // Propiedad de borrado lógico
         [Display(Name = "Activo")]
         public bool IsActive { get; set; } = true;
+
+        [Display(Name = "Saldo a Favor")]
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal Balance { get; set; }
 
         [NotMapped]
         [Display(Name = "Nombre / Razón Social")]

@@ -34,6 +34,9 @@
                             <select asp-for="ClientID" class="form-control" asp-items="Model.Clients">
                                 <option value="">-- Seleccione un Cliente --</option>
                             </select>
+                            <div id="client-balance-info" class="mt-1 text-success fw-bold" style="display:none;">
+                                <i class="bi bi-wallet2"></i> Saldo a favor: <span id="client-balance-amount">$0.00</span>
+                            </div>
                             <span asp-validation-for="ClientID" class="text-danger"></span>
                         </div>
                         <div class="col-md-4 form-group">
@@ -312,6 +315,24 @@
             // Initialize Select2
             $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
             $('#SaleChannel').select2({ placeholder: "-- Seleccione un Canal de Venta --", width: '100%' });
+
+            // Mostrar saldo del cliente al seleccionar
+            $('#ClientID').on('change', function() {
+                var clientId = $(this).val();
+                if (clientId) {
+                    // Asumiendo que crearás un endpoint API para obtener el saldo
+                    // O alternativamente, pasar el saldo como data-attribute en el select list desde el controlador
+                    fetch('/api/clients/' + clientId + '/balance')
+                        .then(r => r.json())
+                        .then(data => {
+                            $('#client-balance-amount').text(formatCurrency(data.balance));
+                            $('#client-balance-info').show();
+                        });
+                } else {
+                    $('#client-balance-info').hide();
+                }
+            });
+
             $('#category-select').select2({ placeholder: "-- Todas las Categorías --", width: '100%', allowClear: true });
             $('#product-select').select2({ placeholder: "-- Seleccione un Producto --", width: '100%' });
             $('#payment-method-select').select2({ placeholder: "-- Seleccione un Método de Pago --", width: '100%' });

@@ -104,7 +104,9 @@
                                 @{ var currentCashDate = ViewData["CurrentCashDate"] as DateTime?; }
                                 @if (currentCashDate.HasValue && item.SaleDate.Date == currentCashDate.Value.Date)
                                 {
-                                    <a asp-action="Delete" asp-route-id="@item.SaleID" class="btn btn-sm btn-danger">Eliminar</a>
+                                    <a asp-action="Delete" asp-route-id="@item.SaleID" class="btn btn-sm btn-danger" title="Anular Venta">
+                                        <i class="bi bi-trash"></i> Anular
+                                    </a>
                                 }
                             </td>
                         </tr>

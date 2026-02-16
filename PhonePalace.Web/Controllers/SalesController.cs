@@ -26,8 +26,9 @@ namespace PhonePalace.Web.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly CompanySettings _companySettings;
         private readonly IPlemsiService _plemsiService;
+        private readonly IAuditService _auditService;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService)
         {
             _context = context;
             _cashService = cashService;
@@ -36,6 +37,7 @@ namespace PhonePalace.Web.Controllers
             _webHostEnvironment = webHostEnvironment;
             _companySettings = companySettings.Value;
             _plemsiService = plemsiService;
+            _auditService = auditService;
         }
 
     [HttpGet]
@@ -72,11 +74,14 @@ namespace PhonePalace.Web.Controllers
 
             ViewData["PageSize"] = pageSize ?? 10;
 
+            // Obtener caja actual para validaciones de anulación en la vista
+            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+            ViewData["CurrentCashDate"] = currentCash?.OpeningDate.Date;
+
             // Por defecto, mostrar solo ventas del día actual
             if (!startDate.HasValue && !endDate.HasValue && string.IsNullOrEmpty(clientName))
             {
                 // Si hay una caja abierta, mostrar ventas de esa fecha de apertura por defecto
-                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
                 if (currentCash != null)
                 {
                     startDate = currentCash.OpeningDate.Date;
@@ -193,6 +198,10 @@ namespace PhonePalace.Web.Controllers
                     .AsNoTracking()
                     .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID);
             }
+
+            // Obtener caja actual para validaciones de anulación en la vista
+            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+            ViewData["CurrentCashDate"] = currentCash?.OpeningDate.Date;
 
             return View(sale);
         }
@@ -384,6 +393,23 @@ namespace PhonePalace.Web.Controllers
                                 }
                             }
                         }
+
+                        // Validar Saldo a Favor (CustomerBalance)
+                        var balancePayments = viewModel.Payments?
+                            .Where(p => Enum.TryParse<PaymentMethod>(p.PaymentMethod, true, out var pm) && pm == PaymentMethod.CustomerBalance)
+                            .ToList();
+
+                        if (balancePayments != null && balancePayments.Any())
+                        {
+                            decimal totalBalanceUsed = balancePayments.Sum(p => p.Amount);
+                            if (client.Balance < totalBalanceUsed)
+                            {
+                                throw new Exception($"El cliente no tiene suficiente saldo a favor. Saldo actual: {client.Balance:C}, Intentando usar: {totalBalanceUsed:C}");
+                            }
+                            // Descontar del saldo del cliente
+                            client.Balance -= totalBalanceUsed;
+                            _context.Update(client);
+                        }
                         total += totalSurcharge;
 
                         // Desglosar IVA: Total = Subtotal * (1 + Tasa) => Subtotal = Total / (1 + Tasa)
@@ -498,6 +524,7 @@ namespace PhonePalace.Web.Controllers
                                     {
                                         await _bankService.RegisterIncomeFromPaymentAsync(p);
                                     }
+                                    // CustomerBalance: No hace nada en Caja ni Bancos, ya se descontó del saldo del cliente arriba.
                                 }
                             }
                         }
@@ -590,29 +617,82 @@ namespace PhonePalace.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var sale = await _context.Sales
-                .Include(s => s.Details)
-                .ThenInclude(d => d.Product)
-                .FirstOrDefaultAsync(s => s.SaleID == id);
-            if (sale != null)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                // Restaurar inventario
-                foreach (var detail in sale.Details)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
-                    if (inventory != null)
+                    var sale = await _context.Sales
+                        .Include(s => s.Details)
+                        .Include(s => s.Invoice)
+                            .ThenInclude(i => i.Payments)
+                        .FirstOrDefaultAsync(s => s.SaleID == id);
+
+                    if (sale != null)
                     {
-                        inventory.Stock += detail.Quantity;
-                        _context.Update(inventory);
+                        // 1. Restaurar inventario
+                        foreach (var detail in sale.Details)
+                        {
+                            var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductID);
+                            if (inventory != null)
+                            {
+                                inventory.Stock += detail.Quantity;
+                                _context.Update(inventory);
+                            }
+                        }
+
+                        // 2. Reversar Dinero (Caja y Bancos)
+                        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                        if (sale.Invoice != null && sale.Invoice.Payments != null)
+                        {
+                            foreach (var payment in sale.Invoice.Payments)
+                            {
+                                if (payment.PaymentMethod == PaymentMethod.Cash)
+                                {
+                                    // Validar si hay caja abierta para registrar el egreso (devolución)
+                                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                                    if (currentCash != null && !string.IsNullOrEmpty(userId))
+                                    {
+                                        await _cashService.RegisterExpenseAsync(payment.Amount, $"ANULACIÓN Venta #{sale.Invoice.InvoiceID}", userId);
+                                    }
+                                }
+                                else if (payment.BankID.HasValue)
+                                {
+                                    // Registrar egreso bancario
+                                    await _bankService.RegisterManualMovementAsync(payment.BankID.Value, BankTransactionType.ManualExpense, payment.Amount, $"ANULACIÓN Venta #{sale.Invoice.InvoiceID}");
+                                }
+                            }
+                            
+                            // Actualizar estado de la factura
+                            sale.Invoice.Status = InvoiceStatus.Cancelled;
+                            _context.Update(sale.Invoice);
+                        }
+
+                        // 3. Eliminar Cuenta por Cobrar asociada (si existe)
+                        var ar = await _context.AccountReceivables.FirstOrDefaultAsync(x => x.SaleID == id);
+                        if (ar != null)
+                        {
+                            _context.AccountReceivables.Remove(ar);
+                        }
+
+                        // 4. Marcar venta como eliminada
+                        sale.IsDeleted = true;
+                        _context.Update(sale);
+                        
+                        await _context.SaveChangesAsync();
+                        await _auditService.LogAsync("Ventas", $"Anuló la venta #{id} y reversó sus movimientos.");
+                        
+                        await transaction.CommitAsync();
                     }
+                    return RedirectToAction(nameof(Index));
                 }
-
-                sale.IsDeleted = true;
-                _context.Update(sale);
-                await _context.SaveChangesAsync();
-            }
-
-            return RedirectToAction(nameof(Index));
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         [HttpGet]

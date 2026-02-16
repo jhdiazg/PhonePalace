@@ -55,6 +55,9 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<CreditCardVerification> CreditCardVerifications { get; set; }
         public DbSet<Asset> Assets { get; set; }
         public DbSet<ElectronicInvoice> ElectronicInvoices { get; set; }
+        public virtual DbSet<Return> Returns { get; set; }
+        public virtual DbSet<ReturnDetail> ReturnDetails { get; set; }
+    
 
         // ... (otros DbSets)
         // ...

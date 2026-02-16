@@ -1,0 +1,128 @@
+@model PhonePalace.Web.ViewModels.ReturnCreateViewModel
+
+@{
+    ViewData["Title"] = "Realizar Devolución";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h3 class="mb-0"><i class="bi bi-arrow-counterclockwise"></i> Devolución de Venta #@Model.SaleID</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <strong>Cliente:</strong> @Model.ClientName
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <strong>Fecha Venta:</strong> @Model.SaleDate.ToShortDateString()
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                Los productos devueltos reingresarán al inventario y el valor total se abonará al <strong>Saldo a Favor</strong> del cliente.
+            </div>
+
+            <form asp-action="Create" id="returnForm">
+                <input type="hidden" asp-for="SaleID" />
+                <input type="hidden" asp-for="ClientName" />
+                <input type="hidden" asp-for="SaleDate" />
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cant. Vendida</th>
+                                <th class="text-center">Ya Devuelto</th>
+                                <th class="text-center">Disponible</th>
+                                <th class="text-end">Precio Unit.</th>
+                                <th class="text-center" style="width: 150px;">Devolver</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Details.Count; i++)
+                            {
+                                var item = Model.Details[i];
+                                var available = item.SoldQuantity - item.PreviouslyReturned;
+                                
+                                <input type="hidden" asp-for="Details[i].ProductID" />
+                                <input type="hidden" asp-for="Details[i].ProductName" />
+                                <input type="hidden" asp-for="Details[i].SoldQuantity" />
+                                <input type="hidden" asp-for="Details[i].PreviouslyReturned" />
+                                <input type="hidden" asp-for="Details[i].UnitPrice" />
+
+                                <tr>
+                                    <td>@item.ProductName</td>
+                                    <td class="text-center">@item.SoldQuantity</td>
+                                    <td class="text-center">@item.PreviouslyReturned</td>
+                                    <td class="text-center fw-bold">@available</td>
+                                    <td class="text-end">@item.UnitPrice.ToString("C")</td>
+                                    <td>
+                                        @if (available > 0)
+                                        {
+                                            <input asp-for="Details[i].QuantityToReturn" type="number" 
+                                                   class="form-control text-center qty-input" 
+                                                   min="0" max="@available" 
+                                                   data-price="@item.UnitPrice" />
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Completo</span>
+                                            <input type="hidden" asp-for="Details[i].QuantityToReturn" value="0" />
+                                        }
+                                    </td>
+                                    <td class="text-end fw-bold subtotal-display">$0.00</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-active">
+                                <td colspan="6" class="text-end fw-bold fs-5">Total a Abonar al Cliente:</td>
+                                <td class="text-end fw-bold fs-5 text-success" id="totalRefundDisplay">$0.00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3">
+                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@Model.SaleID" class="btn btn-secondary me-2">Cancelar</a>
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('¿Está seguro de procesar esta devolución? El saldo se cargará al cliente inmediatamente.');">
+                        <i class="bi bi-check-circle-fill"></i> Procesar Devolución
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            function calculateTotals() {
+                let total = 0;
+                $('.qty-input').each(function() {
+                    const qty = parseInt($(this).val()) || 0;
+                    const price = parseFloat($(this).data('price'));
+                    const subtotal = qty * price;
+                    
+                    // Actualizar subtotal de fila
+                    $(this).closest('tr').find('.subtotal-display').text(subtotal.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }));
+                    
+                    total += subtotal;
+                });
+                
+                $('#totalRefundDisplay').text(total.toLocaleString('es-CO', { style: 'currency', currency: 'COP' }));
+            }
+
+            $('.qty-input').on('input change', calculateTotals);
+            
+            // Inicializar
+            calculateTotals();
+        });
+    </script>
+}

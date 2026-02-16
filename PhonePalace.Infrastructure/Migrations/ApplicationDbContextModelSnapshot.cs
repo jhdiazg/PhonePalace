@@ -602,6 +602,9 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ClientID"));
 
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("ClientType")
                         .IsRequired()
                         .HasMaxLength(13)
@@ -1037,7 +1040,8 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasColumnType("nvarchar(13)");
 
                     b.Property<string>("SKU")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("ProductID");
 
@@ -1235,6 +1239,64 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasIndex("QuoteID");
 
                     b.ToTable("QuoteDetails");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Return", b =>
+                {
+                    b.Property<int>("ReturnID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReturnID"));
+
+                    b.Property<int>("ClientID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SaleID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ReturnID");
+
+                    b.HasIndex("ClientID");
+
+                    b.HasIndex("SaleID");
+
+                    b.ToTable("Returns");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.ReturnDetail", b =>
+                {
+                    b.Property<int>("ReturnDetailID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReturnDetailID"));
+
+                    b.Property<int>("ProductID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReturnID")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ReturnDetailID");
+
+                    b.HasIndex("ProductID");
+
+                    b.HasIndex("ReturnID");
+
+                    b.ToTable("ReturnDetails");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Sale", b =>
@@ -1840,6 +1902,44 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Quote");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Return", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Sale", "Sale")
+                        .WithMany()
+                        .HasForeignKey("SaleID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.ReturnDetail", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Return", "Return")
+                        .WithMany("Details")
+                        .HasForeignKey("ReturnID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Return");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Sale", b =>
                 {
                     b.HasOne("PhonePalace.Domain.Entities.Client", "Client")
@@ -1961,6 +2061,11 @@ namespace PhonePalace.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Quote", b =>
+                {
+                    b.Navigation("Details");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.Return", b =>
                 {
                     b.Navigation("Details");
                 });

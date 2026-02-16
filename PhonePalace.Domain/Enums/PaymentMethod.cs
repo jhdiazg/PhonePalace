@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿﻿using System.ComponentModel.DataAnnotations;
 
 namespace PhonePalace.Domain.Enums
 {
@@ -13,6 +13,8 @@ namespace PhonePalace.Domain.Enums
         [Display(Name = "Transferencia")]
         Transfer,
         [Display(Name = "Crédito")]
-        Credit
+        Credit,
+        [Display(Name = "Saldo a Favor")]
+        CustomerBalance
     }
 }

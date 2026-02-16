@@ -1,0 +1,187 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PhonePalace.Domain.Entities;
+using PhonePalace.Domain.Interfaces;
+using PhonePalace.Infrastructure.Data;
+using PhonePalace.Web.ViewModels;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace PhonePalace.Web.Controllers
+{
+    [Authorize(Roles = "Administrador,Vendedor")]
+    public class ReturnsController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly IAuditService _auditService;
+
+        public ReturnsController(ApplicationDbContext context, IAuditService auditService)
+        {
+            _context = context;
+            _auditService = auditService;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Create(int saleId)
+        {
+            var sale = await _context.Sales
+                .Include(s => s.Details).ThenInclude(d => d.Product)
+                .Include(s => s.Client)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.SaleID == saleId);
+
+            if (sale == null) return NotFound();
+
+            // Obtener devoluciones previas para calcular cuánto se puede devolver
+            var previousReturns = await _context.Set<Return>()
+                .Include(r => r.Details)
+                .Where(r => r.SaleID == saleId)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var viewModel = new ReturnCreateViewModel
+            {
+                SaleID = sale.SaleID,
+                ClientName = sale.Client.DisplayName,
+                SaleDate = sale.SaleDate,
+                Details = sale.Details.Select(d => {
+                    var returnedQty = previousReturns.SelectMany(r => r.Details)
+                                        .Where(rd => rd.ProductID == d.ProductID)
+                                        .Sum(rd => rd.Quantity);
+                    return new ReturnDetailViewModel
+                    {
+                        ProductID = d.ProductID,
+                        ProductName = d.Product.Name,
+                        SoldQuantity = d.Quantity,
+                        PreviouslyReturned = returnedQty,
+                        UnitPrice = d.UnitPrice,
+                        QuantityToReturn = 0 // Por defecto 0
+                    };
+                }).ToList()
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(ReturnCreateViewModel model)
+        {
+            // Filtrar solo los productos que se van a devolver
+            var itemsToReturn = model.Details.Where(d => d.QuantityToReturn > 0).ToList();
+
+            if (!itemsToReturn.Any())
+            {
+                ModelState.AddModelError("", "Debe seleccionar al menos un producto para devolver.");
+                return View(model);
+            }
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var sale = await _context.Sales.Include(s => s.Client).FirstOrDefaultAsync(s => s.SaleID == model.SaleID);
+                    if (sale == null) throw new Exception("Venta no encontrada.");
+
+                    var returnEntity = new Return
+                    {
+                        SaleID = model.SaleID,
+                        ClientID = sale.ClientID,
+                        Date = DateTime.Now,
+                        Details = new List<ReturnDetail>()
+                    };
+
+                    decimal totalRefund = 0;
+
+                    foreach (var item in itemsToReturn)
+                    {
+                        // Validar que no devuelva más de lo permitido (lógica simple, idealmente re-validar contra DB)
+                        if (item.QuantityToReturn > (item.SoldQuantity - item.PreviouslyReturned))
+                        {
+                            throw new Exception($"La cantidad a devolver del producto '{item.ProductName}' excede lo permitido.");
+                        }
+
+                        // 1. Aumentar Inventario
+                        var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == item.ProductID);
+                        if (inventory != null)
+                        {
+                            inventory.Stock += item.QuantityToReturn;
+                            inventory.LastUpdated = DateTime.Now;
+                            _context.Update(inventory);
+                        }
+
+                        // 2. Crear Detalle
+                        returnEntity.Details.Add(new ReturnDetail
+                        {
+                            ProductID = item.ProductID,
+                            Quantity = item.QuantityToReturn,
+                            UnitPrice = item.UnitPrice
+                        });
+
+                        totalRefund += (item.QuantityToReturn * item.UnitPrice);
+                    }
+
+                    returnEntity.TotalAmount = totalRefund;
+                    _context.Add(returnEntity); // Usamos Add genérico o Set<Return>().Add si no está en el contexto tipado
+
+                    // 3. Aumentar Saldo del Cliente (Wallet)
+                    var client = await _context.Clients.FindAsync(sale.ClientID);
+                    if (client != null)
+                    {
+                        client.Balance += totalRefund;
+                        _context.Update(client);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await _auditService.LogAsync("Devoluciones", $"Registró devolución para Venta #{model.SaleID}. Monto abonado a cliente: {totalRefund:C}");
+                    
+                    await transaction.CommitAsync();
+                    TempData["Success"] = $"Devolución exitosa. Se han abonado {totalRefund:C} al saldo del cliente.";
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    ModelState.AddModelError("", $"Error al procesar la devolución: {ex.Message}");
+                }
+            });
+
+            if (!ModelState.IsValid) return View(model);
+
+            return RedirectToAction("Details", "Sales", new { id = model.SaleID });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            var returns = await _context.Returns
+                .Include(r => r.Client)
+                .Include(r => r.Sale)
+                .OrderByDescending(r => r.Date)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return View(returns);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Details(int id)
+        {
+            var returnEntity = await _context.Returns
+                .Include(r => r.Client)
+                .Include(r => r.Sale)
+                .Include(r => r.Details)
+                    .ThenInclude(rd => rd.Product)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.ReturnID == id);
+
+            if (returnEntity == null) return NotFound();
+
+            return View(returnEntity);
+        }
+    }
+}

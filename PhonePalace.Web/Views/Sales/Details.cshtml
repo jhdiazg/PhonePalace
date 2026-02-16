@@ -272,5 +272,43 @@
     <a asp-action="GenerateInvoicePdf" asp-route-id="@Model.SaleID" class="btn btn-primary me-2" target="_blank">
         <i class="bi bi-file-pdf"></i> Descargar Remisión PDF
     </a>
+    <a asp-controller="Returns" asp-action="Create" asp-route-saleId="@Model.SaleID" class="btn btn-warning me-2">
+        <i class="bi bi-arrow-counterclockwise"></i> Realizar Devolución
+    </a>
+    @{ var currentCashDate = ViewData["CurrentCashDate"] as DateTime?; }
+    @if (currentCashDate.HasValue && Model.SaleDate.Date == currentCashDate.Value.Date)
+    {
+        <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
+            <i class="bi bi-trash"></i> Anular Venta
+        </button>
+    }
     <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
+</div>
+
+<!-- Modal de Confirmación de Anulación -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Confirmar Anulación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea anular esta venta?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Advertencia:</strong> Esta acción devolverá los productos al inventario, reversará el dinero de caja/bancos y anulará la deuda si existe.
+                    <br/><br/>
+                    <strong>Esta acción no se puede deshacer.</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form asp-action="Delete" asp-route-id="@Model.SaleID" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">Confirmar Anulación</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>

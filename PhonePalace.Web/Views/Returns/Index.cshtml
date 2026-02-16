@@ -1,0 +1,51 @@
+@model IEnumerable<PhonePalace.Domain.Entities.Return>
+
+@{
+    ViewData["Title"] = "Historial de Devoluciones";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>@ViewData["Title"]</h1>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="returnsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Venta Original</th>
+                        <th class="text-end">Monto Abonado (Saldo)</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.ReturnID</td>
+                            <td>@item.Date.ToString("g")</td>
+                            <td>
+                                @item.Client.DisplayName
+                                <br />
+                                <small class="text-muted">Saldo Actual: @item.Client.Balance.ToString("C")</small>
+                            </td>
+                            <td>
+                                <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID">#@item.SaleID</a>
+                            </td>
+                            <td class="text-end fw-bold text-success">@item.TotalAmount.ToString("C")</td>
+                            <td class="text-center">
+                                <a asp-action="Details" asp-route-id="@item.ReturnID" class="btn btn-sm btn-info" title="Ver Detalles">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

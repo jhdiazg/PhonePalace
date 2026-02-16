@@ -39,6 +39,15 @@
                 Ventas
             </a>
         </li>
+        @if (User.IsInRole("Administrador") || User.IsInRole("Vendedor"))
+        {
+            <li class="nav-item">
+                <a asp-controller="Returns" asp-action="Index" class="nav-link text-white @ActiveRoute.SetClass(ViewContext, "Returns")">
+                    <i class="bi bi-arrow-counterclockwise me-2"></i>
+                    Devoluciones
+                </a>
+            </li>
+        }
         <li class="nav-item">
             <a href="#finance-submenu" data-bs-toggle="collapse" class="nav-link text-white @(isFinanceActive ? "" : "collapsed")" aria-expanded="@isFinanceActive.ToString().ToLower()">
                 <i class="bi bi-currency-dollar me-2"></i>
