@@ -294,11 +294,25 @@ namespace PhonePalace.Web.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
+            // Obtener IDs de facturas que tienen Factura Electrónica aceptada
+            var salesInvoiceIds = sales.Select(s => s.Invoice.InvoiceID).ToList();
+            var electronicInvoiceIds = await _context.Set<ElectronicInvoice>()
+                .Where(e => salesInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
+                .Select(e => e.InvoiceID)
+                .ToListAsync();
+            var electronicInvoiceSet = new HashSet<int>(electronicInvoiceIds);
+
             foreach (var sale in sales)
             {
                 var item = model.Items.First(m => m.Month == sale.SaleDate.Month);
                 item.Sales += sale.Invoice.Subtotal;
-                item.SalesVAT += sale.Invoice.Tax;
+                
+                // Solo sumar IVA si tiene factura electrónica (las demás son remisiones)
+                if (electronicInvoiceSet.Contains(sale.Invoice.InvoiceID))
+                {
+                    item.SalesVAT += sale.Invoice.Tax;
+                }
+
                 // Aproximación de costo usando el costo actual del producto
                 item.Cost += sale.Details.Sum(d => d.Quantity * d.Product.Cost);
             }

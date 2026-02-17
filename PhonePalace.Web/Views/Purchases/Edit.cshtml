@@ -38,18 +38,23 @@
             <h3>Productos</h3>
             <span asp-validation-for="Details" class="text-danger"></span>
             
-            <div class="form-group">
-                <label for="product-search">Buscar Producto</label>
-                <select id="product-search" class="form-control">
-                    <option value="">-- Seleccione un Producto --</option>
-                    @if (ViewBag.AllProducts != null)
-                    {
-                        foreach (var product in (IEnumerable<Product>)ViewBag.AllProducts)
+            <div class="row align-items-end">
+                <div class="form-group col-md-10">
+                    <label for="product-search">Buscar Producto</label>
+                    <select id="product-search" class="form-control">
+                        <option value="">-- Seleccione un Producto --</option>
+                        @if (ViewBag.AllProducts != null)
                         {
-                            <option value="@product.ProductID">@product.Name</option>
+                            foreach (var product in (IEnumerable<Product>)ViewBag.AllProducts)
+                            {
+                                <option value="@product.ProductID">@product.Name</option>
+                            }
                         }
-                    }
-                </select>
+                    </select>
+                </div>
+                <div class="form-group col-md-2">
+                    <button type="button" id="add-product-btn" class="btn btn-success w-100">Agregar</button>
+                </div>
             </div>
             <table class="table" id="purchase-details">
                 <thead>
@@ -132,10 +137,14 @@
             $('#product-search').select2({
                 placeholder: "Buscar un producto",
                 allowClear: true
-            }).on('change', function (e) {
-                var productId = $(this).val();
-                if (!productId || !allProductsDict[productId]) return;
+            });
 
+            $('#add-product-btn').on('click', function () {
+                var productId = $('#product-search').val();
+                if (!productId || !allProductsDict[productId]) {
+                    alert("Por favor seleccione un producto.");
+                    return;
+                }
                 var data = allProductsDict[productId];
                 var unitPrice = parseFloat(data.cost) || 0.0;
 

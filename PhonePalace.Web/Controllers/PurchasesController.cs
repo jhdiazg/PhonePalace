@@ -123,7 +123,7 @@ namespace PhonePalace.Web.Controllers
                 Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
             };
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -169,7 +169,7 @@ namespace PhonePalace.Web.Controllers
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
             model.Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name");
             model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -231,7 +231,7 @@ namespace PhonePalace.Web.Controllers
                 }).ToList() ?? new List<PurchaseDetailViewModel>()
             };
 
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(viewModel);
         }
 
@@ -298,7 +298,7 @@ namespace PhonePalace.Web.Controllers
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
             model.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
             model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).Select(p => new { p.ProductID, p.Name, p.Price }).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
             return View(model);
         }
 
@@ -371,7 +371,12 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction("Details", "AccountPayables", new { id = accountPayable.Id });
             }
 
-            TempData["ErrorMessage"] = "No se puede procesar el pago: No se encontró la cuenta por pagar asociada.";
+            // Fallback: Si no hay CxP (ej. compras antiguas o efectivo sin CxP), permitir marcar como pagada directamente
+            purchase.Status = PurchaseStatus.Paid;
+            await _context.SaveChangesAsync();
+            await _auditService.LogAsync("Compras", $"Marcó como pagada la compra #{purchase.Id} (Manual/Sin CxP).");
+
+            TempData["SuccessMessage"] = "La compra ha sido marcada como pagada.";
             return RedirectToAction(nameof(Details), new { id });
         }
 
@@ -397,19 +402,41 @@ namespace PhonePalace.Web.Controllers
             var purchase = await _context.Purchases.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
             if (purchase == null) return NotFound();
 
+            // Validar si tiene Cuenta por Pagar asociada
+            var accountPayable = await _context.AccountPayables.FirstOrDefaultAsync(ap => ap.PurchaseId == id);
+            if (accountPayable != null)
+            {
+                if (accountPayable.IsPaid)
+                {
+                    TempData["ErrorMessage"] = "No se puede anular la compra porque tiene una cuenta por pagar pagada. Revierta el pago primero.";
+                    return RedirectToAction(nameof(Details), new { id });
+                }
+                // Si está pendiente, eliminar la CxP al anular la compra
+                _context.AccountPayables.Remove(accountPayable);
+            }
+
             if (purchase.Status == PurchaseStatus.Cancelled)
             {
                 TempData["ErrorMessage"] = "Esta compra ya ha sido cancelada.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            if (purchase.Status == PurchaseStatus.Received)
+            if (purchase.Status == PurchaseStatus.Billed || purchase.Status == PurchaseStatus.Paid)
             {
-                // Revertir el stock solo si la compra fue recibida
+                TempData["ErrorMessage"] = "No se puede anular una compra que ya ha sido facturada o pagada.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (purchase.Status == PurchaseStatus.Received || purchase.Status == PurchaseStatus.PartiallyReceived)
+            {
+                // Revertir el stock de lo que realmente se recibió (Total o Parcial)
                 foreach (var detail in purchase.PurchaseDetails ?? new List<PurchaseDetail>())
                 {
-                    var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductId);
-                    if (inventory != null) inventory.Stock -= detail.Quantity;
+                    if (detail.ReceivedQuantity > 0)
+                    {
+                        var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductId);
+                        if (inventory != null) inventory.Stock -= detail.ReceivedQuantity;
+                    }
                 }
             }
 
@@ -558,16 +585,15 @@ namespace PhonePalace.Web.Controllers
                         purchase.Status = allFullyReceived ? PurchaseStatus.Received : PurchaseStatus.PartiallyReceived;
 
                         // Create AccountPayable entry
-                        // Generar Cuenta por Pagar si la forma de pago es Crédito o Transferencia
-                        if (purchase.PaymentMethod == PurchasePaymentMethod.Credit || 
-                            purchase.PaymentMethod == PurchasePaymentMethod.Transfer)
+                        // Generar Cuenta por Pagar para todas las compras (incluso Efectivo) para gestionar el pago en CxP
+                        if (receivedAmount > 0)
                         {
                             var accountPayable = new AccountPayable
                             {
                                 PurchaseId = purchase.Id,
                                 Purchase = purchase,
                                 Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
-                                DueDate = DateTime.Now.AddDays(30), // Example: Due in 30 days
+                                DueDate = purchase.PaymentMethod == PurchasePaymentMethod.Credit ? DateTime.Now.AddDays(30) : DateTime.Now,
                                 IsPaid = false,
                                 DocumentType = model.DocumentType, 
                                 DocumentNumber = !string.IsNullOrEmpty(model.SupplierInvoiceNumber) ? model.SupplierInvoiceNumber : purchase.Id.ToString() + (purchase.Status == PurchaseStatus.PartiallyReceived ? "-P" : ""),

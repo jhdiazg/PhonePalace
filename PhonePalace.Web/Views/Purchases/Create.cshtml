@@ -40,14 +40,14 @@
 
             <h3>Productos</h3>
             <span asp-validation-for="Details" class="text-danger"></span>
-            <div class="row">
-                <div class="form-group col-md-6">
+            <div class="row align-items-end">
+                <div class="form-group col-md-5">
                     <label for="category-select">Filtrar por Categoría</label>
                     <select id="category-select" class="form-control" asp-items="Model.Categories">
                         <option value="">Todas las categorías</option>
                     </select>
                 </div>
-                <div class="form-group col-md-6">
+                <div class="form-group col-md-5">
                     <label for="product-search">Buscar Producto</label>
                     <select id="product-search" class="form-control">
                         <option value="">-- Seleccione un Producto --</option>
@@ -59,6 +59,9 @@
                             }
                         }
                     </select>
+                </div>
+                <div class="form-group col-md-2">
+                    <button type="button" id="add-product-btn" class="btn btn-success w-100">Agregar</button>
                 </div>
             </div>
             <table class="table" id="purchase-details">
@@ -110,55 +113,83 @@
                 allowClear: true
             });
 
+            // Guardar opciones originales para el filtrado
+            const $productSelect = $('#product-search');
+            const allProductOptions = $productSelect.html();
+
             $('#category-select').on('change', function() {
-                // Trigger a search with empty term to load products for the category
-                // Nota: Con datos locales, Select2 filtra automáticamente si se configura correctamente.
-                // Por simplicidad, aquí solo reseteamos la selección.
-                $('#product-search').val(null).trigger('change');
+                const selectedCategoryId = $(this).val();
+                
+                // Destruir select2 para manipular el DOM
+                if ($productSelect.data('select2')) {
+                    $productSelect.select2('destroy');
+                }
+
+                // Restaurar opciones y filtrar
+                $productSelect.html(allProductOptions);
+                if (selectedCategoryId) {
+                    $productSelect.find('option').filter(function() {
+                        return $(this).val() !== '' && $(this).data('category-id') != selectedCategoryId;
+                    }).remove();
+                }
+
+                // Reinicializar
+                initProductSelect();
+                $productSelect.val(null).trigger('change');
             });
 
             let detailIndex = 0;
 
-            $('#product-search').select2({
-                placeholder: "Buscar un producto",
-                allowClear: true
-            }).on('change', function (e) {
-                var productId = $(this).val();
-                if (!productId || !allProductsDict[productId]) return;
+            function initProductSelect() {
+                $productSelect.select2({
+                    placeholder: "Buscar un producto",
+                    allowClear: true
+                });
+            }
 
-                var data = allProductsDict[productId];
-                
-                // Usamos el Costo como precio unitario sugerido para compras
-                var unitPrice = parseFloat(data.cost) || 0.0;
+            $('#add-product-btn').on('click', function () {
+                var productId = $productSelect.val();
+                if (!productId || !allProductsDict[productId]) {
+                    alert("Por favor seleccione un producto.");
+                    return;
+                }
 
-                let newRow = `
-                    <tr>
-                        <td>
-                            <input type="hidden" name="Details[${detailIndex}].ProductId" value="${data.id}" />
-                            ${data.name}
-                        </td>
-                        <td>
-                            <input type="number" name="Details[${detailIndex}].Quantity" class="form-control quantity" value="1" min="1" />
-                        </td>
-                        <td>
-                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${unitPrice.toFixed(2)}" step="0.01" />
-                        </td>
-                        <td>
-                            <select name="Details[${detailIndex}].TaxRate" class="form-control tax-rate">
-                                <option value="0">0%</option>
-                                <option value="@Model.IVARate" selected>@(Model.IVARate)%</option>
-                            </select>
-                        </td>
-                        <td class="subtotal">${unitPrice.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                        <td class="total">${(unitPrice * (1 + @Model.IVARate.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100)).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
-                        <td>
-                            <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
-                        </td>
-                    </tr>`;
-                $("#purchase-details tbody").append(newRow);
-                detailIndex++;
-                $('#product-search').val(null).trigger('change');
+                    var data = allProductsDict[productId];
+                    
+                    // Usamos el Costo como precio unitario sugerido para compras
+                    var unitPrice = parseFloat(data.cost) || 0.0;
+
+                    let newRow = `
+                        <tr>
+                            <td>
+                                <input type="hidden" name="Details[${detailIndex}].ProductId" value="${data.id}" />
+                                ${data.name}
+                            </td>
+                            <td>
+                                <input type="number" name="Details[${detailIndex}].Quantity" class="form-control quantity" value="1" min="1" />
+                            </td>
+                            <td>
+                                <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${unitPrice.toFixed(2)}" step="0.01" />
+                            </td>
+                            <td>
+                                <select name="Details[${detailIndex}].TaxRate" class="form-control tax-rate">
+                                    <option value="0">0%</option>
+                                    <option value="@Model.IVARate" selected>@(Model.IVARate)%</option>
+                                </select>
+                            </td>
+                            <td class="subtotal">${unitPrice.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                            <td class="total">${(unitPrice * (1 + @Model.IVARate.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100)).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+                            <td>
+                                <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
+                            </td>
+                        </tr>`;
+                    $("#purchase-details tbody").append(newRow);
+                    detailIndex++;
+                    $productSelect.val(null).trigger('change');
             });
+
+            // Inicializar al cargar
+            initProductSelect();
 
             $(document).on("click", ".remove-detail", function () {
                 $(this).closest("tr").remove();

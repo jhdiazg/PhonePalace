@@ -126,9 +126,6 @@
         <form asp-action="MarkAsPaid" asp-route-id="@Model.Id" method="post" style="display:inline;">
             <button type="submit" class="btn btn-success" onclick="return confirm('¿Está seguro de que desea marcar esta compra como pagada?');">Marcar como Pagada</button>
         </form>
-        <form asp-action="Delete" asp-route-id="@Model.Id" method="post" style="display:inline;">
-            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Está seguro de que desea anular esta compra? Esto revertirá el inventario.');">Anular Compra</button>
-        </form>
     }
     <a asp-action="GeneratePurchaseOrderPdf" asp-route-id="@Model.Id" class="btn btn-info">Generar PDF</a>
     <a asp-action="Index" class="btn btn-secondary">Volver a la Lista</a>
