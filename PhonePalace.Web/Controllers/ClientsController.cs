@@ -224,7 +224,7 @@ namespace PhonePalace.Web.Controllers
             if (id != viewModel.ClientID) return NotFound();
 
             // Validar que el número de documento sea único, excluyendo al cliente actual.
-            if (await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber && c.ClientID != id))
+            if (!string.IsNullOrEmpty(viewModel.DocumentNumber) && await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber && c.ClientID != id))
             {
                 ModelState.AddModelError("DocumentNumber", "Este número de documento ya está registrado para otro cliente.");
             }
@@ -366,6 +366,18 @@ namespace PhonePalace.Web.Controllers
                 .Select(m => new { value = m.MunicipalityID, text = m.Name })
                 .ToListAsync();
             return Json(municipalities);
+        }
+
+        [HttpGet("api/clients/{id}/balance")]
+        public async Task<IActionResult> GetBalance(int id)
+        {
+            var client = await _context.Clients
+                .AsNoTracking()
+                .Select(c => new { c.ClientID, c.Balance })
+                .FirstOrDefaultAsync(c => c.ClientID == id);
+
+            if (client == null) return NotFound();
+            return Ok(new { balance = client.Balance });
         }
 
         private bool ClientExists(int id)

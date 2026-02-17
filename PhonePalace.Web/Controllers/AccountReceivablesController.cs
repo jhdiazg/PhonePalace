@@ -336,6 +336,7 @@ namespace PhonePalace.Web.Controllers
 
             await _context.SaveChangesAsync();
             await _auditService.LogAsync("CuentasPorCobrar", $"Registró abono de {amount:C} a la cuenta #{id}. Nuevo saldo: {ar.Balance:C}");
+            await transaction.CommitAsync();
             TempData["Success"] = "Abono registrado correctamente.";
 
             return RedirectToAction(nameof(Details), new { id });
@@ -354,12 +355,11 @@ namespace PhonePalace.Web.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             var ar = await _context.AccountReceivables
-                .Include(x => x.Payments)
                 .Include(x => x.Client)
                 .FirstOrDefaultAsync(x => x.AccountReceivableID == id);
             if (ar == null) return NotFound();
 
-            if (ar.Payments.Any() || ar.Balance < ar.TotalAmount)
+            if (ar.Balance < ar.TotalAmount)
             {
                 TempData["Error"] = "No se puede eliminar una cuenta que ya tiene abonos.";
                 return RedirectToAction(nameof(Index));

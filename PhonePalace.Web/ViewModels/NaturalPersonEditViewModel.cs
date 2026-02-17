@@ -24,10 +24,9 @@ namespace PhonePalace.Web.ViewModels
         [Display(Name = "Tipo de Documento")]
         public DocumentType DocumentType { get; set; }
 
-        [Required(ErrorMessage = "El número de documento es obligatorio.")]
         [StringLength(20)]
         [Display(Name = "Número de Documento")]
-        public string DocumentNumber { get; set; } = string.Empty;
+        public string? DocumentNumber { get; set; }
 
         [EmailAddress]
         [Display(Name = "Correo Electrónico")]

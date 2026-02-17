@@ -1,36 +1,45 @@
 @model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Domain.Entities.CreditCardVerification>
 
 @{
-    ViewData["Title"] = "Verificación de Pagos con Tarjeta de Crédito";
+    ViewData["Title"] = "Verificación de Tarjetas";
 }
 
-<h1>@ViewData["Title"]</h1>
-<p class="text-muted">Esta vista muestra los pagos realizados con tarjeta de crédito que están pendientes de ser verificados y aplicados al saldo del banco correspondiente.</p>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>@ViewData["Title"]</h1>
+</div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 @if (TempData["Warning"] != null)
 {
-    <div class="alert alert-warning">@TempData["Warning"]</div>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        @TempData["Warning"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 <div class="card shadow-sm">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-light">
                     <tr>
-                        <th>Fecha Venta</th>
-                        <th>Referencia</th>
-                        <th>Cliente</th>
-                        <th>Banco Destino</th>
-                        <th class="text-end">Monto</th>
+                        <th>Fecha</th>
+                        <th>Origen</th>
+                        <th>Banco</th>
+                        <th class="text-end">Monto Sistema</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
@@ -38,95 +47,155 @@
                     @foreach (var item in Model)
                     {
                         <tr>
-                            <td>@item.CreationDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@item.CreationDate.ToString("g")</td>
                             <td>
-                                @if (item.SaleID.HasValue && item.Sale != null)
+                                @if (item.SaleID.HasValue)
                                 {
-                                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID" target="_blank" class="badge bg-info text-decoration-none">
-                                        Venta #@item.SaleID <i class="bi bi-box-arrow-up-right"></i>
+                                    <a asp-controller="Sales" asp-action="Details" asp-route-id="@item.SaleID">
+                                        Venta #@item.SaleID
                                     </a>
+                                    <br />
+                                    <small class="text-muted">@item.Sale?.Client?.DisplayName</small>
                                 }
-                                else if (item.AccountReceivablePayment?.AccountReceivableID != null)
+                                else if (item.AccountReceivablePaymentID.HasValue)
                                 {
-                                    <a asp-controller="AccountReceivables" asp-action="Details" asp-route-id="@item.AccountReceivablePayment.AccountReceivableID" target="_blank" class="badge bg-warning text-dark text-decoration-none">
-                                        CxC #@item.AccountReceivablePayment.AccountReceivableID <i class="bi bi-box-arrow-up-right"></i>
+                                    <a asp-controller="AccountReceivables" asp-action="Details" asp-route-id="@item.AccountReceivablePayment?.AccountReceivableID">
+                                        Abono CxC #@item.AccountReceivablePayment?.AccountReceivableID
                                     </a>
+                                    <br />
+                                    <small class="text-muted">@item.AccountReceivablePayment?.AccountReceivable?.Client?.DisplayName</small>
                                 }
-                                else
-                                {
-                                    <span>-</span>
-                                }
-                            </td>
-                            <td>
-                                @(item.Sale?.Client?.DisplayName ?? item.AccountReceivablePayment?.AccountReceivable?.Client?.DisplayName ?? "Desconocido")
                             </td>
                             <td>@item.Bank?.Name</td>
-                            <td class="text-end">@item.Amount.ToString("C")</td>
+                            <td class="text-end fw-bold">@item.Amount.ToString("C")</td>
                             <td class="text-center">
-                                <form asp-action="Verify" asp-route-id="@item.CreditCardVerificationID" method="post" class="d-inline">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-success" title="Marcar como verificado y aplicar al banco">
-                                        <i class="bi bi-check-circle-fill"></i> Verificar
-                                    </button>
-                                </form>
-                                <button type="button" class="btn btn-sm btn-danger d-inline" data-bs-toggle="modal" data-bs-target="#rejectModal-@item.CreditCardVerificationID" title="Marcar como rechazado">
-                                    <i class="bi bi-x-circle-fill"></i> Rechazar
+                                <button type="button" class="btn btn-success btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#verifyModal" 
+                                        data-id="@item.CreditCardVerificationID" 
+                                        data-amount="@item.Amount">
+                                    <i class="bi bi-check-circle"></i> Verificar
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#rejectModal" 
+                                        data-id="@item.CreditCardVerificationID">
+                                    <i class="bi bi-x-circle"></i> Rechazar
                                 </button>
                             </td>
-                        </tr>
-
-                        <!-- Modal for Rejection -->
-                        <div class="modal fade" id="rejectModal-@item.CreditCardVerificationID" tabindex="-1" aria-labelledby="rejectModalLabel-@item.CreditCardVerificationID" aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div class="modal-content">
-                                    <form asp-action="Reject" asp-route-id="@item.CreditCardVerificationID" method="post">
-                                        @Html.AntiForgeryToken()
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="rejectModalLabel-@item.CreditCardVerificationID">
-                                                @if (item.SaleID.HasValue)
-                                                {
-                                                    <text>Rechazar Pago Venta #@item.SaleID</text>
-                                                }
-                                                else if (item.AccountReceivablePayment?.AccountReceivableID != null)
-                                                {
-                                                    <text>Rechazar Pago CxC #@item.AccountReceivablePayment.AccountReceivableID</text>
-                                                }
-                                                else
-                                                {
-                                                    <text>Rechazar Pago</text>
-                                                }
-                                            </h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <p>Está a punto de marcar este pago como <strong>rechazado</strong>. Esta acción no se puede deshacer y el monto no ingresará al banco.</p>
-                                            <div class="mb-3">
-                                                <label for="reason-@item.CreditCardVerificationID" class="form-label">Razón del rechazo (opcional):</label>
-                                                <textarea class="form-control" id="reason-@item.CreditCardVerificationID" name="reason" rows="3"></textarea>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    @if (!Model.Any())
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">No hay pagos pendientes de verificación.</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        @* Asegúrate de tener el partial _Pagination o elimina esta línea si no usas paginación *@
-        @if (Model.TotalPages > 1) 
-        {
-             <partial name="_Pagination" model="Model" />
-        }
+        
+        <!-- Paginación básica -->
+        <div class="d-flex justify-content-center mt-3">
+            @if (Model.HasPreviousPage)
+            {
+                <a asp-action="Index" asp-route-pageNumber="@(Model.PageIndex - 1)" class="btn btn-outline-secondary me-2">Anterior</a>
+            }
+            @if (Model.HasNextPage)
+            {
+                <a asp-action="Index" asp-route-pageNumber="@(Model.PageIndex + 1)" class="btn btn-outline-secondary">Siguiente</a>
+            }
+        </div>
     </div>
 </div>
+
+<!-- Modal Verificar -->
+<div class="modal fade" id="verifyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="verifyForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Verificar Transacción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> Ingrese el valor exacto que aparece en el extracto bancario. El sistema calculará automáticamente la comisión.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto en Sistema:</label>
+                        <input type="text" class="form-control" id="systemAmountDisplay" readonly disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="realAmount" class="form-label fw-bold">Valor Real en Banco</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="realAmount" name="realAmount" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="form-text">Si el valor es menor al del sistema, la diferencia se registrará como "Gasto comisiones bancarias".</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Confirmar Verificación</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rechazar -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="rejectForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Rechazar Transacción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Está seguro de rechazar esta transacción? Esto no afectará el saldo del banco.</p>
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Motivo del rechazo</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required placeholder="Ej: Transacción no encontrada en el banco..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Confirmar Rechazo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var verifyModal = document.getElementById('verifyModal');
+        verifyModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var id = button.getAttribute('data-id');
+            var amount = button.getAttribute('data-amount');
+            
+            // Configurar URL del formulario
+            var form = verifyModal.querySelector('#verifyForm');
+            form.action = '/VerificacionTarjeta/Verify/' + id;
+            
+            // Mostrar monto del sistema
+            var displayInput = verifyModal.querySelector('#systemAmountDisplay');
+            // Formatear como moneda si es posible, o mostrar valor crudo
+            var formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' });
+            displayInput.value = formatter.format(amount);
+
+            // Limpiar input de valor real
+            var realInput = verifyModal.querySelector('#realAmount');
+            realInput.value = '';
+            realInput.focus();
+        });
+
+        var rejectModal = document.getElementById('rejectModal');
+        rejectModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var id = button.getAttribute('data-id');
+            
+            var form = rejectModal.querySelector('#rejectForm');
+            form.action = '/VerificacionTarjeta/Reject/' + id;
+        });
+    </script>
+}

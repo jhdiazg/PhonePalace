@@ -85,6 +85,12 @@ namespace PhonePalace.Web.Controllers
 
             // 1. Calcular totales y resumen sobre toda la consulta (eficiente)
             var totalSales = await query.SumAsync(x => x.Payment.Amount);
+            
+            // Calcular total específico de Saldo a Favor para mostrarlo separado
+            var totalCustomerBalance = await query
+                .Where(x => x.Payment.PaymentMethod == PaymentMethod.CustomerBalance)
+                .SumAsync(x => x.Payment.Amount);
+
             var summary = await query
                 .GroupBy(x => x.Payment.PaymentMethod)
                 .Select(g => new PaymentMethodSummary
@@ -122,6 +128,10 @@ namespace PhonePalace.Web.Controllers
                 Summary = summary,
                 Details = paginatedDetails
             };
+
+            // Pasar datos adicionales a la vista para las tarjetas de resumen
+            ViewData["TotalCustomerBalance"] = totalCustomerBalance;
+            ViewData["TotalRealIncome"] = totalSales - totalCustomerBalance;
 
             return View(model);
         }

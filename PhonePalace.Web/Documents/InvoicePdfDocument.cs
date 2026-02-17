@@ -38,12 +38,15 @@ namespace PhonePalace.Web.Documents
                     
                     if (isHalfLetter)
                     {
-                        page.Size(new PageSize(PageSizes.Letter.Width, PageSizes.Letter.Height / 2));
+                        // Media carta en vertical (Portrait)
+                        page.Size(new PageSize(396, 612));
                     }
                     else
                     {
+                        // Carta completa
                         page.Size(PageSizes.Letter);
                     }
+
 
                     page.DefaultTextStyle(x => x.FontSize(8));
 

@@ -363,24 +363,15 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            if (purchase.Status != PurchaseStatus.Billed)
-            {
-                TempData["ErrorMessage"] = "Solo se pueden marcar como pagadas órdenes en estado Facturada.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            purchase.Status = PurchaseStatus.Paid;
-
+            // Redirigir al módulo financiero para garantizar la integridad de caja/bancos
             var accountPayable = await _context.AccountPayables.FirstOrDefaultAsync(ap => ap.PurchaseId == id);
             if (accountPayable != null)
             {
-                accountPayable.IsPaid = true;
+                TempData["Info"] = "Para registrar el pago y afectar correctamente la Caja o Bancos, debe hacerlo desde la Cuenta por Pagar.";
+                return RedirectToAction("Details", "AccountPayables", new { id = accountPayable.Id });
             }
 
-            await _context.SaveChangesAsync();
-            await _auditService.LogAsync("Compras", $"Marcó como pagada la compra #{purchase.Id}.");
-
-            TempData["SuccessMessage"] = $"La compra #{purchase.Id} ha sido marcada como pagada.";
+            TempData["ErrorMessage"] = "No se puede procesar el pago: No se encontró la cuenta por pagar asociada.";
             return RedirectToAction(nameof(Details), new { id });
         }
 

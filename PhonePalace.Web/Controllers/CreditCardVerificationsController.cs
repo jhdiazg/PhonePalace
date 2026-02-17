@@ -44,7 +44,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("Verify/{id}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Verify(int id)
+        public async Task<IActionResult> Verify(int id, decimal realAmount)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
@@ -52,6 +52,12 @@ namespace PhonePalace.Web.Controllers
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    if (realAmount <= 0)
+                    {
+                        TempData["Error"] = "El valor registrado por el banco debe ser mayor a cero.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
                     var verification = await _context.CreditCardVerifications
                         .Include(v => v.AccountReceivablePayment)
                             .ThenInclude(arp => arp!.AccountReceivable)
@@ -63,6 +69,10 @@ namespace PhonePalace.Web.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
+                    // Calcular diferencia (Comisión)
+                    decimal commission = verification.Amount - realAmount;
+                    string? voucherNumber = null;
+
                     // Escenario 1: Verificación de Venta (PaymentID existe)
                     if (verification.PaymentID.HasValue)
                     {
@@ -72,6 +82,7 @@ namespace PhonePalace.Web.Controllers
                             TempData["Error"] = "No se encontró el pago de venta asociado.";
                             return RedirectToAction(nameof(Index));
                         }
+                        voucherNumber = payment.ReferenceNumber;
                         // Afectar el banco usando el servicio de pagos (usará la transacción actual)
                         await _bankService.RegisterIncomeFromPaymentAsync(payment);
                     }
@@ -92,15 +103,42 @@ namespace PhonePalace.Web.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
+                    // Registrar la comisión como gasto si existe diferencia positiva
+                    if (commission > 0)
+                    {
+                        string commissionDescription = $"Gasto comisiones bancarias - Ref: {verification.CreditCardVerificationID}";
+                        if (!string.IsNullOrEmpty(voucherNumber))
+                        {
+                            commissionDescription += $" (Voucher: {voucherNumber})";
+                        }
+                        await _bankService.RegisterManualMovementAsync(
+                            verification.BankID,
+                            BankTransactionType.ManualExpense,
+                            commission,
+                            commissionDescription
+                        );
+                    }
+                    // Si el banco reportó más dinero (diferencia negativa), registrar ajuste a favor
+                    else if (commission < 0)
+                    {
+                        await _bankService.RegisterManualMovementAsync(
+                            verification.BankID,
+                            BankTransactionType.ManualIncome,
+                            Math.Abs(commission),
+                            $"Ajuste a favor Banco TC - Ref: {verification.CreditCardVerificationID}"
+                        );
+                    }
+
                     // Actualizar estado de la verificación
                     verification.Status = VerificationStatus.Verified;
                     verification.VerificationDate = DateTime.Now;
+                    verification.VerificationNotes = $"Valor Banco: {realAmount:C}. Comisión: {commission:C}";
                     _context.Update(verification);
 
                     await _context.SaveChangesAsync();
                     
                     string sourceRef = verification.SaleID.HasValue ? $"Venta #{verification.SaleID}" : $"CxC #{verification.AccountReceivablePayment?.AccountReceivableID}";
-                    await _auditService.LogAsync("VerificacionTarjeta", $"Verificó y aplicó pago TC para {sourceRef} por {verification.Amount:C}.");
+                    await _auditService.LogAsync("VerificacionTarjeta", $"Verificó pago TC para {sourceRef}. Sistema: {verification.Amount:C}, Banco: {realAmount:C}, Comisión: {commission:C}.");
 
                     await transaction.CommitAsync();
                     TempData["Success"] = "Pago verificado y aplicado al banco correctamente.";

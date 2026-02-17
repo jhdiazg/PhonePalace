@@ -73,6 +73,9 @@ namespace PhonePalace.Web.Controllers
                 new SelectListItem { Text = "Todas", Value = "All", Selected = status == "All" }
             };
 
+            // Calcular totales antes de paginar
+            ViewBag.TotalPayable = await accountPayablesQuery.SumAsync(x => x.Amount);
+            
             // Ordenamos por fecha de vencimiento para ver primero lo más urgente
             var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderBy(a => a.DueDate), pageNumber ?? 1, pageSize ?? 10);
             return View(accountPayables);
@@ -231,6 +234,17 @@ namespace PhonePalace.Web.Controllers
                     // 2. Actualizar estado de la cuenta
                     ap.IsPaid = true;
                     
+                    // Actualizar el estado de la compra asociada a Pagada
+                    if (ap.PurchaseId.HasValue)
+                    {
+                        var purchase = await _context.Purchases.FindAsync(ap.PurchaseId.Value);
+                        if (purchase != null)
+                        {
+                            purchase.Status = PurchaseStatus.Paid;
+                            _context.Update(purchase);
+                        }
+                    }
+
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("CuentasPorPagar", $"Pagó la cuenta #{ap.Id} por {amount:C}.");
                     await transaction.CommitAsync();

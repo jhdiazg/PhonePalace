@@ -144,7 +144,7 @@
                             </select>
                         </div>
                         <div class="col-md-2 form-group">
-                            <label for="payment-amount-input">Monto</label>
+                            <label for="payment-amount-input">Monto <small id="balance-limit-hint" class="text-success fw-bold" style="display:none;"></small></label>
                             <input type="number" id="payment-amount-input" class="form-control" min="0" step="0.01">
                         </div>
                         <div class="col-md-3 form-group">
@@ -326,10 +326,17 @@
                         .then(r => r.json())
                         .then(data => {
                             $('#client-balance-amount').text(formatCurrency(data.balance));
+                            $('#client-balance-amount').data('raw-balance', data.balance); // Guardar valor numérico
                             $('#client-balance-info').show();
+
+                            // Actualizar indicador visual si Saldo a Favor está seleccionado
+                            if ($('#payment-method-select').val() === 'CustomerBalance') {
+                                $('#balance-limit-hint').text(`(Máx: ${formatCurrency(data.balance)})`).show();
+                            }
                         });
                 } else {
                     $('#client-balance-info').hide();
+                    $('#balance-limit-hint').hide();
                 }
             });
 
@@ -353,6 +360,36 @@
                 } else {
                     $('#bank-selection-group').hide();
                     $('#bank-select').val(null).trigger('change'); // Limpiar selección al ocultar
+                }
+                
+                $('#balance-limit-hint').hide(); // Ocultar por defecto
+
+                // Lógica para Saldo a Favor (CustomerBalance)
+                if (selectedMethod === 'CustomerBalance') {
+                    const rawBalance = $('#client-balance-amount').data('raw-balance') || 0;
+                    
+                    if (rawBalance <= 0) {
+                        alert('El cliente seleccionado no tiene saldo a favor disponible.');
+                        $(this).val('').trigger('change'); // Resetear selección
+                        return;
+                    }
+
+                    // Mostrar indicador visual del límite
+                    $('#balance-limit-hint').text(`(Máx: ${formatCurrency(rawBalance)})`).show();
+
+                    // Calcular cuánto falta por pagar para sugerir el monto
+                    let productsTotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
+                    let totalSurcharges = payments.reduce((acc, p) => acc + (p.surcharge || 0), 0);
+                    let total = productsTotal + totalSurcharges;
+                    let totalPaid = payments.reduce((acc, p) => acc + (p.amount || 0), 0);
+                    let remaining = total - totalPaid;
+
+                    // Sugerir el menor valor entre lo que falta y el saldo disponible
+                    let amountToUse = Math.min(remaining > 0 ? remaining : 0, rawBalance);
+                    
+                    // Si amountToUse es 0 (porque ya está todo pagado), sugerimos el saldo total por si acaso, 
+                    // pero el usuario decidirá. Lo ideal es sugerir lo que falta.
+                    $('#payment-amount-input').val(amountToUse > 0 ? amountToUse.toFixed(2) : '');
                 }
             });
 
@@ -473,37 +510,31 @@
                     }
                 }
 
-                fetch(`/api/products/${productId}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error('Producto no encontrado o error en el servidor.');
-                        return response.json();
-                    })
-                    .then(productData => {
-                        const existingProduct = products.find(p => p.id === productData.id);
-                        if (existingProduct) {
-                            existingProduct.quantity += quantity;
-                        } else {
-                            products.push({
-                                id: productData.id,
-                                name: productData.name,
-                                quantity: quantity,
-                                price: price, // Usar el precio ingresado por el usuario
-                                imei: imei,
-                                serial: serial
-                            });
-                        }
-                        renderProducts();
-                        updateTotals();
-                        $('#product-select').val('').trigger('change');
-                        $('#quantity-input').val(1);
-                        $('#price-input').val('');
-                        $('#imei-input').val('');
-                        $('#serial-input').val('');
-                    })
-                    .catch(error => {
-                        console.error("Error al obtener datos del producto:", error);
-                        alert("No se pudo obtener la información del producto. " + error.message);
-                    });
+                // Usar datos locales en lugar de fetch para evitar dependencia de API
+                if (productInfo) {
+                    const existingProduct = products.find(p => p.id === productInfo.id);
+                    if (existingProduct) {
+                        existingProduct.quantity += quantity;
+                    } else {
+                        products.push({
+                            id: productInfo.id,
+                            name: productInfo.name,
+                            quantity: quantity,
+                            price: price, // Usar el precio ingresado por el usuario
+                            imei: imei,
+                            serial: serial
+                        });
+                    }
+                    renderProducts();
+                    updateTotals();
+                    $('#product-select').val('').trigger('change');
+                    $('#quantity-input').val(1);
+                    $('#price-input').val('');
+                    $('#imei-input').val('');
+                    $('#serial-input').val('');
+                } else {
+                    alert("No se pudo obtener la información del producto.");
+                }
             });
 
             function renderProducts() {
@@ -563,6 +594,15 @@
                 if (!method || !amount || amount <= 0) {
                     alert('Por favor, seleccione un método de pago y un monto válido.');
                     return;
+                }
+
+                // Validación específica para Saldo a Favor
+                if (method === 'CustomerBalance') {
+                    const rawBalance = $('#client-balance-amount').data('raw-balance') || 0;
+                    if (amount > rawBalance) {
+                        alert(`El monto ingresado ($${formatCurrency(amount)}) excede el saldo a favor disponible del cliente ($${formatCurrency(rawBalance)}).`);
+                        return;
+                    }
                 }
 
                 if (bankPaymentMethods.includes(method) && !bankId) {

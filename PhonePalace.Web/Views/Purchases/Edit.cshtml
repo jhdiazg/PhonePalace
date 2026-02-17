@@ -1,4 +1,5 @@
 @model PhonePalace.Web.ViewModels.PurchaseEditViewModel
+@using PhonePalace.Domain.Entities
 
 @{
     ViewData["Title"] = "Editar Compra";
@@ -39,7 +40,16 @@
             
             <div class="form-group">
                 <label for="product-search">Buscar Producto</label>
-                <select id="product-search" class="form-control"></select>
+                <select id="product-search" class="form-control">
+                    <option value="">-- Seleccione un Producto --</option>
+                    @if (ViewBag.AllProducts != null)
+                    {
+                        foreach (var product in (IEnumerable<Product>)ViewBag.AllProducts)
+                        {
+                            <option value="@product.ProductID">@product.Name</option>
+                        }
+                    }
+                </select>
             </div>
             <table class="table" id="purchase-details">
                 <thead>
@@ -100,6 +110,18 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function () {
+            // Diccionario de productos para inicialización rápida
+            var allProductsDict = {};
+            @if (ViewBag.AllProducts != null)
+            {
+                <text>
+                allProductsDict = @Html.Raw(Json.Serialize(((IEnumerable<Product>)ViewBag.AllProducts).ToDictionary(
+                    p => p.ProductID.ToString(),
+                    p => new { id = p.ProductID, name = p.Name, price = p.Price, cost = p.Cost }
+                )));
+                </text>
+            }
+
             $('#SupplierId').select2({
                 placeholder: "Seleccione un proveedor",
                 allowClear: true
@@ -107,56 +129,27 @@
 
             let detailIndex = @Model.Details.Count;
 
-            const formatRepo = (repo) => {
-                if (repo.loading) return repo.text;
-                return repo.text;
-            };
-
-            const formatRepoSelection = (repo) => repo.text;
-
             $('#product-search').select2({
                 placeholder: "Buscar un producto",
-                allowClear: true,
-                ajax: {
-                    url: "@Url.Action("SearchProductsApi", "Products")",
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            term: params.term
-                        };
-                    },
-                    processResults: function (data) {
-                        return {
-                            results: $.map(data, function (item) {
-                                return {
-                                    id: item.ProductID,
-                                    text: item.Name,
-                                    price: item.Price
-                                }
-                            })
-                        };
-                    },
-                    cache: true
-                },
-                minimumInputLength: 0,
-                templateResult: formatRepo,
-                templateSelection: formatRepoSelection
-            }).on('select2:select', function (e) {
-                var data = e.params.data;
-                var price = parseFloat(data.price) || 0.0;
+                allowClear: true
+            }).on('change', function (e) {
+                var productId = $(this).val();
+                if (!productId || !allProductsDict[productId]) return;
+
+                var data = allProductsDict[productId];
+                var unitPrice = parseFloat(data.cost) || 0.0;
 
                 let newRow = `
                     <tr>
                         <td>
                             <input type="hidden" name="Details[${detailIndex}].ProductId" value="${data.id}" />
-                            ${data.text}
+                            ${data.name}
                         </td>
                         <td>
                             <input type="number" name="Details[${detailIndex}].Quantity" class="form-control quantity" value="1" min="1" />
                         </td>
                         <td>
-                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${price.toFixed(2)}" step="0.01" />
+                            <input type="number" name="Details[${detailIndex}].UnitPrice" class="form-control unit-price" value="${unitPrice.toFixed(2)}" step="0.01" />
                         </td>
                         <td>
                             <select name="Details[${detailIndex}].TaxRate" class="form-control tax-rate">
@@ -164,8 +157,8 @@
                                 <option value="@Model.IVARate" selected>@(Model.IVARate)%</option>
                             </select>
                         </td>
-                        <td class="subtotal">${price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                        <td class="total">${(price * (1 + @Model.IVARate.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100)).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
+                        <td class="subtotal">${unitPrice.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                        <td class="total">${(unitPrice * (1 + @Model.IVARate.ToString(System.Globalization.CultureInfo.InvariantCulture) / 100)).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0})}</td>
                         <td>
                             <button type="button" class="btn btn-danger remove-detail">Eliminar</button>
                         </td>
