@@ -305,12 +305,18 @@ namespace PhonePalace.Web.Controllers
             foreach (var sale in sales)
             {
                 var item = model.Items.First(m => m.Month == sale.SaleDate.Month);
-                item.Sales += sale.Invoice.Subtotal;
                 
                 // Solo sumar IVA si tiene factura electrónica (las demás son remisiones)
                 if (electronicInvoiceSet.Contains(sale.Invoice.InvoiceID))
                 {
+                    // Para facturas electrónicas, se reporta la venta neta (Subtotal) y el IVA por separado.
+                    item.Sales += sale.Invoice.Subtotal;
                     item.SalesVAT += sale.Invoice.Tax;
+                }
+                else
+                {
+                    // Para remisiones (ventas locales), se reporta el valor total de la venta, sin discriminar IVA.
+                    item.Sales += sale.Invoice.Total;
                 }
 
                 // Aproximación de costo usando el costo actual del producto

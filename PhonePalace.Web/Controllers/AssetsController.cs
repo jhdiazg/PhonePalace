@@ -8,6 +8,7 @@ using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Web.Helpers;
 using System.Security.Claims;
+using System;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -47,29 +48,48 @@ namespace PhonePalace.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Si se selecciona pago en Efectivo, registrar egreso de caja
-                if (paymentMethod == PaymentMethod.Cash)
+                var strategy = _context.Database.CreateExecutionStrategy();
+                try
                 {
-                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                    if (currentCash == null)
+                    return await strategy.ExecuteAsync<IActionResult>(async () =>
                     {
-                        ModelState.AddModelError("", "Debe abrir la caja para registrar la compra en efectivo.");
-                        ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
-                        return View(asset);
-                    }
+                        using var transaction = await _context.Database.BeginTransactionAsync();
+                        try
+                        {
+                            // Si se selecciona pago en Efectivo, registrar egreso de caja
+                            if (paymentMethod == PaymentMethod.Cash)
+                            {
+                                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                                if (currentCash == null)
+                                {
+                                    throw new InvalidOperationException("Debe abrir la caja para registrar la compra en efectivo.");
+                                }
 
-                    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    if (userId == null) return Unauthorized();
-                    await _cashService.RegisterExpenseAsync(asset.AcquisitionCost, $"Compra de Activo: {asset.Name}", userId);
+                                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                                if (userId == null) return Unauthorized();
+                                await _cashService.RegisterExpenseAsync(asset.AcquisitionCost, $"Compra de Activo: {asset.Name}", userId);
+                            }
+
+                            // Asegurar estado activo y fecha
+                            asset.Status = AssetStatus.Active;
+                            if (asset.AcquisitionDate == default) asset.AcquisitionDate = DateTime.Now;
+
+                            _context.Assets.Add(asset);
+                            await _context.SaveChangesAsync();
+                            await transaction.CommitAsync();
+                            return RedirectToAction(nameof(Index));
+                        }
+                        catch
+                        {
+                            await transaction.RollbackAsync();
+                            throw;
+                        }
+                    });
                 }
-
-                // Asegurar estado activo y fecha
-                asset.Status = AssetStatus.Active;
-                if (asset.AcquisitionDate == default) asset.AcquisitionDate = DateTime.Now;
-
-                _context.Assets.Add(asset);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", ex.Message);
+                }
             }
 
             ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();

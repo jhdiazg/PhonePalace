@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PhonePalace.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+94ceab3a374a2980d21d8d346237317cea770f5c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bcd2c10ef07160a594ead268676c900699d4ae80")]
 [assembly: System.Reflection.AssemblyProductAttribute("PhonePalace.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PhonePalace.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

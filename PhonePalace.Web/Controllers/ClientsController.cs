@@ -102,6 +102,21 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
+            // Permitir valores nulos para campos opcionales
+            if (string.IsNullOrWhiteSpace(viewModel.Email))
+            {
+                ModelState.Remove("Email");
+            }
+            if (viewModel.ClientType == ClientTypeSelection.NaturalPerson && string.IsNullOrWhiteSpace(viewModel.DocumentNumber))
+            {
+                ModelState.Remove("DocumentNumber");
+            }
+            if (viewModel.ClientType == ClientTypeSelection.LegalEntity && string.IsNullOrWhiteSpace(viewModel.NitNumber))
+            {
+                ModelState.Remove("NitNumber");
+                ModelState.Remove("VerificationDigit");
+            }
+
             if (!ModelState.IsValid)
             {
                 await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID); // Corregido
@@ -112,7 +127,7 @@ namespace PhonePalace.Web.Controllers
 
             if (viewModel.ClientType == ClientTypeSelection.NaturalPerson)
             {
-                if (await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber!))
+                if (!string.IsNullOrWhiteSpace(viewModel.DocumentNumber) && await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber))
                 {
                     ModelState.AddModelError("DocumentNumber", "Este número de documento ya está registrado.");
                     await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
@@ -123,13 +138,13 @@ namespace PhonePalace.Web.Controllers
                     FirstName = viewModel.FirstName!.ToUpper(),
                     LastName = viewModel.LastName!.ToUpper(),
                     DocumentType = viewModel.DocumentType!.Value,
-                    DocumentNumber = viewModel.DocumentNumber!.ToUpper()
+                    DocumentNumber = !string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null
                 };
             }
             else if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
             {
                 var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
-                if (await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit))
+                if (!string.IsNullOrWhiteSpace(viewModel.NitNumber) && await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit))
                 {
                     ModelState.AddModelError("NitNumber", "Este NIT ya está registrado.");
                     await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
@@ -138,7 +153,7 @@ namespace PhonePalace.Web.Controllers
                 newClient = new LegalEntity
                 {
                     CompanyName = viewModel.CompanyName!.ToUpper(),
-                    NIT = fullNit.ToUpper()
+                    NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null
                 };
             }
             else
@@ -223,8 +238,12 @@ namespace PhonePalace.Web.Controllers
         {
             if (id != viewModel.ClientID) return NotFound();
 
+            // Permitir valores nulos para DocumentNumber y Email
+            if (string.IsNullOrWhiteSpace(viewModel.DocumentNumber)) ModelState.Remove("DocumentNumber");
+            if (string.IsNullOrWhiteSpace(viewModel.Email)) ModelState.Remove("Email");
+
             // Validar que el número de documento sea único, excluyendo al cliente actual.
-            if (!string.IsNullOrEmpty(viewModel.DocumentNumber) && await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber && c.ClientID != id))
+            if (!string.IsNullOrWhiteSpace(viewModel.DocumentNumber) && await _context.NaturalPersons.AnyAsync(c => c.DocumentNumber == viewModel.DocumentNumber && c.ClientID != id))
             {
                 ModelState.AddModelError("DocumentNumber", "Este número de documento ya está registrado para otro cliente.");
             }
@@ -237,7 +256,7 @@ namespace PhonePalace.Web.Controllers
                 clientToUpdate.FirstName = viewModel.FirstName?.ToUpper() ?? string.Empty;
                 clientToUpdate.LastName = viewModel.LastName?.ToUpper() ?? string.Empty;
                 clientToUpdate.DocumentType = viewModel.DocumentType;
-                clientToUpdate.DocumentNumber = viewModel.DocumentNumber?.ToUpper() ?? string.Empty;
+                clientToUpdate.DocumentNumber = !string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null;
                 clientToUpdate.Email = viewModel.Email;
                 clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                 clientToUpdate.DepartmentID = viewModel.DepartmentID;
@@ -270,7 +289,15 @@ namespace PhonePalace.Web.Controllers
         {
             if (id != viewModel.ClientID) return NotFound();
 
-            if (!string.IsNullOrEmpty(viewModel.NitNumber) && !string.IsNullOrEmpty(viewModel.VerificationDigit))
+            // Permitir valores nulos para NIT y Email
+            if (string.IsNullOrWhiteSpace(viewModel.NitNumber))
+            {
+                ModelState.Remove("NitNumber");
+                ModelState.Remove("VerificationDigit");
+            }
+            if (string.IsNullOrWhiteSpace(viewModel.Email)) ModelState.Remove("Email");
+
+            if (!string.IsNullOrWhiteSpace(viewModel.NitNumber) && !string.IsNullOrWhiteSpace(viewModel.VerificationDigit))
             {
                 var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(viewModel.NitNumber);
                 if (calculatedDv < 0 || calculatedDv.ToString() != viewModel.VerificationDigit)
@@ -282,7 +309,7 @@ namespace PhonePalace.Web.Controllers
             var fullNit = $"{viewModel.NitNumber}-{viewModel.VerificationDigit}";
 
             // Validar que el NIT sea único, excluyendo al cliente actual.
-            if (await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit && c.ClientID != id))
+            if (!string.IsNullOrWhiteSpace(viewModel.NitNumber) && await _context.LegalEntities.AnyAsync(c => c.NIT == fullNit && c.ClientID != id))
             {
                 ModelState.AddModelError("NitNumber", "Este NIT ya está registrado para otro cliente.");
             }
@@ -296,7 +323,7 @@ namespace PhonePalace.Web.Controllers
                     if (clientToUpdate == null) return NotFound();
 
                     clientToUpdate.CompanyName = (viewModel.CompanyName ?? string.Empty).ToUpper();
-                    clientToUpdate.NIT = fullNit.ToUpper();
+                    clientToUpdate.NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null;
                     clientToUpdate.Email = viewModel.Email;
                     clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                     clientToUpdate.DepartmentID = viewModel.DepartmentID;

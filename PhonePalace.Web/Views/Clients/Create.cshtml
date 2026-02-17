@@ -8,7 +8,7 @@
 <h1>@ViewData["Title"]</h1>
 <hr />
 
-<form asp-action="Create">
+<form asp-action="Create" novalidate>
     <div asp-validation-summary="All" class="text-danger"></div>
 
     <div class="row">
@@ -46,8 +46,8 @@
                 <span asp-validation-for="DocumentType" class="text-danger"></span>
             </div>
             <div class="col-md-6 mb-3">
-                <label asp-for="DocumentNumber" class="form-label"></label>
-                <input asp-for="DocumentNumber" class="form-control" />
+                <label asp-for="DocumentNumber" class="form-label">Número de Documento <small class="text-muted">(Opcional)</small></label>
+                <input asp-for="DocumentNumber" class="form-control" data-val="false" />
                 <span asp-validation-for="DocumentNumber" class="text-danger"></span>
             </div>
         </div>
@@ -62,9 +62,14 @@
                 <span asp-validation-for="CompanyName" class="text-danger"></span>
             </div>
             <div class="col-md-6 mb-3">
-                <label asp-for="DocumentNumber" class="form-label">NIT</label>
-                <input asp-for="DocumentNumber" class="form-control" />
-                <span asp-validation-for="DocumentNumber" class="text-danger"></span>
+                <label asp-for="NitNumber" class="form-label">NIT <small class="text-muted">(Opcional)</small></label>
+                <div class="input-group">
+                    <input asp-for="NitNumber" class="form-control" placeholder="Número sin DV" data-val="false" />
+                    <span class="input-group-text">-</span>
+                    <input asp-for="VerificationDigit" class="form-control" style="max-width: 50px;" placeholder="DV" data-val="false" />
+                </div>
+                <span asp-validation-for="NitNumber" class="text-danger"></span>
+                <span asp-validation-for="VerificationDigit" class="text-danger"></span>
             </div>
         </div>
     </div>
@@ -75,8 +80,8 @@
         <hr/>
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label asp-for="Email" class="form-label"></label>
-                <input asp-for="Email" class="form-control" />
+                <label asp-for="Email" class="form-label">Correo Electrónico <small class="text-muted">(Opcional)</small></label>
+                <input asp-for="Email" type="text" class="form-control" data-val="false" />
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
             <div class="col-md-6 mb-3">

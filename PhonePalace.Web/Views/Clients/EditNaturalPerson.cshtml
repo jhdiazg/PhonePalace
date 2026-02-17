@@ -11,7 +11,7 @@
 
 <div class="row">
     <div class="col-md-8">
-        <form asp-action="EditNaturalPerson" asp-route-id="@Model.ClientID">
+        <form asp-action="EditNaturalPerson" asp-route-id="@Model.ClientID" novalidate>
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="ClientID" />
             @await Html.PartialAsync("_ToggleButton", new PhonePalace.Web.ViewModels.ToggleButtonViewModel { IsChecked = Model.IsActive, Label = "Activo" })
@@ -36,7 +36,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <label asp-for="DocumentNumber" class="form-label">Número de Documento <small class="text-muted">(Opcional)</small></label>
-                    <input asp-for="DocumentNumber" class="form-control" />
+                    <input asp-for="DocumentNumber" class="form-control" data-val="false" />
                     <span asp-validation-for="DocumentNumber" class="text-danger"></span>
                 </div>
             </div>
@@ -46,7 +46,7 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label asp-for="Email" class="form-label">Correo Electrónico <small class="text-muted">(Opcional)</small></label>
-                    <input asp-for="Email" class="form-control" />
+                    <input asp-for="Email" type="text" class="form-control" data-val="false" />
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
                 <div class="col-md-6 mb-3">
@@ -114,6 +114,15 @@
                     municipalityDropdown.innerHTML = '<option value="">-- Seleccione un departamento --</option>';
                 }
             });
+
+            // Forzar la desactivación de la validación del lado del cliente para campos opcionales.
+            $('#DocumentNumber').removeAttr('data-val-required');
+            $('#Email').removeAttr('data-val-email');
+
+            // Re-parsear el formulario para que jquery-validation reconozca los cambios.
+            var form = $('form');
+            form.removeData('validator').removeData('unobtrusiveValidation');
+            $.validator.unobtrusive.parse(form);
         });
     </script>
 }
