@@ -298,5 +298,54 @@ namespace PhonePalace.Web.Controllers
             model.Banks = new SelectList(banks, "BankID", "Name");
             return View(model);
         }
+
+        // GET: Banks/Adjust/5
+        [HttpGet]
+        public async Task<IActionResult> Adjust(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var bank = await _context.Banks.FindAsync(id);
+            if (bank == null) return NotFound();
+
+            var model = new BankAdjustViewModel
+            {
+                BankId = bank.BankID,
+                BankName = bank.Name,
+                CurrentBalance = bank.Balance
+            };
+
+            return View(model);
+        }
+
+        // POST: Banks/Adjust/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Adjust(int id, BankAdjustViewModel model)
+        {
+            if (id != model.BankId) return NotFound();
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    var transactionType = model.AdjustmentType == BankAdjustmentType.Income 
+                        ? Domain.Enums.BankTransactionType.ManualIncome 
+                        : Domain.Enums.BankTransactionType.ManualExpense;
+
+                    await _bankService.RegisterManualMovementAsync(model.BankId, transactionType, model.Amount, model.Description);
+                    
+                    await _auditService.LogAsync("Bancos", $"Ajuste manual de saldo ({model.AdjustmentType}) en banco '{model.BankName}' por {model.Amount:C}. Motivo: {model.Description}");
+
+                    TempData["Success"] = "Ajuste realizado exitosamente.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", $"Error al realizar el ajuste: {ex.Message}");
+                }
+            }
+            return View(model);
+        }
     }
 }

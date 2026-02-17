@@ -1,0 +1,54 @@
+@model PhonePalace.Web.ViewModels.BankAdjustViewModel
+@using PhonePalace.Web.ViewModels
+
+@{
+    ViewData["Title"] = "Ajustar Saldo Bancario";
+}
+
+<h1>@ViewData["Title"]</h1>
+<h4>@Model.BankName</h4>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="alert alert-info">
+            <strong>Saldo Actual:</strong> @Model.CurrentBalance.ToString("C")
+        </div>
+
+        <form asp-action="Adjust">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="BankId" />
+            <input type="hidden" asp-for="BankName" />
+            <input type="hidden" asp-for="CurrentBalance" />
+
+            <div class="mb-3">
+                <label asp-for="AdjustmentType" class="form-label"></label>
+                <select asp-for="AdjustmentType" class="form-select" asp-items="Html.GetEnumSelectList<BankAdjustmentType>()">
+                    <option value="">-- Seleccione Tipo --</option>
+                </select>
+                <span asp-validation-for="AdjustmentType" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Amount" class="form-label"></label>
+                <input asp-for="Amount" class="form-control" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="3" placeholder="Explique el motivo del ajuste (ej. Error bancario, Intereses no registrados, etc.)"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-warning">Realizar Ajuste</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

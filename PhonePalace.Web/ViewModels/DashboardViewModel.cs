@@ -19,7 +19,27 @@ namespace PhonePalace.Web.ViewModels
         [DataType(DataType.Currency)]
         public decimal CurrentMonthSales { get; set; }
 
+        [Display(Name = "Saldo en Caja")]
+        [DataType(DataType.Currency)]
+        public decimal CashBalance { get; set; }
+
+        [Display(Name = "Saldo en Bancos")]
+        [DataType(DataType.Currency)]
+        public decimal BanksBalance { get; set; }
+
+        [Display(Name = "Cuentas por Cobrar")]
+        [DataType(DataType.Currency)]
+        public decimal TotalAccountsReceivable { get; set; }
+
         public List<LowStockProductViewModel> LowStockProducts { get; set; } = new List<LowStockProductViewModel>();
+        
+        public List<SalesByMarginViewModel> SalesByMargin { get; set; } = new List<SalesByMarginViewModel>();
+    }
+
+    public class SalesByMarginViewModel
+    {
+        public string RangeLabel { get; set; } = string.Empty;
+        public int Quantity { get; set; }
     }
 
     public class LowStockProductViewModel

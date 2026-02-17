@@ -315,7 +315,7 @@ namespace PhonePalace.Web.Controllers
                 }
                 else
                 {
-                    // Para remisiones (ventas locales), se reporta el valor total de la venta, sin discriminar IVA.
+                    // Para remisiones (ventas locales), se reporta el valor total de la venta.
                     item.Sales += sale.Invoice.Total;
                 }
 
@@ -344,13 +344,34 @@ namespace PhonePalace.Web.Controllers
             // IDs de movimientos de caja que corresponden a gastos fijos para no duplicarlos
             var feCashIds = fixedExpenses.Where(fe => fe.CashMovementId.HasValue).Select(fe => fe.CashMovementId!.Value).ToHashSet();
 
+            // Prefijos de descripciones que NO son gastos operativos y deben ser excluidos del reporte de utilidad
+            var nonOperationalExpensePrefixes = new[]
+            {
+                "PAGO DE CXP", // Pagos a proveedores (inventario)
+                "COMPRA DE ACTIVO", // Compra de activos fijos
+                "PRÉSTAMO A CLIENTE", // Salida de dinero que genera una cuenta por cobrar
+                "CONSIGNACIÓN A BANCO", // Transferencia de dinero
+                "ANULACIÓN VENTA" // Devolución de dinero por venta anulada
+            };
+
             foreach (var ce in cashExpenses)
             {
-                if (!feCashIds.Contains(ce.CashMovementID))
+                // Excluir si ya está contado como Gasto Fijo
+                if (feCashIds.Contains(ce.CashMovementID))
                 {
-                    var item = model.Items.First(m => m.Month == ce.MovementDate.Month);
-                    item.LocalExpenses += ce.Amount;
+                    continue;
                 }
+
+                // Excluir si es un movimiento de capital/financiero y no un gasto operativo
+                var upperDescription = (ce.Description ?? "").ToUpper();
+                if (nonOperationalExpensePrefixes.Any(prefix => upperDescription.StartsWith(prefix)))
+                {
+                    continue;
+                }
+
+                // Si pasa los filtros, es un gasto local válido
+                var item = model.Items.First(m => m.Month == ce.MovementDate.Month);
+                item.LocalExpenses += ce.Amount;
             }
 
             // 4. Compras e IVA Compras

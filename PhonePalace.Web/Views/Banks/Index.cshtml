@@ -28,13 +28,16 @@
                 <thead>
                     <tr>
                         <th>
-                            @Html.DisplayNameFor(model => model.Name)
+                            Nombre
                         </th>
                         <th>
-                            @Html.DisplayNameFor(model => model.AccountNumber)
+                            Número de Cuenta
                         </th>
                         <th>
-                            @Html.DisplayNameFor(model => model.IsActive)
+                            Saldo
+                        </th>
+                        <th>
+                            Activo
                         </th>
                         <th></th>
                     </tr>
@@ -49,9 +52,13 @@
                             @Html.DisplayFor(modelItem => item.AccountNumber)
                         </td>
                         <td>
+                            @item.Balance.ToString("C")
+                        </td>
+                        <td>
                             <input type="checkbox" class="form-check-input" disabled @(item.IsActive ? "checked" : "") />
                         </td>
                         <td class="text-end">
+                            <a asp-action="Adjust" asp-route-id="@item.BankID" class="btn btn-sm btn-secondary">Ajustar</a>
                             <a asp-action="Edit" asp-route-id="@item.BankID" class="btn btn-sm btn-warning">Editar</a>
                             <a asp-action="Details" asp-route-id="@item.BankID" class="btn btn-sm btn-info">Detalles</a>
                             <a asp-action="Delete" asp-route-id="@item.BankID" class="btn btn-sm btn-danger">Eliminar</a>
