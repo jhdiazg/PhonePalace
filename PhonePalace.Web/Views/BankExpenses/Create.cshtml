@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "Registrar Gasto Bancario";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0"><i class="bi bi-cash-stack me-2"></i>Registrar Gasto Operativo (Banco)</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    Este formulario registra un egreso directo del banco que afectará el reporte de <strong>Gastos Local</strong>.
+                </div>
+
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="All" class="text-danger"></div>
+
+                    <div class="mb-3">
+                        <label for="bankId" class="form-label fw-bold">Banco de Origen</label>
+                        <select name="bankId" id="bankId" class="form-select" asp-items="ViewBag.Banks" required>
+                            <option value="">-- Seleccione un Banco --</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="amount" class="form-label fw-bold">Monto del Gasto</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observation" class="form-label fw-bold">Concepto / Observación</label>
+                        <textarea name="observation" id="observation" class="form-control" rows="3" required placeholder="Ej: Compra de insumos de aseo, Pago de servicio técnico, etc."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger">Registrar Egreso</button>
+                        <a href="javascript:history.back()" class="btn btn-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            // Pre-seleccionar el banco si viene en la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const bankId = urlParams.get('bankId');
+            if (bankId) {
+                $('#bankId').val(bankId);
+            }
+        });
+    </script>
+}

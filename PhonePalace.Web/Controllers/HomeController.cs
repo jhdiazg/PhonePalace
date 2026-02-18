@@ -62,6 +62,7 @@ namespace PhonePalace.Web.Controllers
             var cashBalance = await _cashService.GetCurrentBalanceAsync();
             var banksBalance = await _context.Banks.Where(b => b.IsActive).SumAsync(b => b.Balance);
             var totalReceivables = await _context.AccountReceivables.Where(ar => !ar.IsPaid).SumAsync(ar => ar.Balance);
+            var totalPayables = await _context.AccountPayables.Where(ap => !ap.IsPaid).SumAsync(ap => ap.Amount);
 
             // --- Lógica para Gráfica de Márgenes (Mes Actual) ---
             // Obtenemos los detalles de venta del mes actual
@@ -114,6 +115,7 @@ namespace PhonePalace.Web.Controllers
                 CashBalance = cashBalance,
                 BanksBalance = banksBalance,
                 TotalAccountsReceivable = totalReceivables,
+                TotalAccountsPayable = totalPayables,
                 LowStockProducts = lowStockProducts,
                 SalesByMargin = salesByMargin
             };

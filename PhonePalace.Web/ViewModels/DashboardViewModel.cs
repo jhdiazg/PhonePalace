@@ -31,6 +31,10 @@ namespace PhonePalace.Web.ViewModels
         [DataType(DataType.Currency)]
         public decimal TotalAccountsReceivable { get; set; }
 
+        [Display(Name = "Cuentas por Pagar")]
+        [DataType(DataType.Currency)]
+        public decimal TotalAccountsPayable { get; set; }
+
         public List<LowStockProductViewModel> LowStockProducts { get; set; } = new List<LowStockProductViewModel>();
         
         public List<SalesByMarginViewModel> SalesByMargin { get; set; } = new List<SalesByMarginViewModel>();

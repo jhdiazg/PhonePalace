@@ -24,6 +24,7 @@
             <tr>
                 <th>Concepto</th>
                 <th>Monto por Defecto</th>
+                <th>Pagado este Mes</th>
                 <th>Último Pago Registrado</th>
                 <th></th>
             </tr>
@@ -31,9 +32,18 @@
         <tbody>
             @foreach (var item in Model)
             {
+                decimal totalPagado = 0;
+                var totals = ViewBag.CurrentMonthTotals as Dictionary<int, decimal>;
+                if (totals != null && item.FixedExpense != null && totals.ContainsKey(item.FixedExpense.Id))
+                {
+                    totalPagado = totals[item.FixedExpense.Id];
+                }
                 <tr>
                     <td>@item.FixedExpense?.Concept</td>
                     <td>@item.FixedExpense?.Amount.ToString("C")</td>
+                    <td>
+                        <span class="@(totalPagado >= item.FixedExpense?.Amount ? "text-success fw-bold" : "")">@totalPagado.ToString("C")</span>
+                    </td>
                     <td>
                         @if(item.LastPayment != null) {
                             <div>
@@ -47,7 +57,14 @@
                     </td>
                     <td class="text-end">
                         <div class="btn-group" role="group">
-                            <a asp-action="Pay" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-success" title="Registrar Nuevo Pago"><i class="bi bi-currency-dollar"></i> Pagar</a>
+                            @if (totalPagado >= item.FixedExpense?.Amount)
+                            {
+                                <button type="button" class="btn btn-sm btn-secondary" disabled title="Gasto cubierto"><i class="bi bi-check-circle"></i> Pagado</button>
+                            }
+                            else
+                            {
+                                <a asp-action="Pay" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-success" title="Registrar Nuevo Pago"><i class="bi bi-currency-dollar"></i> Pagar</a>
+                            }
                             <a asp-action="Edit" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-primary" title="Editar Definición"><i class="bi bi-pencil-fill"></i></a>
                             <a asp-action="Delete" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-danger" title="Eliminar Definición"><i class="bi bi-trash-fill"></i></a>
                         </div>

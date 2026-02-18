@@ -374,6 +374,25 @@ namespace PhonePalace.Web.Controllers
                 item.LocalExpenses += ce.Amount;
             }
 
+            // 3.1. Gastos Bancarios (Operativos)
+            // Sumar a "LocalExpenses" los egresos bancarios manuales que no sean de otras categorías
+            var bankExpenses = await _context.BankTransactions
+                .Where(bt => bt.Date.Year == reportYear && bt.Amount < 0) // Egresos son negativos
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var be in bankExpenses)
+            {
+                var desc = (be.Description ?? "").ToUpper();
+                // Excluir movimientos que ya se cuentan en otras secciones o no son gastos operativos puros
+                if (desc.Contains("GASTO FIJO") || desc.Contains("ANULACIÓN") || desc.Contains("PRÉSTAMO") || desc.Contains("COMPRA DE ACTIVO"))
+                {
+                    continue;
+                }
+                var item = model.Items.First(m => m.Month == be.Date.Month);
+                item.LocalExpenses += Math.Abs(be.Amount);
+            }
+
             // 4. Compras e IVA Compras
             var purchases = await _context.Purchases
                 .Include(p => p.PurchaseDetails)

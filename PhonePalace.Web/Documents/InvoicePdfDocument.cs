@@ -38,7 +38,7 @@ namespace PhonePalace.Web.Documents
                     
                     if (isHalfLetter) 
                     {
-                        page.Size(new PageSize(PageSizes.Letter.Width,PageSizes.Letter.Height / 2));
+                        page.Size(new PageSize(PageSizes.Letter.Width, PageSizes.Letter.Height / 2));
                     } 
                     else 
                     { 

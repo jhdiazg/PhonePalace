@@ -44,7 +44,18 @@ namespace PhonePalace.Web.Controllers
                 .Select(g => g.OrderByDescending(p => p.Period).FirstOrDefault())
                 .ToListAsync();
 
-            // 3. Combinar
+            // 3. Calcular el total pagado en el mes actual para cada gasto
+            var currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+            var currentMonthTotals = await _context.FixedExpensePayments
+                .Where(p => p.Period.Month == currentMonth && p.Period.Year == currentYear)
+                .GroupBy(p => p.FixedExpenseId)
+                .Select(g => new { Id = g.Key, Total = g.Sum(p => p.Amount) })
+                .ToDictionaryAsync(x => x.Id, x => x.Total);
+
+            ViewBag.CurrentMonthTotals = currentMonthTotals;
+
+            // 4. Combinar
             var model = definitions.Select(d => new FixedExpenseStatusViewModel { FixedExpense = d, LastPayment = lastPayments.FirstOrDefault(p => p?.FixedExpenseId == d.Id) }).ToList();
 
             return View(model);
@@ -182,13 +193,18 @@ namespace PhonePalace.Web.Controllers
                 ModelState.AddModelError("", "Debe seleccionar un banco para este método de pago.");
             }
 
-            // Verificar si ya existe un pago para ese periodo
-            var existingPayment = await _context.FixedExpensePayments
-                .AnyAsync(p => p.FixedExpenseId == id && p.Period.Year == model.Year && p.Period.Month == model.Month);
+            // Validar que no se exceda el monto del gasto fijo
+            var totalPaid = await _context.FixedExpensePayments
+                .Where(p => p.FixedExpenseId == id && p.Period.Year == model.Year && p.Period.Month == model.Month)
+                .SumAsync(p => p.Amount);
 
-            if (existingPayment || !ModelState.IsValid)
+            if (totalPaid + model.Amount > fixedExpense.Amount)
             {
-                if (existingPayment) ModelState.AddModelError("", $"Ya existe un pago registrado para el periodo {model.Month}/{model.Year}.");
+                ModelState.AddModelError("", $"El pago excede el monto del gasto. Pagado: {totalPaid:C}, Nuevo: {model.Amount:C}, Límite: {fixedExpense.Amount:C}");
+            }
+
+            if (!ModelState.IsValid)
+            {
                 ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
                 ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name", bankId);
                 return View(model);

@@ -123,7 +123,9 @@ namespace PhonePalace.Web.Controllers
                 Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
             };
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            var products = await _context.Products.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            products.ForEach(p => p.Name = $"{p.Name} ({p.SKU})");
+            ViewBag.AllProducts = products;
             return View(viewModel);
         }
 
@@ -169,7 +171,9 @@ namespace PhonePalace.Web.Controllers
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
             model.Categories = new SelectList(await _context.Categories.ToListAsync(), "CategoryID", "Name");
             model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            var products = await _context.Products.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            products.ForEach(p => p.Name = $"{p.Name} ({p.SKU})");
+            ViewBag.AllProducts = products;
             return View(model);
         }
 
@@ -210,12 +214,15 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
+            var products = await _context.Products.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            products.ForEach(p => p.Name = $"{p.Name} ({p.SKU})");
+
             var viewModel = new PurchaseEditViewModel
             {
                 Id = purchase.Id,
                 SupplierId = purchase.SupplierId,
                 Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", purchase.SupplierId),
-                Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name"),
+                Products = new SelectList(products, "ProductID", "Name"),
                 IVARate = _config.GetValue<decimal>("TaxSettings:IVARate"),
                 PaymentMethod = purchase.PaymentMethod,
                 SupplierInvoiceNumber = purchase.SupplierInvoiceNumber,
@@ -231,7 +238,7 @@ namespace PhonePalace.Web.Controllers
                 }).ToList() ?? new List<PurchaseDetailViewModel>()
             };
 
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = products;
             return View(viewModel);
         }
 
@@ -296,9 +303,11 @@ namespace PhonePalace.Web.Controllers
             }
 
             model.Suppliers = new SelectList(await _context.Suppliers.ToListAsync(), "SupplierID", "DisplayName", model.SupplierId);
-            model.Products = new SelectList(await _context.Products.Where(p => p.IsActive).ToListAsync(), "ProductID", "Name");
+            var products = await _context.Products.AsNoTracking().Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            products.ForEach(p => p.Name = $"{p.Name} ({p.SKU})");
+            model.Products = new SelectList(products, "ProductID", "Name");
             model.IVARate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            ViewBag.AllProducts = await _context.Products.Where(p => p.IsActive).OrderBy(p => p.Name).ToListAsync();
+            ViewBag.AllProducts = products;
             return View(model);
         }
 
