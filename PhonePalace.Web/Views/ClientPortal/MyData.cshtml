@@ -1,0 +1,26 @@
+@using PhonePalace.Infrastructure.Data
+@model ApplicationUser
+
+@{
+    ViewData["Title"] = "Portal del Cliente";
+}
+
+<h1>Bienvenido a tu portal, @Model.UserName!</h1>
+<p>Esta sección es exclusiva para clientes registrados.</p>
+
+<hr />
+
+<div class="card">
+    <div class="card-header">
+        <h4>Formulario de Ejemplo</h4>
+    </div>
+    <div class="card-body">
+        <form>
+            <div class="mb-3">
+                <label for="exampleInput" class="form-label">Dato Requerido del Cliente</label>
+                <input type="text" class="form-control" id="exampleInput" placeholder="Ingresa tu información aquí...">
+            </div>
+            <button type="submit" class="btn btn-primary">Enviar</button>
+        </form>
+    </div>
+</div>

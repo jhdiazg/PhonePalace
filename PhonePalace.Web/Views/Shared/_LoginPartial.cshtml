@@ -1,4 +1,4 @@
-﻿@using Microsoft.AspNetCore.Identity
+﻿﻿@using Microsoft.AspNetCore.Identity
 @using PhonePalace.Infrastructure.Data
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -8,6 +8,14 @@
 {
     var user = await UserManager.GetUserAsync(User);
     <li class="nav-item">
+        @if (User.IsInRole("Cliente"))
+        {
+            <a class="nav-link d-flex align-items-center" asp-controller="ClientPortal" asp-action="MyData" title="Mi Portal">
+                <i class="bi bi-person-circle me-2"></i> Hola, @(user?.UserName ?? "Cliente")
+            </a>
+        }
+        else
+        {
         <a class="nav-link d-flex align-items-center" asp-area="" asp-controller="UserManagement" asp-action="Profile" title="Mi Perfil">
             @if (user != null && !string.IsNullOrEmpty(user.ProfilePictureUrl))
             {
@@ -21,6 +29,7 @@
             }
             @(user?.UserName ?? User.Identity?.Name)
         </a>
+        }
     </li>
     <li class="nav-item">
         <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">

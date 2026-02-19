@@ -13,10 +13,12 @@ using System.Security.Claims;
 using QuestPDF.Fluent;
 using ClosedXML.Excel;
 using System.IO;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PhonePalace.Web.Controllers
 {
     [Route("Ventas")]
+    [Authorize(Roles = "Administrador,Vendedor")]
     public class SalesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -828,6 +830,7 @@ namespace PhonePalace.Web.Controllers
             var sale = await _context.Sales
                 .Include(s => s.Client)
                 .Include(s => s.Invoice)
+                    .ThenInclude(i => i.Payments)
                 .Include(s => s.Details)
                     .ThenInclude(d => d.Product)
                 .FirstOrDefaultAsync(s => s.SaleID == id);

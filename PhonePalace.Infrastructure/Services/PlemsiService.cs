@@ -18,13 +18,18 @@ namespace PhonePalace.Infrastructure.Services
     {
         private readonly HttpClient _httpClient;
         private readonly PlemsiConfig _config;
+        private readonly CompanySettings _companySettings;
         private readonly ILogger<PlemsiService> _logger;
 
-        public PlemsiService(HttpClient httpClient, IOptions<PlemsiConfig> config, ILogger<PlemsiService> logger)
+        public PlemsiService(HttpClient httpClient, 
+                             IOptions<PlemsiConfig> config, 
+                             IOptions<CompanySettings> companySettings, 
+                             ILogger<PlemsiService> logger)
         {
             _httpClient = httpClient;
             _config = config.Value;
             _logger = logger;
+            _companySettings = companySettings.Value;
 
             // Configuración básica del cliente si no viene inyectado configurado
             if (_httpClient.BaseAddress == null && !string.IsNullOrEmpty(_config.BaseUrl))
@@ -53,12 +58,26 @@ namespace PhonePalace.Infrastructure.Services
                     
                     if (result != null && result.Success)
                     {
+                        // Validar que la respuesta contenga los datos necesarios (CUFE o CUDE)
+                        var uniqueId = !string.IsNullOrEmpty(result.Data?.Cufe) ? result.Data.Cufe : result.Data?.Cude;
+
+                        if (result.Data == null || string.IsNullOrEmpty(uniqueId))
+                        {
+                            return new PlemsiResponse
+                            {
+                                Success = false,
+                                ErrorMessage = "La factura fue procesada, pero la respuesta no contiene el CUFE."
+                            };
+                        }
+
+                        var qrUrl = !string.IsNullOrEmpty(result.Data?.QrUrl) ? result.Data.QrUrl : result.Data?.QRCode;
+
                         return new PlemsiResponse
                         {
                             Success = true,
-                            Cufe = result.Data?.Cufe,
+                            Cufe = uniqueId,
                             Number = $"{result.Data?.Prefix}{result.Data?.Number}",
-                            QrUrl = result.Data?.QrUrl,
+                            QrUrl = qrUrl ?? "", // Usar el valor encontrado o cadena vacía para evitar error de DB
                             Status = "Accepted"
                         };
                     }
@@ -103,6 +122,20 @@ namespace PhonePalace.Infrastructure.Services
                     }
                     catch { /* Si falla el parseo, devolvemos el default */ }
 
+                    // --- INICIO: Recuperación automática si ya existe ---
+                    // Si Plemsi dice que ya existe, intentamos consultarla para obtener el CUFE
+                    if (friendlyMessage.Contains("already emitted", StringComparison.OrdinalIgnoreCase) || 
+                        friendlyMessage.Contains("ya fue emitida", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogWarning("La factura {InvoiceId} ya existe en Plemsi. Intentando recuperar datos...", sale.Invoice.InvoiceID);
+                        var recovery = await GetInvoiceStatusAsync(sale.Invoice.InvoiceID);
+                        if (recovery.Success)
+                        {
+                            return recovery;
+                        }
+                    }
+                    // --- FIN: Recuperación automática ---
+
                     return new PlemsiResponse
                     {
                         Success = false,
@@ -121,20 +154,89 @@ namespace PhonePalace.Infrastructure.Services
             }
         }
 
-        private object BuildPayload(Sale sale)
+        public async Task<PlemsiResponse> GetInvoiceStatusAsync(int invoiceId)
+        {
+            try
+            {
+                // Consultar la factura por número completo (Prefijo + Número)
+                var fullNumber = $"{_companySettings.DianResolutionPrefix}{invoiceId}";
+                var response = await _httpClient.GetAsync($"billing/invoice/one?by=number&value={fullNumber}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<PlemsiApiResponse>();
+
+                    var uniqueId = result?.Data != null ? (!string.IsNullOrEmpty(result.Data.Cufe) ? result.Data.Cufe : result.Data.Cude) : null;
+
+                    if (result != null && result.Success && result.Data != null && !string.IsNullOrEmpty(uniqueId))
+                    {
+                        var qrUrl = !string.IsNullOrEmpty(result.Data.QrUrl) ? result.Data.QrUrl : result.Data.QRCode;
+
+                        return new PlemsiResponse
+                        {
+                            Success = true,
+                            Cufe = uniqueId,
+                            Number = $"{result.Data.Prefix}{result.Data.Number}",
+                            QrUrl = qrUrl ?? "", // Usar el valor encontrado o cadena vacía
+                            Status = result.Data.Status ?? "Accepted" // Usar el estado de la API, o "Accepted" por defecto
+                        };
+                    }
+                    else
+                    {
+                        return new PlemsiResponse { Success = false, ErrorMessage = result?.Message ?? "No se encontró la factura en el proveedor." };
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Error consultando estado de factura {InvoiceId}: {StatusCode} - {Content}", invoiceId, response.StatusCode, errorContent);
+                    return new PlemsiResponse { Success = false, ErrorMessage = $"Error al consultar: {response.StatusCode}" };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error intentando recuperar factura {InvoiceId}", invoiceId);
+            }
+            return new PlemsiResponse { Success = false, ErrorMessage = "Excepción al consultar estado." };
+        }
+
+       private object BuildPayload(Sale sale)
         {
             var client = sale.Client;
             var invoice = sale.Invoice;
 
-            // Mapeo de Cliente
+            // Mapeo de Cliente (con dígito verificador)
+            string nit;
+            string dv = null;
+            if (client is LegalEntity le && !string.IsNullOrEmpty(le.NIT))
+            {
+                var nitParts = le.NIT.Split('-');
+                nit = nitParts[0];
+                if (nitParts.Length > 1)
+                {
+                    dv = nitParts[1];
+                }
+            }
+            else if (client is NaturalPerson np)
+            {
+                nit = np.DocumentNumber;
+            }
+            else
+            {
+                nit = "222222222222"; // Consumidor final
+            }
+
             var customer = new
             {
-                identification_number = GetDocumentNumber(client),
+                identification_number = nit,
+                dv, // Dígito verificador
                 name = client.DisplayName,
-                email = client.Email ?? "consumidorfinal@correo.com", // Email obligatorio
+                email = string.IsNullOrWhiteSpace(client.Email) ? "consumidorfinal@correo.com" : client.Email,
                 phone = client.PhoneNumber ?? "3000000000",
                 address = client.StreetAddress ?? "Ciudad",
-                municipality_id = client.MunicipalityID ?? "11001", // Default Bogotá si es nulo
+                // Priorizamos el código DANE del municipio si existe.
+                municipality_code = client.MunicipalityID ?? "11001", // El ID de municipio en la BD es el código DANE.
+                merchant_registration = "00000000", // Valor por defecto como en el ejemplo
                 type_document_identification_id = GetDocumentTypeId(client),
                 type_organization_id = client is NaturalPerson ? 2 : 1, // 1: Juridica, 2: Natural
                 type_liability_id = 117, // 117: No responsable de IVA
@@ -145,9 +247,10 @@ namespace PhonePalace.Infrastructure.Services
             var items = sale.Details.Select(d =>
             {
                 // UnitPrice incluye IVA. Calculamos base.
-                decimal baseUnitPrice = Math.Round(d.UnitPrice / 1.19m, 2);
+                decimal taxRateFactor = 1.19m;
+                decimal baseUnitPrice = Math.Round(d.UnitPrice / taxRateFactor, 2);
                 decimal lineExtensionAmount = Math.Round(baseUnitPrice * d.Quantity, 2);
-                decimal taxAmount = Math.Round(lineExtensionAmount * 0.19m, 2);
+                decimal taxAmount = Math.Round(lineExtensionAmount * (taxRateFactor - 1), 2);
 
                 return new
                 {
@@ -159,14 +262,14 @@ namespace PhonePalace.Infrastructure.Services
                     code = d.Product.Code ?? d.Product.SKU ?? d.ProductID.ToString(),
                     type_item_identification_id = 4, // Estándar
                     price_amount = baseUnitPrice,
-                    base_quantity = 1,
+                    base_quantity = d.Quantity, // Corregido: debe ser igual a la cantidad facturada
                     tax_totals = new[]
                     {
                         new
                         {
                             tax_id = 1, // IVA
                             percent = 19.00,
-                            tax_amount = taxAmount,
+                            tax_amount = taxAmount, 
                             taxable_amount = lineExtensionAmount
                         }
                     }
@@ -175,42 +278,64 @@ namespace PhonePalace.Infrastructure.Services
 
             // Totales
             decimal invoiceBaseTotal = items.Sum(i => i.line_extension_amount);
-            decimal totalTax = items.Sum(i => i.tax_totals[0].tax_amount);
+            decimal totalTax = items.Sum(i => i.tax_totals.Sum(t => t.tax_amount));
             decimal invoiceTaxInclusiveTotal = invoiceBaseTotal + totalTax;
 
             // Mapeo de Pago (Payment)
-            var firstPayment = invoice.Payments.FirstOrDefault();
-            var paymentMethodId = firstPayment != null ? GetPaymentMethodId(firstPayment.PaymentMethod) : 10;
+            var validPayments = invoice.Payments?.Where(p => p.PaymentMethod != PaymentMethod.Credit).ToList();
+            decimal totalPaid = validPayments?.Sum(p => p.Amount) ?? 0;
+            bool isCredit = (invoice.Total - totalPaid) > 0.01m;
             
+            // Seleccionar el método de pago predominante (el de mayor valor)
+            // Si hay múltiples medios, la norma suele indicar reportar el de mayor cuantía.
+            var predominantPayment = validPayments?.OrderByDescending(p => p.Amount).FirstOrDefault();
+            int paymentMethodId = predominantPayment != null ? GetPaymentMethodId(predominantPayment.PaymentMethod) : (isCredit ? 30 : 10);
+
             var payment = new
             {
+                payment_form_id = isCredit ? 2 : 1, // 1 -> Contado, 2 -> Crédito
                 payment_method_id = paymentMethodId,
-                payment_due_date = sale.SaleDate.ToString("yyyy-MM-dd"),
-                duration_measure = 0
+                payment_due_date = isCredit ? DateTime.Now.AddDays(30).ToString("yyyy-MM-dd") : DateTime.Now.ToString("yyyy-MM-dd"),
+                duration_measure = isCredit ? 30 : 0
             };
+
+            // Validar que la configuración de la resolución exista en CompanySettings
+            if (string.IsNullOrEmpty(_companySettings.DianResolutionPrefix) || string.IsNullOrEmpty(_companySettings.DianResolutionNumber))
+            {
+                _logger.LogError("Error de configuración: Los datos de la resolución DIAN (Prefijo y Número) no están configurados en la sección CompanySettings de appsettings.json.");
+                throw new InvalidOperationException("Los datos de la resolución DIAN (Prefijo y Número) no están configurados en CompanySettings.");
+            }
+
+            // Agrupar todos los impuestos para el total
+            var allTaxTotals = items
+                .SelectMany(i => i.tax_totals)
+                .GroupBy(t => t.tax_id)
+                .Select(g => new
+                {
+                    tax_id = g.Key,
+                    tax_amount = g.Sum(t => t.tax_amount),
+                    percent = g.First().percent,
+                    taxable_amount = g.Sum(t => t.taxable_amount)
+                }).ToList();
 
             return new
             {
                 number = invoice.InvoiceID,
-                date = sale.SaleDate.ToString("yyyy-MM-dd"),
-                time = sale.SaleDate.ToString("HH:mm:ss"),
-                prefix = _config.Prefix,
-                customer = customer,
-                items = items,
-                payment = payment,
-                invoiceBaseTotal = invoiceBaseTotal,
-                invoiceTaxExclusiveTotal = invoiceBaseTotal,
-                invoiceTaxInclusiveTotal = invoiceTaxInclusiveTotal,
-                totalToPay = invoiceTaxInclusiveTotal,
-                notes = $"Venta #{invoice.InvoiceID} - PhonePalace"
+                date = DateTime.Now.ToString("yyyy-MM-dd"), // Fecha de emisión (Hoy) para cumplir FAD09e
+                time = DateTime.Now.ToString("HH:mm:ss"),   // Hora de emisión (Ahora)
+                prefix = _companySettings.DianResolutionPrefix,
+                resolution = _companySettings.DianResolutionNumber, // Corregido: 'resolution' en lugar de 'resolution_number'
+                customer,
+                items,
+                payment,
+                // Totales a nivel de factura
+                invoiceBaseTotal, // Valor bruto antes de impuestos
+                invoiceTaxExclusiveTotal = invoiceBaseTotal, // Valor base para impuestos (sin descuentos, es igual al base)
+                invoiceTaxInclusiveTotal, // Valor bruto + impuestos
+                totalToPay = invoiceTaxInclusiveTotal, // Valor final a pagar (sin retenciones, es igual al inclusivo)
+                allTaxTotals, // Resumen de impuestos
+                notes = $"Venta #{invoice.InvoiceID} - PhonePalace",
             };
-        }
-
-        private string GetDocumentNumber(Client client)
-        {
-            if (client is NaturalPerson np) return np.DocumentNumber;
-            if (client is LegalEntity le) return le.NIT.Split('-')[0]; // Enviar sin dígito de verificación usualmente
-            return "222222222222"; // Consumidor final
         }
 
         private int GetDocumentTypeId(Client client)
@@ -253,9 +378,12 @@ namespace PhonePalace.Infrastructure.Services
         private class PlemsiApiData
         {
             public string Cufe { get; set; }
+            public string Cude { get; set; }
             public string Prefix { get; set; }
             public string Number { get; set; }
             public string QrUrl { get; set; }
+            public string QRCode { get; set; }
+            public string? Status { get; set; }
         }
     }
 }

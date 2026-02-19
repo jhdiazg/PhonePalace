@@ -12,9 +12,11 @@ using System;
 using System.Collections.Generic;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PhonePalace.Web.Controllers
 {
+    [Authorize(Roles = "Administrador,Almacenista")]
     public class PurchasesController : Controller
     {
         private readonly ApplicationDbContext _context;

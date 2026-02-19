@@ -8,10 +8,12 @@ using PhonePalace.Web.Helpers;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PhonePalace.Web.Controllers
 {
     [Route("VerificacionTarjeta")]
+    [Authorize(Roles = "Administrador,Cajero")]
     public class CreditCardVerificationsController : Controller
     {
         private readonly ApplicationDbContext _context;

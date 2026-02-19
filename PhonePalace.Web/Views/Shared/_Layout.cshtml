@@ -24,7 +24,7 @@
     <div class="d-flex flex-grow-1">
         @if (SignInManager.IsSignedIn(User))
         {
-            <partial name="_Sidebar" />
+            if (!User.IsInRole("Cliente")) { <partial name="_Sidebar" /> }
         }
 
         <div class="content-wrapper flex-grow-1">
@@ -39,7 +39,7 @@
                     </nav>
                 </header>
             }
-            @if (SignInManager.IsSignedIn(User))
+            @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Cliente"))
             {
                 @await Component.InvokeAsync("CashRegisterStatus")
             }

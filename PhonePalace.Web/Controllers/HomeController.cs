@@ -28,6 +28,12 @@ namespace PhonePalace.Web.Controllers
 
         public async Task<IActionResult> Index()
         {
+            // Si el usuario es un Cliente, redirigirlo a su portal y no mostrar el dashboard
+            if (User.IsInRole("Cliente"))
+            {
+                return RedirectToAction("MyData", "ClientPortal");
+            }
+
             // Umbral de bajo stock para los productos.
             const int lowStockThreshold = 5;
 

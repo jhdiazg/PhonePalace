@@ -47,21 +47,27 @@
                             </td>
                             <td class="text-end">
                                 <a asp-action="Edit" asp-route-id="@user.UserId" class="btn btn-sm btn-primary">Editar Roles</a>
-                                @if (user.Roles.Contains("Administrator"))
+                                @if (user.Roles.Contains("Administrador"))
                                 {
-                                    <button class="btn btn-sm btn-warning" disabled>Bloquear</button>
+                                    <button class="btn btn-sm btn-secondary" disabled title="No se puede bloquear a un administrador">Bloquear</button>
                                 }
                                 else
                                 {
-                                    <form asp-action="Lock" asp-route-id="@user.UserId" method="post" style="display:inline;">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('¿Bloquear este usuario?')">Bloquear</button>
-                                    </form>
+                                    @if (user.IsLocked)
+                                    {
+                                        <form asp-action="Unlock" asp-route-id="@user.UserId" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('¿Desbloquear este usuario?')">Desbloquear</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Lock" asp-route-id="@user.UserId" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('¿Bloquear este usuario?')">Bloquear</button>
+                                        </form>
+                                    }
                                 }
-                                <form asp-action="Unlock" asp-route-id="@user.UserId" method="post" style="display:inline;">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-success">Desbloquear</button>
-                                </form>
                             </td>
                         </tr>
                     }

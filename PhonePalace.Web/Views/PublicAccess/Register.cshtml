@@ -1,0 +1,189 @@
+@model PhonePalace.Web.ViewModels.PublicClientRegisterViewModel
+@using PhonePalace.Domain.Enums
+
+@{
+    ViewData["Title"] = "Registro de Cliente";
+    Layout = "_Layout"; // Asegúrate de usar tu layout principal o uno específico para login/registro
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="bi bi-person-plus-fill me-2"></i>Registro de Nuevo Cliente</h3>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Register" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <h5 class="text-muted mb-3">Información de Acceso</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Email" class="form-label"></label>
+                                <input asp-for="Email" class="form-control" placeholder="ejemplo@correo.com" />
+                                <span asp-validation-for="Email" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="PhoneNumber" class="form-label"></label>
+                                <input asp-for="PhoneNumber" class="form-control" placeholder="3001234567" />
+                                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Password" class="form-label"></label>
+                                <input asp-for="Password" class="form-control" />
+                                <span asp-validation-for="Password" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="ConfirmPassword" class="form-label"></label>
+                                <input asp-for="ConfirmPassword" class="form-control" />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <hr />
+                        <h5 class="text-muted mb-3">Información de Facturación</h5>
+
+                        <div class="mb-3">
+                            <label asp-for="ClientType" class="form-label fw-bold">Tipo de Persona</label>
+                            <select asp-for="ClientType" class="form-select" id="clientTypeSelect" asp-items="Html.GetEnumSelectList<PhonePalace.Web.ViewModels.ClientTypeSelection>()">
+                            </select>
+                            <span asp-validation-for="ClientType" class="text-danger"></span>
+                        </div>
+
+                        <!-- Sección Persona Natural -->
+                        <div id="naturalPersonSection">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="FirstName" class="form-label"></label>
+                                    <input asp-for="FirstName" class="form-control" />
+                                    <span asp-validation-for="FirstName" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="LastName" class="form-label"></label>
+                                    <input asp-for="LastName" class="form-control" />
+                                    <span asp-validation-for="LastName" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="DocumentType" class="form-label"></label>
+                                    <select asp-for="DocumentType" class="form-select" asp-items="Html.GetEnumSelectList<DocumentType>()"></select>
+                                    <span asp-validation-for="DocumentType" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="DocumentNumber" class="form-label"></label>
+                                    <input asp-for="DocumentNumber" class="form-control" />
+                                    <span asp-validation-for="DocumentNumber" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sección Persona Jurídica -->
+                        <div id="legalEntitySection" style="display:none;">
+                            <div class="mb-3">
+                                <label asp-for="CompanyName" class="form-label"></label>
+                                <input asp-for="CompanyName" class="form-control" />
+                                <span asp-validation-for="CompanyName" class="text-danger"></span>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-9 mb-3">
+                                    <label asp-for="NitNumber" class="form-label"></label>
+                                    <input asp-for="NitNumber" class="form-control" placeholder="Sin dígito de verificación" />
+                                    <span asp-validation-for="NitNumber" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label asp-for="VerificationDigit" class="form-label">DV</label>
+                                    <input asp-for="VerificationDigit" class="form-control" maxlength="1" />
+                                    <span asp-validation-for="VerificationDigit" class="text-danger"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DepartmentID" class="form-label"></label>
+                                <select asp-for="DepartmentID" class="form-select" asp-items="ViewBag.DepartmentID">
+                                    <option value="">-- Seleccione Departamento --</option>
+                                </select>
+                                <span asp-validation-for="DepartmentID" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="MunicipalityID" class="form-label"></label>
+                                <select asp-for="MunicipalityID" class="form-select">
+                                    <option value="">-- Seleccione Municipio --</option>
+                                </select>
+                                <span asp-validation-for="MunicipalityID" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Address" class="form-label"></label>
+                            <input asp-for="Address" class="form-control" placeholder="Dirección completa para envíos/facturación" />
+                            <span asp-validation-for="Address" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="DataAuthorization" class="form-check-input" type="checkbox" />
+                            <label asp-for="DataAuthorization" class="form-check-label small text-muted text-justify">
+                                Autorizo de manera expresa y voluntaria a <strong>@ViewData["CompanyName"]</strong> para recolectar, almacenar, usar, circular, transferir y suprimir mis datos personales, conforme a lo establecido en la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas aplicables. Entiendo que mis datos serán utilizados para fines relacionados con la emisión de facturas electrónicas, la gestión administrativa, comercial y de servicio al cliente. Reconozco que tengo derecho a conocer, actualizar, rectificar y solicitar la eliminación de mis datos, así como a revocar esta autorización en cualquier momento, de acuerdo con la Política de Tratamiento de Datos Personales disponible en el establecimiento.
+                            </label>
+                            <span asp-validation-for="DataAuthorization" class="text-danger d-block"></span>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Registrarse</button>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            function toggleClientType() {
+                var selectedType = $('#clientTypeSelect').val();
+                // Asumiendo que el enum ClientTypeSelection: 0 = NaturalPerson, 1 = LegalEntity
+                // Ajusta estos valores según el orden en tu enum si es diferente.
+                if (selectedType == "0") {
+                    $('#naturalPersonSection').show();
+                    $('#legalEntitySection').hide();
+                } else {
+                    $('#naturalPersonSection').hide();
+                    $('#legalEntitySection').show();
+                }
+            }
+
+            // Ejecutar al cargar (por si hay errores de validación y vuelve a la vista)
+            toggleClientType();
+
+            // Ejecutar al cambiar la selección
+            $('#clientTypeSelect').change(function () {
+                toggleClientType();
+            });
+
+            // Cargar municipios al cambiar departamento
+            $('#DepartmentID').change(function () {
+                var departmentId = $(this).val();
+                var municipalitySelect = $('#MunicipalityID');
+                municipalitySelect.empty();
+                municipalitySelect.append('<option value="">-- Seleccione Municipio --</option>');
+
+                if (departmentId) {
+                    $.getJSON('@Url.Action("GetMunicipalities")', { departmentId: departmentId }, function (data) {
+                        $.each(data, function (index, item) {
+                            municipalitySelect.append($('<option></option>').val(item.value).text(item.text));
+                        });
+                    });
+                }
+            });
+        });
+    </script>
+}

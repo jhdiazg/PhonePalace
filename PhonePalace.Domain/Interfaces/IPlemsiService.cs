@@ -6,6 +6,7 @@ namespace PhonePalace.Domain.Interfaces
     public interface IPlemsiService
     {
         Task<PlemsiResponse> SendInvoiceAsync(Sale sale);
+        Task<PlemsiResponse> GetInvoiceStatusAsync(int invoiceId);
     }
 
     public class PlemsiResponse

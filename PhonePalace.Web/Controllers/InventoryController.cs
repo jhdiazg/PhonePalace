@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Hosting;
 
 namespace PhonePalace.Web.Controllers
 {
+    [Authorize(Roles = "Administrador,Almacenista,Vendedor")]
     public class InventoryController : Controller
     {
         private readonly ApplicationDbContext _context;
