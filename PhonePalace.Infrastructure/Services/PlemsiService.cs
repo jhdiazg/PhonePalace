@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
@@ -20,16 +21,19 @@ namespace PhonePalace.Infrastructure.Services
         private readonly PlemsiConfig _config;
         private readonly CompanySettings _companySettings;
         private readonly ILogger<PlemsiService> _logger;
+        private readonly IConfiguration _configuration;
 
         public PlemsiService(HttpClient httpClient, 
                              IOptions<PlemsiConfig> config, 
                              IOptions<CompanySettings> companySettings, 
-                             ILogger<PlemsiService> logger)
+                             ILogger<PlemsiService> logger,
+                             IConfiguration configuration)
         {
             _httpClient = httpClient;
             _config = config.Value;
             _logger = logger;
             _companySettings = companySettings.Value;
+            _configuration = configuration;
 
             // Configuración básica del cliente si no viene inyectado configurado
             if (_httpClient.BaseAddress == null && !string.IsNullOrEmpty(_config.BaseUrl))
@@ -48,6 +52,10 @@ namespace PhonePalace.Infrastructure.Services
             try
             {
                 var payload = BuildPayload(sale);
+                
+                // Serializar el payload a JSON para guardarlo en los logs (Depuración)
+                string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                _logger.LogInformation("Enviando Factura Electrónica #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
                 
                 // Enviar petición a Plemsi (Endpoint 'billing/invoice')
                 var response = await _httpClient.PostAsJsonAsync("billing/invoice", payload);
@@ -70,7 +78,10 @@ namespace PhonePalace.Infrastructure.Services
                             };
                         }
 
-                        var qrUrl = !string.IsNullOrEmpty(result.Data?.QrUrl) ? result.Data.QrUrl : result.Data?.QRCode;
+                        // Preferir el contenido del QR (URL DIAN) sobre la URL de la imagen
+                        var qrContent = result.Data?.QRCode;
+                        var qrImg = result.Data?.QrUrl;
+                        var qrUrl = (!string.IsNullOrEmpty(qrContent) && qrContent.Contains("dian.gov.co")) ? qrContent : (qrImg ?? qrContent);
 
                         return new PlemsiResponse
                         {
@@ -154,6 +165,110 @@ namespace PhonePalace.Infrastructure.Services
             }
         }
 
+        public async Task<PlemsiResponse> SendCreditNoteAsync(Sale sale, string reason, string originalCufe)
+        {
+            try
+            {
+                var payload = BuildCreditNotePayload(sale, reason, originalCufe);
+                
+                string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                _logger.LogInformation("Enviando Nota Crédito para Factura #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
+                
+                // Endpoint estándar para Notas Crédito en Plemsi según documentación
+                var response = await _httpClient.PostAsJsonAsync("billing/credit", payload);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<PlemsiApiResponse>();
+                    
+                    if (result != null && result.Success)
+                    {
+                        // Las notas crédito generan CUDE, no CUFE
+                        var uniqueId = !string.IsNullOrEmpty(result.Data?.Cude) ? result.Data.Cude : result.Data?.Cufe;
+
+                        return new PlemsiResponse
+                        {
+                            Success = true,
+                            Cufe = uniqueId,
+                            Number = $"{result.Data?.Prefix}{result.Data?.Number}",
+                            QrUrl = result.Data?.QrUrl ?? "",
+                            Status = "Accepted"
+                        };
+                    }
+                    else
+                    {
+                         return new PlemsiResponse
+                        {
+                            Success = false,
+                            ErrorMessage = result?.Message ?? "Error desconocido al emitir Nota Crédito."
+                        };
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Plemsi API Error (Credit Note): {StatusCode} - {Content}", response.StatusCode, errorContent);
+                    return new PlemsiResponse { Success = false, ErrorMessage = $"Error HTTP {response.StatusCode}" };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enviando Nota Crédito a Plemsi");
+                return new PlemsiResponse { Success = false, ErrorMessage = $"Excepción: {ex.Message}" };
+            }
+        }
+
+        public async Task<PlemsiResponse> SendPartialCreditNoteAsync(Return returnEntity, Sale sale, string reason, string originalCufe)
+        {
+            try
+            {
+                var payload = BuildPartialCreditNotePayload(returnEntity, sale, reason, originalCufe);
+                
+                string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+                _logger.LogInformation("Enviando Nota Crédito Parcial para Factura #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
+                
+                var response = await _httpClient.PostAsJsonAsync("billing/credit", payload);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var result = await response.Content.ReadFromJsonAsync<PlemsiApiResponse>();
+                    
+                    if (result != null && result.Success)
+                    {
+                        var uniqueId = !string.IsNullOrEmpty(result.Data?.Cude) ? result.Data.Cude : result.Data?.Cufe;
+
+                        return new PlemsiResponse
+                        {
+                            Success = true,
+                            Cufe = uniqueId,
+                            Number = $"{result.Data?.Prefix}{result.Data?.Number}",
+                            QrUrl = result.Data?.QrUrl ?? "",
+                            Status = "Accepted"
+                        };
+                    }
+                    else
+                    {
+                         return new PlemsiResponse
+                        {
+                            Success = false,
+                            ErrorMessage = result?.Message ?? "Error desconocido al emitir Nota Crédito Parcial."
+                        };
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Plemsi API Error (Partial Credit Note): {StatusCode} - {Content}", response.StatusCode, errorContent);
+                    return new PlemsiResponse { Success = false, ErrorMessage = $"Error HTTP {response.StatusCode}" };
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error enviando Nota Crédito Parcial a Plemsi");
+                return new PlemsiResponse { Success = false, ErrorMessage = $"Excepción: {ex.Message}" };
+            }
+        }
+
         public async Task<PlemsiResponse> GetInvoiceStatusAsync(int invoiceId)
         {
             try
@@ -170,7 +285,10 @@ namespace PhonePalace.Infrastructure.Services
 
                     if (result != null && result.Success && result.Data != null && !string.IsNullOrEmpty(uniqueId))
                     {
-                        var qrUrl = !string.IsNullOrEmpty(result.Data.QrUrl) ? result.Data.QrUrl : result.Data.QRCode;
+                        // Preferir el contenido del QR (URL DIAN) sobre la URL de la imagen
+                        var qrContent = result.Data.QRCode;
+                        var qrImg = result.Data.QrUrl;
+                        var qrUrl = (!string.IsNullOrEmpty(qrContent) && qrContent.Contains("dian.gov.co")) ? qrContent : (qrImg ?? qrContent);
 
                         return new PlemsiResponse
                         {
@@ -226,6 +344,9 @@ namespace PhonePalace.Infrastructure.Services
                 nit = "222222222222"; // Consumidor final
             }
 
+            // Construcción del texto de resolución legal
+            string resolutionText = $"Autorización de Facturación No. {_companySettings.DianResolutionNumber} de {_companySettings.DianResolutionDate} Prefijo {_companySettings.DianResolutionPrefix} desde {_companySettings.DianResolutionStartNumber} hasta {_companySettings.DianResolutionEndNumber}";
+
             var customer = new
             {
                 identification_number = nit,
@@ -243,14 +364,19 @@ namespace PhonePalace.Infrastructure.Services
                 type_regime_id = client is NaturalPerson ? 2 : 1 // 1: Responsable de IVA, 2: No responsable
             };
 
+            // Obtener tasa de IVA de la configuración
+            decimal taxRate = _configuration.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+
             // Mapeo de Items
             var items = sale.Details.Select(d =>
             {
                 // UnitPrice incluye IVA. Calculamos base.
-                decimal taxRateFactor = 1.19m;
+                // IMPORTANTE: Redondear a 2 decimales en cada paso para evitar rechazos por diferencias de centavos en los totales.
+                decimal taxRateFactor = 1 + taxRate;
                 decimal baseUnitPrice = Math.Round(d.UnitPrice / taxRateFactor, 2);
                 decimal lineExtensionAmount = Math.Round(baseUnitPrice * d.Quantity, 2);
-                decimal taxAmount = Math.Round(lineExtensionAmount * (taxRateFactor - 1), 2);
+                decimal taxAmount = Math.Round(lineExtensionAmount * taxRate, 2);
 
                 return new
                 {
@@ -268,7 +394,7 @@ namespace PhonePalace.Infrastructure.Services
                         new
                         {
                             tax_id = 1, // IVA
-                            percent = 19.00,
+                            percent = Math.Round(taxRate * 100, 2),
                             tax_amount = taxAmount, 
                             taxable_amount = lineExtensionAmount
                         }
@@ -313,18 +439,23 @@ namespace PhonePalace.Infrastructure.Services
                 .Select(g => new
                 {
                     tax_id = g.Key,
-                    tax_amount = g.Sum(t => t.tax_amount),
+                    tax_amount = Math.Round(g.Sum(t => t.tax_amount), 2),
                     percent = g.First().percent,
-                    taxable_amount = g.Sum(t => t.taxable_amount)
+                    taxable_amount = Math.Round(g.Sum(t => t.taxable_amount), 2)
                 }).ToList();
 
             return new
             {
                 number = invoice.InvoiceID,
+                orderReference = new { id_order = sale.SaleID.ToString() }, // Referencia interna de la venta
+                send_email = true, // Indicar a Plemsi que envíe el correo al cliente
                 date = DateTime.Now.ToString("yyyy-MM-dd"), // Fecha de emisión (Hoy) para cumplir FAD09e
                 time = DateTime.Now.ToString("HH:mm:ss"),   // Hora de emisión (Ahora)
                 prefix = _companySettings.DianResolutionPrefix,
                 resolution = _companySettings.DianResolutionNumber, // Corregido: 'resolution' en lugar de 'resolution_number'
+                resolutionText = resolutionText, // Texto legal de la resolución
+                head_note = $"Venta POS #{sale.SaleID}", // Encabezado opcional
+                foot_note = "Gracias por su compra en PhonePalace", // Pie de página opcional
                 customer,
                 items,
                 payment,
@@ -335,6 +466,179 @@ namespace PhonePalace.Infrastructure.Services
                 totalToPay = invoiceTaxInclusiveTotal, // Valor final a pagar (sin retenciones, es igual al inclusivo)
                 allTaxTotals, // Resumen de impuestos
                 notes = $"Venta #{invoice.InvoiceID} - PhonePalace",
+            };
+        }
+
+        private object BuildCreditNotePayload(Sale sale, string reason, string originalCufe)
+        {
+            // Reutilizamos la lógica base de construcción de items y cliente
+            // Nota: Para una implementación robusta, se debería refactorizar BuildPayload para compartir lógica común.
+            // Aquí duplicamos la parte esencial para asegurar que la Nota Crédito sea idéntica a la Factura original.
+            
+            // 1. Obtener el payload base como si fuera una factura para reutilizar la estructura de 'customer', 'items', etc.
+            // Esto es un truco para no duplicar todo el código de mapeo de items e impuestos.
+            var basePayload = BuildPayload(sale);
+            
+            // Usamos reflexión o serialización/deserialización para acceder a las propiedades del objeto anónimo basePayload
+            // Para simplicidad y rendimiento en este contexto, asumimos que podemos acceder a las propiedades si usamos dynamic
+            // o reconstruimos lo necesario. Dado que BuildPayload retorna object (anónimo), lo mejor es castear a dynamic.
+            dynamic dynamicBase = basePayload;
+
+            string invoicePrefix = _companySettings.DianResolutionPrefix;
+            string invoiceNumber = sale.Invoice.InvoiceID.ToString();
+            string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
+
+            string ncPrefix = _companySettings.CreditNotePrefix;
+            string ncResolution = _companySettings.CreditNoteResolutionNumber;
+
+            // Construcción específica para Nota Crédito
+            return new
+            {
+                // type_document_id = 91 es Nota de Crédito
+                type_document_id = 91,
+                date = DateTime.Now.ToString("yyyy-MM-dd"),
+                time = DateTime.Now.ToString("HH:mm:ss"),
+                send_email = true,
+                prefix = ncPrefix,
+                resolution = ncResolution,
+                
+                // Referencia a la factura original (Obligatorio para NC)
+                billing_reference = new
+                {
+                    number = fullInvoiceNumber,
+                    prefix = invoicePrefix,
+                    date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd"),
+                    scheme_name = "CUFE-SHA384",
+                    cufe = originalCufe
+                },
+
+                // Razón de la anulación
+                discrepancy_response = new
+                {
+                    reference_id = fullInvoiceNumber,
+                    response_code = 2, // 2: Anulación de factura electrónica
+                    description = reason ?? "Anulación de venta"
+                },
+
+                // Datos reutilizados de la factura original
+                customer = dynamicBase.customer,
+                items = dynamicBase.items,
+                payment = dynamicBase.payment, // La forma de pago de la nota suele ser la misma
+                
+                // Resolución: Las NC suelen usar la misma resolución o una asociada. 
+                // Plemsi suele manejar la numeración de NC automáticamente si no se envía, 
+                // o se debe configurar una resolución de NC en el panel de Plemsi.
+                // Enviamos null en resolution para que Plemsi use la resolución de contingencia/NC configurada por defecto.
+                
+                notes = $"Nota Crédito por anulación de venta #{sale.SaleID}",
+                
+                // Totales
+                invoiceBaseTotal = dynamicBase.invoiceBaseTotal,
+                invoiceTaxInclusiveTotal = dynamicBase.invoiceTaxInclusiveTotal,
+                allTaxTotals = dynamicBase.allTaxTotals
+            };
+        }
+
+        private object BuildPartialCreditNotePayload(Return returnEntity, Sale sale, string reason, string originalCufe)
+        {
+            // 1. Reutilizamos la estructura base de la venta para cliente y pagos
+            var basePayload = BuildPayload(sale);
+            dynamic dynamicBase = basePayload;
+
+            string invoicePrefix = _companySettings.DianResolutionPrefix;
+            string invoiceNumber = sale.Invoice.InvoiceID.ToString();
+            string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
+
+            string ncPrefix = _companySettings.CreditNotePrefix;
+            string ncResolution = _companySettings.CreditNoteResolutionNumber;
+
+            // Obtener tasa de IVA
+            decimal taxRate = _configuration.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+
+            // 2. Construir items SOLO con lo devuelto
+            var items = returnEntity.Details.Select(d =>
+            {
+                decimal taxRateFactor = 1 + taxRate;
+                decimal baseUnitPrice = Math.Round(d.UnitPrice / taxRateFactor, 2);
+                decimal lineExtensionAmount = Math.Round(baseUnitPrice * d.Quantity, 2);
+                decimal taxAmount = Math.Round(lineExtensionAmount * taxRate, 2);
+
+                // Buscar nombre del producto en la venta original (ya que ReturnDetail puede no tener la navegación cargada)
+                var originalDetail = sale.Details.FirstOrDefault(sd => sd.ProductID == d.ProductID);
+                string productName = originalDetail?.Product?.Name ?? "Producto devuelto";
+                string productCode = originalDetail?.Product?.Code ?? originalDetail?.Product?.SKU ?? d.ProductID.ToString();
+
+                return new
+                {
+                    unit_measure_id = 70, 
+                    invoiced_quantity = d.Quantity,
+                    line_extension_amount = lineExtensionAmount,
+                    free_of_charge_indicator = false,
+                    description = productName,
+                    code = productCode,
+                    type_item_identification_id = 4,
+                    price_amount = baseUnitPrice,
+                    base_quantity = d.Quantity,
+                    tax_totals = new[]
+                    {
+                        new
+                        {
+                            tax_id = 1,
+                            percent = Math.Round(taxRate * 100, 2),
+                            tax_amount = taxAmount, 
+                            taxable_amount = lineExtensionAmount
+                        }
+                    }
+                };
+            }).ToList();
+
+            // 3. Recalcular totales para la nota parcial
+            decimal invoiceBaseTotal = items.Sum(i => (decimal)i.line_extension_amount);
+            // Nota: Acceso dinámico a propiedades anónimas
+            decimal totalTax = items.Sum(i => (decimal)((dynamic)i).tax_totals[0].tax_amount);
+            decimal invoiceTaxInclusiveTotal = invoiceBaseTotal + totalTax;
+
+            var allTaxTotals = items
+                .SelectMany(i => (IEnumerable<dynamic>)((dynamic)i).tax_totals)
+                .GroupBy(t => (int)t.tax_id)
+                .Select(g => new
+                {
+                    tax_id = g.Key,
+                    tax_amount = Math.Round(g.Sum(t => (decimal)t.tax_amount), 2),
+                    percent = g.First().percent,
+                    taxable_amount = Math.Round(g.Sum(t => (decimal)t.taxable_amount), 2)
+                }).ToList();
+
+            return new
+            {
+                type_document_id = 91, // Nota Crédito
+                date = DateTime.Now.ToString("yyyy-MM-dd"),
+                time = DateTime.Now.ToString("HH:mm:ss"),
+                send_email = true,
+                prefix = ncPrefix,
+                resolution = ncResolution,
+                billing_reference = new
+                {
+                    number = fullInvoiceNumber,
+                    prefix = invoicePrefix,
+                    date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd"),
+                    scheme_name = "CUFE-SHA384",
+                    cufe = originalCufe
+                },
+                discrepancy_response = new
+                {
+                    reference_id = fullInvoiceNumber,
+                    response_code = 1, // 1: Devolución parcial de bienes
+                    description = reason ?? "Devolución parcial"
+                },
+                customer = dynamicBase.customer,
+                items = items,
+                payment = dynamicBase.payment,
+                notes = $"Nota Crédito Parcial por devolución venta #{sale.SaleID}",
+                invoiceBaseTotal,
+                invoiceTaxInclusiveTotal,
+                allTaxTotals
             };
         }
 

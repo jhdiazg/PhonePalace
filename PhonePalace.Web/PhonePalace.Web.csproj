@@ -39,6 +39,9 @@
     <Content Update="wwwroot\apple-touch-icon.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Update="wwwroot\docs\PoliticaTratamientoDatos.pdf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Update="wwwroot\favicon-96x96.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

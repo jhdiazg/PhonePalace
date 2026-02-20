@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = "Detalles de Cotización";
-    var taxRate = ViewBag.TaxRate != null ? (decimal)ViewBag.TaxRate : 0.19m;
+    var taxRate = (decimal)(ViewBag.TaxRate ?? 0m);
 }
 
 <h1>@ViewData["Title"]</h1>

@@ -14,6 +14,8 @@ using QuestPDF.Fluent;
 using ClosedXML.Excel;
 using System.IO;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using PhonePalace.Infrastructure.Services;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -29,8 +31,9 @@ namespace PhonePalace.Web.Controllers
         private readonly CompanySettings _companySettings;
         private readonly IPlemsiService _plemsiService;
         private readonly IAuditService _auditService;
+        private readonly IEmailSender _emailSender;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService, IEmailSender emailSender)
         {
             _context = context;
             _cashService = cashService;
@@ -40,6 +43,7 @@ namespace PhonePalace.Web.Controllers
             _companySettings = companySettings.Value;
             _plemsiService = plemsiService;
             _auditService = auditService;
+            _emailSender = emailSender;
         }
 
     [HttpGet]
@@ -196,9 +200,18 @@ namespace PhonePalace.Web.Controllers
             // Cargar información de Factura Electrónica si existe (Entidad Independiente)
             if (sale.Invoice != null)
             {
-                ViewBag.ElectronicInvoice = await _context.Set<ElectronicInvoice>()
+                var electronicInvoice = await _context.Set<ElectronicInvoice>()
                     .AsNoTracking()
                     .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID);
+
+                if (electronicInvoice != null && !string.IsNullOrEmpty(electronicInvoice.CUFE))
+                {
+                    // Recalcular URL de la DIAN para asegurar que el botón funcione correctamente
+                    string plemsiUrl = _config.GetValue<string>("Plemsi:BaseUrl") ?? "";
+                    bool isHab = plemsiUrl.Contains("pruebas", StringComparison.OrdinalIgnoreCase) || plemsiUrl.Contains("sandbox", StringComparison.OrdinalIgnoreCase);
+                    electronicInvoice.QRCodeUrl = isHab ? $"https://catalogo-vpfe-hab.dian.gov.co/document/searchqr?documentkey={electronicInvoice.CUFE}" : $"https://catalogo-vpfe.dian.gov.co/document/searchqr?documentkey={electronicInvoice.CUFE}";
+                }
+                ViewBag.ElectronicInvoice = electronicInvoice;
             }
 
             // Obtener caja actual para validaciones de anulación en la vista
@@ -626,7 +639,9 @@ namespace PhonePalace.Web.Controllers
                 try
                 {
                     var sale = await _context.Sales
+                        .Include(s => s.Client)
                         .Include(s => s.Details)
+                            .ThenInclude(d => d.Product)
                         .Include(s => s.Invoice)
                             .ThenInclude(i => i.Payments)
                         .FirstOrDefaultAsync(s => s.SaleID == id);
@@ -682,6 +697,27 @@ namespace PhonePalace.Web.Controllers
                         sale.IsDeleted = true;
                         _context.Update(sale);
                         
+                        // 5. Emitir Nota Crédito Electrónica si aplica
+                        var electronicInvoice = await _context.Set<ElectronicInvoice>()
+                            .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
+
+                        if (electronicInvoice != null)
+                        {
+                            try 
+                            {
+                                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, "Anulación completa de venta por solicitud del cliente", electronicInvoice.CUFE);
+                                if (ncResponse.Success)
+                                {
+                                    await _auditService.LogAsync("Facturación", $"Nota Crédito emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
+                                }
+                                else
+                                {
+                                    await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito para {sale.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
+                                }
+                            }
+                            catch (Exception ex) { /* Loguear error pero no detener la anulación local */ }
+                        }
+
                         await _context.SaveChangesAsync();
                         await _auditService.LogAsync("Ventas", $"Anuló la venta #{id} y reversó sus movimientos.");
                         

@@ -65,6 +65,7 @@ D:\PhonePalace\PhonePalace.Web\wwwroot\lib\bootstrap\dist\css\bootstrap-utilitie
 D:\PhonePalace\PhonePalace.Web\wwwroot\lib\jquery-validation\dist\jquery.validate.min.js
 wwwroot\apple-touch-icon.png
 wwwroot\css\site.css
+wwwroot\docs\PoliticaTratamientoDatos.pdf
 wwwroot\favicon-96x96.png
 wwwroot\favicon.ico
 wwwroot\favicon.svg

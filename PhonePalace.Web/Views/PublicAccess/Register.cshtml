@@ -14,6 +14,9 @@
                     <h3 class="mb-0"><i class="bi bi-person-plus-fill me-2"></i>Registro de Nuevo Cliente</h3>
                 </div>
                 <div class="card-body">
+                    <div class="text-center mb-4">
+                        <img src="~/images/Logo_pdf2.jpg" alt="PhonePalace" class="img-fluid" style="max-height: 120px;" />
+                    </div>
                     <form asp-action="Register" method="post">
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
@@ -126,9 +129,9 @@
                         </div>
 
                         <div class="mb-3 form-check">
-                            <input asp-for="DataAuthorization" class="form-check-input" type="checkbox" />
+                            <input asp-for="DataAuthorization" class="form-check-input" type="checkbox" required />
                             <label asp-for="DataAuthorization" class="form-check-label small text-muted text-justify">
-                                Autorizo de manera expresa y voluntaria a <strong>@ViewData["CompanyName"]</strong> para recolectar, almacenar, usar, circular, transferir y suprimir mis datos personales, conforme a lo establecido en la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas aplicables. Entiendo que mis datos serán utilizados para fines relacionados con la emisión de facturas electrónicas, la gestión administrativa, comercial y de servicio al cliente. Reconozco que tengo derecho a conocer, actualizar, rectificar y solicitar la eliminación de mis datos, así como a revocar esta autorización en cualquier momento, de acuerdo con la Política de Tratamiento de Datos Personales disponible en el establecimiento.
+                                Autorizo de manera expresa y voluntaria a <strong>@ViewData["CompanyName"]</strong> para recolectar, almacenar, usar, circular, transferir y suprimir mis datos personales, conforme a lo establecido en la Ley 1581 de 2012, el Decreto 1377 de 2013 y demás normas aplicables. Entiendo que mis datos serán utilizados para fines relacionados con la emisión de facturas electrónicas, la gestión administrativa, comercial y de servicio al cliente. Reconozco que tengo derecho a conocer, actualizar, rectificar y solicitar la eliminación de mis datos, así como a revocar esta autorización en cualquier momento, de acuerdo con la <a href="~/docs/PoliticaTratamientoDatos.pdf" target="_blank" class="text-decoration-underline">Política de Tratamiento de Datos Personales</a>.
                             </label>
                             <span asp-validation-for="DataAuthorization" class="text-danger d-block"></span>
                         </div>

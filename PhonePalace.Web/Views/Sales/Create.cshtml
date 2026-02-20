@@ -237,7 +237,7 @@
                 return productInfo ? productInfo.price : 0;
             }
 
-            const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0.19m);
+            const taxRate = @Json.Serialize(ViewBag.TaxRate ?? 0m);
             const defaultCardBankId = @Json.Serialize(ViewBag.DefaultCardBankId);
             const surchargePercentage = @Json.Serialize(ViewBag.CardSurchargePercentage ?? 0);
 

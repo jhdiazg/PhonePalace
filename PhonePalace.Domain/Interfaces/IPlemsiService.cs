@@ -7,6 +7,8 @@ namespace PhonePalace.Domain.Interfaces
     {
         Task<PlemsiResponse> SendInvoiceAsync(Sale sale);
         Task<PlemsiResponse> GetInvoiceStatusAsync(int invoiceId);
+        Task<PlemsiResponse> SendCreditNoteAsync(Sale sale, string reason, string originalCufe);
+        Task<PlemsiResponse> SendPartialCreditNoteAsync(Return returnEntity, Sale sale, string reason, string originalCufe);
     }
 
     public class PlemsiResponse

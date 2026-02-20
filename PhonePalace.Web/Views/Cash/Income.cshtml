@@ -1,22 +1,34 @@
 @model PhonePalace.Web.ViewModels.CashMovementViewModel
 
 @{
-    ViewData["Title"] = "Registrar Ingreso";
+    ViewData["Title"] = "Registrar Ingreso de Caja";
 }
 
-<h1>Registrar Ingreso</h1>
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">Registre una entrada de dinero manual (ej. base adicional, cambio).</p>
 
-<form asp-action="Income" method="post">
-    <div class="form-group">
-        <label asp-for="Amount"></label>
-        <input asp-for="Amount" class="form-control" type="number" step="0.01" min="0.01" />
-        <span asp-validation-for="Amount" class="text-danger"></span>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success">
+            <div class="card-body">
+                <form asp-action="Income" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="mb-3">
+                        <label asp-for="Amount" class="form-label"></label>
+                        <input asp-for="Amount" class="form-control" type="number" step="0.01" autofocus />
+                        <span asp-validation-for="Amount" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">Registrar Ingreso</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="form-group">
-        <label asp-for="Description"></label>
-        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-        <span asp-validation-for="Description" class="text-danger"></span>
-    </div>
-    <button type="submit" class="btn btn-success">Registrar Ingreso</button>
-    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
-</form>
+</div>

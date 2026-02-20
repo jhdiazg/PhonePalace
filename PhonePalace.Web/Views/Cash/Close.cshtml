@@ -4,117 +4,43 @@
     ViewData["Title"] = "Cerrar Caja";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-danger text-white">
-                    <h4 class="mb-0"><i class="bi bi-door-closed-fill me-2"></i>@ViewData["Title"]</h4>
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">Verifique el dinero físico en caja antes de cerrar.</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <strong>Saldo en Sistema:</strong> @Model.SystemBalance.ToString("C")
                 </div>
-                <div class="card-body">
-                    <form asp-action="Close" id="closeForm">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                        <input type="hidden" id="systemBalance" value="@Model.SystemBalance" />
-                        <input type="hidden" asp-for="Observation" id="observation" />
 
-                        <!-- Información del Sistema -->
-                        <div class="alert alert-light border mb-4">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="text-muted mb-0">Saldo Esperado (Sistema)</h6>
-                                    <small>Ventas - Gastos + Ingresos</small>
-                                </div>
-                                <h3 class="mb-0 text-secondary">@Model.SystemBalance.ToString("C0")</h3>
-                            </div>
+                <form asp-action="Close" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="SystemBalance" />
+
+                    <div class="mb-3">
+                        <label asp-for="ClosingAmount" class="form-label"></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input asp-for="ClosingAmount" class="form-control" type="number" step="0.01" autofocus />
                         </div>
+                        <span asp-validation-for="ClosingAmount" class="text-danger"></span>
+                        <div class="form-text">Ingrese la cantidad total de dinero contada físicamente en la caja.</div>
+                    </div>
 
-                        <div class="mb-4">
-                            <label asp-for="ClosingAmount" class="form-label fw-bold">Dinero en Caja (Conteo Físico)</label>
-                            
-                            <div class="d-flex align-items-center flex-wrap">
-                                <!-- Caja de texto pequeña con formato moneda -->
-                                <div class="input-group" style="width: 200px;">
-                                    <span class="input-group-text">$</span>
-                                    <input asp-for="ClosingAmount" class="form-control text-end fw-bold" placeholder="0" type="number" step="1" min="0" id="closingAmount" />
-                                </div>
-                                
-                                <!-- Botones a la derecha -->
-                                <div class="d-flex gap-2 ms-3">
-                                    <button type="submit" class="btn btn-danger">
-                                        <i class="bi bi-check-lg me-1"></i> Cerrar Caja
-                                    </button>
-                                    <a asp-action="Index" class="btn btn-secondary">
-                                        <i class="bi bi-x-lg me-1"></i> Cancelar
-                                    </a>
-                                </div>
-                            </div>
-                            <span asp-validation-for="ClosingAmount" class="text-danger"></span>
-                            <div class="form-text text-muted">Ingrese la cantidad total de efectivo contado en la caja.</div>
-                        </div>
+                    <div class="mb-3">
+                        <label asp-for="Observation" class="form-label">Observaciones (Opcional)</label>
+                        <textarea asp-for="Observation" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Observation" class="text-danger"></span>
+                    </div>
 
-                        <!-- Alerta de Diferencia Dinámica -->
-                        <div id="diffAlert" class="alert d-none" role="alert">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <strong id="diffLabel">Diferencia:</strong>
-                                <span id="diffAmount" class="fs-5 fw-bold"></span>
-                            </div>
-                        </div>
-
-                    </form>
-                </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">Cerrar Caja</button>
+                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
-
-@section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    <script>
-        $(document).ready(function() {
-            const systemBalance = parseFloat($('#systemBalance').val()) || 0;
-            const closingInput = $('#closingAmount');
-            const diffAlert = $('#diffAlert');
-            const diffAmount = $('#diffAmount');
-            const diffLabel = $('#diffLabel');
-
-            $('#closeForm').on('submit', function(e) {
-                const closingVal = parseFloat(closingInput.val()) || 0;
-                const diff = closingVal - systemBalance;
-
-                if (diff !== 0) {
-                    const type = diff < 0 ? "Faltante" : "Sobrante";
-                    const absDiff = Math.abs(diff).toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
-                    const message = `⚠️ ADVERTENCIA DE CUADRE\n\nSe ha detectado un ${type.toUpperCase()} de ${absDiff}.\n\n¿Está seguro que desea cerrar la caja con esta diferencia?`;
-
-                    if (!confirm(message)) {
-                        e.preventDefault(); // Cancelar envío para rectificar
-                    } else {
-                        // Registrar la diferencia automáticamente en la observación
-                        $('#observation').val(`Cierre de caja con ${type} de ${absDiff}`);
-                    }
-                }
-            });
-
-            closingInput.on('input', function() {
-                const closingVal = parseFloat($(this).val()) || 0;
-                const diff = closingVal - systemBalance;
-
-                diffAlert.removeClass('d-none alert-success alert-danger alert-warning');
-                
-                if (diff === 0) {
-                    diffAlert.addClass('alert-success');
-                    diffLabel.text("¡Cuadre Perfecto!");
-                    diffAmount.text("$0");
-                } else if (diff < 0) {
-                    diffAlert.addClass('alert-danger');
-                    diffLabel.text("Faltante (Dinero perdido):");
-                    diffAmount.text(diff.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }));
-                } else {
-                    diffAlert.addClass('alert-warning');
-                    diffLabel.text("Sobrante (Dinero extra):");
-                    diffAmount.text("+" + diff.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }));
-                }
-            });
-        });
-    </script>
-}

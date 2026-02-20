@@ -1,0 +1,49 @@
+@model IEnumerable<PhonePalace.Domain.Interfaces.BackupFileInfo>
+
+@{
+    ViewData["Title"] = "Copias de Seguridad";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>@ViewData["Title"]</h1>
+    <form asp-action="Create" method="post">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-database-add"></i> Generar Backup Ahora
+        </button>
+    </form>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        @if (!Model.Any())
+        {
+            <div class="alert alert-info">No se encontraron archivos de respaldo en la carpeta configurada.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre del Archivo</th>
+                            <th>Fecha de Creación</th>
+                            <th>Tamaño</th>
+                            <th>Ruta en Servidor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold">@file.Name</td>
+                                <td>@file.CreationTime.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                <td>@((file.Size / 1024.0 / 1024.0).ToString("F2")) MB</td>
+                                <td class="text-muted small">@file.FullPath</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

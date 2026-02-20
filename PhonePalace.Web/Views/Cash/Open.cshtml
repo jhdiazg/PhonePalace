@@ -1,50 +1,74 @@
-@model PhonePalace.Web.ViewModels.CashOpenViewModel
+@model PhonePalace.Web.ViewModels.OpenCashViewModel
 
 @{
     ViewData["Title"] = "Abrir Caja";
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="bi bi-cash-coin me-2"></i>@ViewData["Title"]</h4>
-                </div>
-                <div class="card-body">
-                    <form asp-action="Open">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<h1>@ViewData["Title"]</h1>
+<p class="text-muted">Ingrese el monto inicial con el que se abre la caja para el día de hoy.</p>
 
-                        <div class="mb-3">
-                            <label asp-for="OpeningBalance" class="form-label fw-bold">Monto de Apertura</label>
-                            
-                            <div class="d-flex align-items-center flex-wrap">
-                                <!-- Caja de texto pequeña con formato moneda -->
-                                <div class="input-group" style="width: 200px;">
-                                    <span class="input-group-text">$</span>
-                                    <input asp-for="OpeningBalance" class="form-control text-end" placeholder="0" type="number" step="1" min="0" />
-                                </div>
-                                
-                                <!-- Botones a la derecha, separados del input y entre sí -->
-                                <div class="d-flex gap-2 ms-3">
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="bi bi-check-lg me-1"></i> Abrir Caja
-                                    </button>
-                                    <a asp-action="Index" class="btn btn-secondary">
-                                        <i class="bi bi-x-lg me-1"></i> Cancelar
-                                    </a>
-                                </div>
-                            </div>
-                            <span asp-validation-for="OpeningBalance" class="text-danger"></span>
-                            <div class="form-text text-muted">Ingrese el monto inicial en efectivo (sin decimales).</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form asp-action="Open" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="mb-3">
+                        <label asp-for="OpeningAmount" class="form-label"></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input asp-for="OpeningAmount" class="form-control" type="number" step="0.01" autofocus />
                         </div>
-                    </form>
-                </div>
+                        <span asp-validation-for="OpeningAmount" class="text-danger"></span>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Abrir Caja</button>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Cancelar</a>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
+@if (ViewBag.ShowConfirmation == true)
+{
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="confirmationModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar Apertura de Caja</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Se ha detectado una diferencia entre el cierre anterior y el monto de apertura:</p>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Cierre Anterior: <strong>@(((decimal)ViewBag.LastClosingAmount).ToString("C"))</strong></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Apertura Actual: <strong>@(((decimal)ViewBag.OpeningAmount).ToString("C"))</strong></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center list-group-item-warning">Diferencia: <strong class="fs-5">@(((decimal)ViewBag.Difference).ToString("C"))</strong></li>
+                    </ul>
+                    <p class="fw-bold">¿Desea continuar y abrir la caja con esta diferencia?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form asp-action="Open" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" asp-for="OpeningAmount" value="@ViewBag.OpeningAmount" />
+                        <input type="hidden" name="confirmDifference" value="true" />
+                        <button type="submit" class="btn btn-primary">Sí, Abrir Caja</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @if (ViewBag.ShowConfirmation == true)
+    {
+        <script>
+            $(document).ready(function () {
+                var confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+                confirmationModal.show();
+            });
+        </script>
+    }
 }
