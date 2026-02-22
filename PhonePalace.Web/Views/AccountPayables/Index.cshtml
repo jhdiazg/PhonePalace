@@ -60,7 +60,8 @@
                         <th>Proveedor / Beneficiario</th>
                         <th>Documento</th>
                         <th>Vencimiento</th>
-                        <th>Monto</th>
+                        <th>Saldo Pendiente</th>
+                        <th>Monto Original</th>
                         <th>Estado</th>
                         <th class="text-end">Acciones</th>
                     </tr>
@@ -94,7 +95,8 @@
                                     @item.DueDate.ToString("dd/MM/yyyy")
                                 }
                             </td>
-                            <td class="fw-bold">@item.Amount.ToString("C")</td>
+                            <td class="fw-bold text-danger">@item.Balance.ToString("C")</td>
+                            <td class="text-muted">@item.Amount.ToString("C")</td>
                             <td>
                                 @if (item.IsPaid)
                                 {

@@ -41,6 +41,7 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<PurchaseDetail> PurchaseDetails { get; set; }
         public DbSet<AccountPayable> AccountPayables { get; set; }
+        public DbSet<AccountPayablePayment> AccountPayablePayments { get; set; }
         public DbSet<AccountReceivable> AccountReceivables { get; set; }
         public DbSet<AccountReceivablePayment> AccountReceivablePayments { get; set; }
         public DbSet<Bank> Banks { get; set; }
@@ -86,6 +87,17 @@ namespace PhonePalace.Infrastructure.Data
                 .HasDiscriminator<string>("ClientType")
                 .HasValue<NaturalPerson>("NaturalPerson")
                 .HasValue<LegalEntity>("LegalEntity");
+
+            modelBuilder.Entity<Supplier>()
+                .HasDiscriminator<string>("SupplierType")
+                .HasValue<NaturalPersonSupplier>("NaturalPerson")
+                .HasValue<LegalEntitySupplier>("LegalEntity");
+
+            // Configuración para permitir que DocumentType sea nulo en la base de datos (TPH)
+            // Esto soluciona el error al insertar LegalEntitySupplier que no tiene DocumentType
+            modelBuilder.Entity<NaturalPersonSupplier>()
+                .Property(n => n.DocumentType)
+                .IsRequired(false);
 
             // --- Configuración de Relaciones ---
             modelBuilder.Entity<Department>()
@@ -147,7 +159,6 @@ namespace PhonePalace.Infrastructure.Data
                 .WithMany() // Bank no tiene colección de Payments (tiene Transactions)
                 .HasForeignKey(p => p.BankID)
                 .OnDelete(DeleteBehavior.Restrict); // Evita borrar el Banco si tiene Pagos asociados
-
         }
     }
 }

@@ -74,7 +74,7 @@ namespace PhonePalace.Web.Controllers
             };
 
             // Calcular totales antes de paginar
-            ViewBag.TotalPayable = await accountPayablesQuery.SumAsync(x => x.Amount);
+            ViewBag.TotalPayable = await accountPayablesQuery.SumAsync(x => x.Balance);
             
             // Ordenamos por fecha de vencimiento para ver primero lo más urgente
             var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderBy(a => a.DueDate), pageNumber ?? 1, pageSize ?? 10);
@@ -87,7 +87,8 @@ namespace PhonePalace.Web.Controllers
 
             var accountPayable = await _context.AccountPayables
                 .Include(a => a.Purchase)
-                // .ThenInclude(p => p!.Supplier)
+                .Include(a => a.Payments)
+                    .ThenInclude(p => p.Bank)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (accountPayable == null) return NotFound();
@@ -113,6 +114,7 @@ namespace PhonePalace.Web.Controllers
             accountPayable.IsPaid = false;
             accountPayable.CreatedDate = DateTime.Now;
             accountPayable.DocumentNumber = accountPayable.DocumentNumber?.ToUpper();
+            accountPayable.Balance = accountPayable.Amount; // Inicializar saldo igual al monto
 
             if (ModelState.IsValid)
             {
@@ -139,9 +141,18 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,PurchaseId,DocumentType,DocumentNumber,Amount,CreatedDate,DueDate,IsPaid")] AccountPayable accountPayable)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,PurchaseId,DocumentType,DocumentNumber,CreatedDate,DueDate,IsPaid")] AccountPayable accountPayable)
         {
             if (id != accountPayable.Id) return NotFound();
+
+            // Eliminamos Amount del Bind para no sobrescribirlo con 0 si está disabled en la vista
+            // Recuperamos la entidad original para mantener el saldo y otros datos críticos
+            var originalAp = await _context.AccountPayables.AsNoTracking().FirstOrDefaultAsync(ap => ap.Id == id);
+            if (originalAp == null) return NotFound();
+
+            // Mantenemos el monto original (saldo actual)
+            accountPayable.Amount = originalAp.Amount;
+            accountPayable.Balance = originalAp.Balance;
 
             if (ModelState.IsValid)
             {
@@ -193,7 +204,27 @@ namespace PhonePalace.Web.Controllers
             return _context.AccountPayables.Any(e => e.Id == id);
         }
 
-        [HttpPost]
+        [HttpGet("Pay/{id}")]
+        public async Task<IActionResult> Pay(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var ap = await _context.AccountPayables.FindAsync(id);
+            if (ap == null) return NotFound();
+
+            if (ap.IsPaid)
+            {
+                TempData["Info"] = "Esta cuenta ya se encuentra pagada.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
+
+            return View(ap);
+        }
+
+        [HttpPost("Pay/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Pay(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
@@ -212,8 +243,22 @@ namespace PhonePalace.Web.Controllers
                         return RedirectToAction(nameof(Details), new { id });
                     }
 
+                    // Validar que el abono sea positivo y no exceda la deuda actual
+                    if (amount <= 0 || amount > ap.Balance)
+                    {
+                        TempData["Error"] = $"El monto del abono no es válido. Saldo pendiente: {ap.Balance:C}";
+                        return RedirectToAction(nameof(Details), new { id });
+                    }
+
                     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                     if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                    // Validar banco si es necesario
+                    if ((paymentMethod == PaymentMethod.Transfer || paymentMethod == PaymentMethod.DebitCard || paymentMethod == PaymentMethod.CreditCard) && !bankId.HasValue)
+                    {
+                        TempData["Error"] = "Debe seleccionar un banco para este método de pago.";
+                        return RedirectToAction(nameof(Details), new { id });
+                    }
 
                     // 1. Registrar Egreso (Caja o Banco)
                     if (paymentMethod == PaymentMethod.Cash)
@@ -231,17 +276,34 @@ namespace PhonePalace.Web.Controllers
                         await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.TransferOut, amount, $"Pago de CxP #{ap.Id} ({EnumHelper.GetDisplayName(paymentMethod)}) - {note}");
                     }
 
-                    // 2. Actualizar estado de la cuenta
-                    ap.IsPaid = true;
-                    
-                    // Actualizar el estado de la compra asociada a Pagada
-                    if (ap.PurchaseId.HasValue)
+                    // 2. Crear el registro del pago (abono)
+                    var paymentRecord = new AccountPayablePayment
                     {
-                        var purchase = await _context.Purchases.FindAsync(ap.PurchaseId.Value);
-                        if (purchase != null)
+                        AccountPayableId = ap.Id,
+                        Amount = amount,
+                        PaymentDate = DateTime.Now,
+                        PaymentMethod = paymentMethod,
+                        BankId = bankId,
+                        Note = note
+                    };
+                    _context.Set<AccountPayablePayment>().Add(paymentRecord);
+
+                    // 3. Actualizar saldo de la cuenta por pagar
+                    ap.Balance -= amount;
+                    if (ap.Balance <= 0.01m)
+                    {
+                        ap.Balance = 0;
+                        ap.IsPaid = true;
+                        
+                        // Actualizar el estado de la compra asociada a Pagada solo si se salda la cuenta
+                        if (ap.PurchaseId.HasValue)
                         {
-                            purchase.Status = PurchaseStatus.Paid;
-                            _context.Update(purchase);
+                            var purchase = await _context.Purchases.FindAsync(ap.PurchaseId.Value);
+                            if (purchase != null)
+                            {
+                                purchase.Status = PurchaseStatus.Paid;
+                                _context.Update(purchase);
+                            }
                         }
                     }
 

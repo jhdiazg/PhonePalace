@@ -138,7 +138,7 @@ namespace PhonePalace.Web.Controllers
                     FirstName = viewModel.FirstName!.ToUpper(),
                     LastName = viewModel.LastName!.ToUpper(),
                     DocumentType = viewModel.DocumentType!.Value,
-                    DocumentNumber = !string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null
+                    DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null
                 };
             }
             else if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
@@ -153,7 +153,7 @@ namespace PhonePalace.Web.Controllers
                 newClient = new LegalEntity
                 {
                     CompanyName = viewModel.CompanyName!.ToUpper(),
-                    NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null
+                    NIT = string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null
                 };
             }
             else
@@ -256,7 +256,7 @@ namespace PhonePalace.Web.Controllers
                 clientToUpdate.FirstName = viewModel.FirstName?.ToUpper() ?? string.Empty;
                 clientToUpdate.LastName = viewModel.LastName?.ToUpper() ?? string.Empty;
                 clientToUpdate.DocumentType = viewModel.DocumentType;
-                clientToUpdate.DocumentNumber = !string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null;
+                clientToUpdate.DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null;
                 clientToUpdate.Email = viewModel.Email;
                 clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                 clientToUpdate.DepartmentID = viewModel.DepartmentID;
@@ -323,7 +323,7 @@ namespace PhonePalace.Web.Controllers
                     if (clientToUpdate == null) return NotFound();
 
                     clientToUpdate.CompanyName = (viewModel.CompanyName ?? string.Empty).ToUpper();
-                    clientToUpdate.NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null;
+                    clientToUpdate.NIT = string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null;
                     clientToUpdate.Email = viewModel.Email;
                     clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                     clientToUpdate.DepartmentID = viewModel.DepartmentID;

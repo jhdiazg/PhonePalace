@@ -234,6 +234,9 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18, 2)");
 
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18, 2)");
+
                     b.Property<string>("Beneficiary")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -270,6 +273,41 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasIndex("PurchaseId");
 
                     b.ToTable("AccountPayables");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountPayablePayment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AccountPayableId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("BankId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("PaymentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountPayableId");
+
+                    b.HasIndex("BankId");
+
+                    b.ToTable("AccountPayablePayments");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
@@ -1278,6 +1316,9 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReturnDetailID"));
 
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("ProductID")
                         .HasColumnType("int");
 
@@ -1339,6 +1380,9 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SaleDetailID"));
 
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(18, 2)");
+
                     b.Property<string>("IMEI")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -1379,11 +1423,6 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Property<string>("DepartmentID")
                         .HasColumnType("nvarchar(2)");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(21)
-                        .HasColumnType("nvarchar(21)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -1402,6 +1441,11 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("SupplierType")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)");
+
                     b.HasKey("SupplierID");
 
                     b.HasIndex("DepartmentID");
@@ -1410,7 +1454,7 @@ namespace PhonePalace.Infrastructure.Migrations
 
                     b.ToTable("Suppliers");
 
-                    b.HasDiscriminator().HasValue("Supplier");
+                    b.HasDiscriminator<string>("SupplierType").HasValue("Supplier");
 
                     b.UseTphMappingStrategy();
                 });
@@ -1514,7 +1558,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.HasDiscriminator().HasValue("LegalEntitySupplier");
+                    b.HasDiscriminator().HasValue("LegalEntity");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.NaturalPersonSupplier", b =>
@@ -1526,7 +1570,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int>("DocumentType")
+                    b.Property<int?>("DocumentType")
                         .HasColumnType("int");
 
                     b.Property<string>("FirstName")
@@ -1539,7 +1583,7 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.HasDiscriminator().HasValue("NaturalPersonSupplier");
+                    b.HasDiscriminator().HasValue("NaturalPerson");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -1600,6 +1644,23 @@ namespace PhonePalace.Infrastructure.Migrations
                         .HasForeignKey("PurchaseId");
 
                     b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountPayablePayment", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.AccountPayable", "AccountPayable")
+                        .WithMany("Payments")
+                        .HasForeignKey("AccountPayableId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PhonePalace.Domain.Entities.Bank", "Bank")
+                        .WithMany()
+                        .HasForeignKey("BankId");
+
+                    b.Navigation("AccountPayable");
+
+                    b.Navigation("Bank");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>
@@ -2009,6 +2070,11 @@ namespace PhonePalace.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Model");
+                });
+
+            modelBuilder.Entity("PhonePalace.Domain.Entities.AccountPayable", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.AccountReceivable", b =>

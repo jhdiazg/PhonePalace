@@ -108,6 +108,12 @@ namespace PhonePalace.Web.Controllers
 
                 if (viewModel.SupplierType == SupplierTypeSelection.NaturalPerson)
                 {
+                    if (viewModel.DocumentType == null)
+                    {
+                        ModelState.AddModelError("DocumentType", "El tipo de documento es obligatorio para personas naturales.");
+                        await PopulateDropdowns(viewModel.DepartmentID, viewModel.MunicipalityID);
+                        return View(viewModel);
+                    }
                     if (await _context.Suppliers.OfType<NaturalPersonSupplier>().AnyAsync(s => s.DocumentNumber == viewModel.DocumentNumber))
                     {
                         ModelState.AddModelError("DocumentNumber", "Este número de documento ya está registrado.");
@@ -171,7 +177,7 @@ namespace PhonePalace.Web.Controllers
                     SupplierID = naturalPerson.SupplierID,
                     FirstName = naturalPerson.FirstName,
                     LastName = naturalPerson.LastName,
-                    DocumentType = naturalPerson.DocumentType,
+                    DocumentType = naturalPerson.DocumentType ?? DocumentType.CitizenshipCard,
                     DocumentNumber = naturalPerson.DocumentNumber,
                     Email = naturalPerson.Email,
                     PhoneNumber = naturalPerson.PhoneNumber,

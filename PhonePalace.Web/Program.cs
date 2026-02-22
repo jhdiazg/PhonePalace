@@ -39,7 +39,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
         options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+ ";
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddDefaultUI();
 
 // --- INICIO: Configuración de Sesión ---
 // Es necesario para que servicios como AuditService puedan acceder a datos de la sesión del usuario.
@@ -55,6 +56,7 @@ builder.Services.AddSession(options =>
 // Configuración de Plemsi API
 builder.Services.Configure<PlemsiConfig>(builder.Configuration.GetSection("Plemsi"));
 builder.Services.Configure<CompanySettings>(builder.Configuration.GetSection("CompanySettings"));
+builder.Services.Configure<BackupSettings>(builder.Configuration.GetSection("BackupSettings"));
 
 // Registro del Servicio Plemsi con HttpClient tipado
 builder.Services.AddHttpClient<IPlemsiService, PlemsiService>((serviceProvider, client) =>

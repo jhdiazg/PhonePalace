@@ -245,7 +245,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
-        [Route("Compras/Editar/{id}")]
+        [Route("Compras/Editar/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, PurchaseEditViewModel model)
         {
@@ -314,7 +314,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
-        [Route("Compras/Confirmar/{id}")]
+        [Route("Compras/Confirmar/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ConfirmOrder(int id)
         {
@@ -339,7 +339,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
-        [Route("Compras/MarcarComoFacturada/{id}")]
+        [Route("Compras/MarcarComoFacturada/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MarkAsBilled(int id)
         {
@@ -364,7 +364,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
-        [Route("Compras/MarcarComoPagada/{id}")]
+        [Route("Compras/MarcarComoPagada/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MarkAsPaid(int id)
         {
@@ -406,7 +406,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost, ActionName("Delete")]
-        [Route("Compras/Eliminar/{id}")]
+        [Route("Compras/Eliminar/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
@@ -498,7 +498,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpPost]
-        [Route("Compras/Recibir/{id}")]
+        [Route("Compras/Recibir/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Receive(int id, PurchaseReceiveViewModel model)
         {
@@ -604,6 +604,7 @@ namespace PhonePalace.Web.Controllers
                                 PurchaseId = purchase.Id,
                                 Purchase = purchase,
                                 Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
+                                Balance = receivedAmount, // Inicializar saldo
                                 DueDate = purchase.PaymentMethod == PurchasePaymentMethod.Credit ? DateTime.Now.AddDays(30) : DateTime.Now,
                                 IsPaid = false,
                                 DocumentType = model.DocumentType, 

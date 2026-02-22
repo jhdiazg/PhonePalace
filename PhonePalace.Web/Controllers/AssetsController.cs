@@ -96,7 +96,7 @@ namespace PhonePalace.Web.Controllers
             return View(asset);
         }
 
-        [HttpPost("DarDeBaja/{id}")]
+        [HttpPost("DarDeBaja/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Retire(int id)
         {

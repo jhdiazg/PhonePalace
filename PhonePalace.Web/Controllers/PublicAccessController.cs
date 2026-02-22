@@ -74,7 +74,7 @@ namespace PhonePalace.Web.Controllers
                             FirstName = model.FirstName?.ToUpper() ?? "N/A",
                             LastName = model.LastName?.ToUpper() ?? "N/A",
                             DocumentType = model.DocumentType ?? DocumentType.CitizenshipCard,
-                            DocumentNumber = model.DocumentNumber
+                            DocumentNumber = model.DocumentNumber ?? string.Empty
                         };
                     }
                     else

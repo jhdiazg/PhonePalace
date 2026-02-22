@@ -15,9 +15,9 @@ namespace PhonePalace.Domain.Entities
         [Display(Name = "Apellidos")]
         public string LastName { get; set; } = string.Empty;
 
-        [Required]
         [Display(Name = "Tipo de Documento")]
-        public DocumentType DocumentType { get; set; }
+        public DocumentType? DocumentType { get; set; }
+        
 
         [Required]
         [StringLength(20)]

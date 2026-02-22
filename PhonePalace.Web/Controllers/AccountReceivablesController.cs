@@ -350,7 +350,7 @@ namespace PhonePalace.Web.Controllers
             });
         }
 
-        [HttpPost("Delete/{id}")]
+        [HttpPost("Delete/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {

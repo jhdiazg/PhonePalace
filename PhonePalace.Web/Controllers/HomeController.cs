@@ -64,6 +64,13 @@ namespace PhonePalace.Web.Controllers
                             i.Status == InvoiceStatus.Completed)
                 .SumAsync(i => i.Total);
 
+            // Restar devoluciones realizadas en el mes actual para obtener Ventas Netas
+            var currentMonthReturns = await _context.Returns
+                .Where(r => r.Date.Month == DateTime.Now.Month &&
+                            r.Date.Year == DateTime.Now.Year)
+                .SumAsync(r => r.TotalAmount);
+            currentMonthSales -= currentMonthReturns;
+
             // Obtener saldos actuales de Caja y Bancos
             var cashBalance = await _cashService.GetCurrentBalanceAsync();
             var banksBalance = await _context.Banks.Where(b => b.IsActive).SumAsync(b => b.Balance);
@@ -80,6 +87,13 @@ namespace PhonePalace.Web.Controllers
                             !d.Sale.IsDeleted)
                 .ToListAsync();
 
+            // Obtener devoluciones asociadas a estas ventas para calcular cantidad neta real
+            var saleIds = salesDetails.Select(s => s.SaleID).Distinct().ToList();
+            var returnDetails = await _context.ReturnDetails
+                .Include(rd => rd.Return)
+                .Where(rd => saleIds.Contains(rd.Return.SaleID))
+                .ToListAsync();
+
             // Definimos los contadores para los rangos
             int countNegative = 0; // Pérdida
             int countLow = 0;      // 0% - 15%
@@ -91,15 +105,24 @@ namespace PhonePalace.Web.Controllers
             {
                 if (item.UnitPrice == 0) continue;
 
-                // Margen Bruto = (Precio Venta - Costo) / Precio Venta
-                // Nota: Usamos el costo actual del producto. Idealmente debería ser el costo histórico.
-                decimal margin = (item.UnitPrice - item.Product.Cost) / item.UnitPrice * 100m;
+                // Calcular cantidad neta (Venta - Devolución)
+                var returnedQty = returnDetails
+                    .Where(rd => rd.Return.SaleID == item.SaleID && rd.ProductID == item.ProductID)
+                    .Sum(rd => rd.Quantity);
+                
+                var netQuantity = item.Quantity - returnedQty;
+                if (netQuantity <= 0) continue; // Si se devolvió todo, no contar
 
-                if (margin < 0) countNegative += item.Quantity;
-                else if (margin < 15) countLow += item.Quantity;
-                else if (margin < 30) countMedium += item.Quantity;
-                else if (margin < 50) countHigh += item.Quantity;
-                else countVeryHigh += item.Quantity;
+                // Margen Bruto = (Precio Venta - Costo) / Precio Venta
+                // Usamos costo histórico si está disponible
+                decimal cost = item.Cost > 0 ? item.Cost : item.Product.Cost;
+                decimal margin = (item.UnitPrice - cost) / item.UnitPrice * 100m;
+
+                if (margin < 0) countNegative += netQuantity;
+                else if (margin < 15) countLow += netQuantity;
+                else if (margin < 30) countMedium += netQuantity;
+                else if (margin < 50) countHigh += netQuantity;
+                else countVeryHigh += netQuantity;
             }
 
             var salesByMargin = new List<SalesByMarginViewModel>

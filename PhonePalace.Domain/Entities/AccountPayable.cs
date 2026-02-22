@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Domain.Enums;
 using System.ComponentModel;
@@ -16,6 +17,11 @@ namespace PhonePalace.Domain.Entities
         [DisplayName("Valor")]
         [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
         public decimal Amount { get; set; }
+
+        [DisplayName("Saldo Pendiente")]
+        [System.ComponentModel.DataAnnotations.Schema.Column(TypeName = "decimal(18, 2)")]
+        public decimal Balance { get; set; }
+
         [DisplayName("Fecha de vencimiento")]
         public DateTime DueDate { get; set; }
         [DisplayName("Pagada")]
@@ -36,5 +42,7 @@ namespace PhonePalace.Domain.Entities
         public DateTime? DeletedDate { get; set; }
         public bool IsDeleted { get; set; }
         public DateTime? DeletedOn { get; set; }
+
+        public virtual ICollection<AccountPayablePayment> Payments { get; set; } = new List<AccountPayablePayment>();
     }
 }

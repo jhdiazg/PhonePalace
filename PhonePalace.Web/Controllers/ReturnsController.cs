@@ -106,6 +106,13 @@ namespace PhonePalace.Web.Controllers
 
                     foreach (var item in itemsToReturn)
                     {
+                        // Buscar el detalle de venta original para obtener el costo histórico
+                        var originalSaleDetail = sale.Details.FirstOrDefault(d => d.ProductID == item.ProductID);
+                        if (originalSaleDetail == null)
+                        {
+                            throw new Exception($"No se encontró el detalle de venta original para el producto '{item.ProductName}'.");
+                        }
+
                         // Validar que no devuelva más de lo permitido (lógica simple, idealmente re-validar contra DB)
                         if (item.QuantityToReturn > (item.SoldQuantity - item.PreviouslyReturned))
                         {
@@ -126,7 +133,8 @@ namespace PhonePalace.Web.Controllers
                         {
                             ProductID = item.ProductID,
                             Quantity = item.QuantityToReturn,
-                            UnitPrice = item.UnitPrice
+                            UnitPrice = item.UnitPrice,
+                            Cost = originalSaleDetail.Cost // Guardar el costo histórico de la venta
                         });
 
                         totalRefund += (item.QuantityToReturn * item.UnitPrice);
@@ -167,7 +175,7 @@ namespace PhonePalace.Web.Controllers
                                     await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito Parcial para {sale.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
                                 }
                             }
-                            catch (Exception ex) { /* Loguear error pero no detener la devolución local */ }
+                            catch (Exception) { /* Loguear error pero no detener la devolución local */ }
                         }
                     }
 

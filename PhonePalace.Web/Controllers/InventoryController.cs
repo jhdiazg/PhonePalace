@@ -1,4 +1,4 @@
-﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -76,11 +76,14 @@ namespace PhonePalace.Web.Controllers
                     TotalPurchases = (int)_context.PurchaseDetails
                         .Where(pd => pd.ProductId == i.ProductID && pd.Purchase != null && pd.Purchase.Status == Domain.Enums.PurchaseStatus.Received)
                         .Sum(pd => (double)pd.Quantity),
-                    TotalSales = (int)_context.Sales
+                    TotalSales = (int)(_context.Sales
                         .Where(s => !s.IsDeleted)
                         .SelectMany(s => s.Details)
                         .Where(sd => sd.ProductID == i.ProductID)
-                        .Sum(sd => (double)sd.Quantity)
+                        .Sum(sd => (double)sd.Quantity) 
+                        - _context.ReturnDetails
+                        .Where(rd => rd.ProductID == i.ProductID)
+                        .Sum(rd => (double)rd.Quantity))
                 });
 
             switch (sortOrder)
@@ -129,7 +132,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador")]
-        [Route("Inventario/Ajustar/{id}")]
+        [Route("Inventario/Ajustar/{id?}")]
         public async Task<IActionResult> Adjust(int id, int adjustment, string reason)
         {
             // Obtenemos datos actuales para el log (usando proyección para evitar error de PK)

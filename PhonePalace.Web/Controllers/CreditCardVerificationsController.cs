@@ -44,7 +44,7 @@ namespace PhonePalace.Web.Controllers
             return View(model);
         }
 
-        [HttpPost("Verify/{id}")]
+        [HttpPost("Verify/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Verify(int id, decimal realAmount)
         {
@@ -155,7 +155,7 @@ namespace PhonePalace.Web.Controllers
             });
         }
 
-        [HttpPost("Reject/{id}")]
+        [HttpPost("Reject/{id?}")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reject(int id, string reason)
         {

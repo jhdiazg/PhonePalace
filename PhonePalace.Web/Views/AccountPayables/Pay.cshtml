@@ -1,0 +1,103 @@
+@model PhonePalace.Domain.Entities.AccountPayable
+@using PhonePalace.Domain.Enums
+
+@{
+    ViewData["Title"] = "Registrar Abono";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0"><i class="bi bi-cash-coin"></i> Registrar Abono a Cuenta por Pagar</h3>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5 class="text-muted">Información de la Cuenta</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Documento:</dt>
+                        <dd class="col-sm-8">@Model.DocumentType @Model.DocumentNumber</dd>
+
+                        <dt class="col-sm-4">Beneficiario:</dt>
+                        <dd class="col-sm-8">@Model.Beneficiary</dd>
+
+                        <dt class="col-sm-4">Fecha Vencimiento:</dt>
+                        <dd class="col-sm-8">@Model.DueDate.ToShortDateString()</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="text-muted">Saldo Pendiente</h5>
+                    <h2 class="text-danger fw-bold">@Model.Balance.ToString("C")</h2>
+                </div>
+            </div>
+
+            <hr />
+
+            <form asp-action="Pay" method="post">
+                <input type="hidden" name="id" value="@Model.Id" />
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="amount" class="form-label fw-bold">Monto a Pagar (Abono)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input name="amount" id="amount" class="form-control form-control-lg" type="number" step="0.01" max="@Model.Balance" value="@Model.Balance" required />
+                            </div>
+                            <small class="text-muted">Puede modificar este valor para realizar un pago parcial.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="paymentMethod" class="form-label fw-bold">Método de Pago</label>
+                            <select name="paymentMethod" id="paymentMethod" class="form-select form-select-lg" asp-items="ViewBag.PaymentMethods"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" id="bankGroup" style="display:none;">
+                    <div class="col-md-12">
+                        <div class="form-group mb-3">
+                            <label for="bankId" class="form-label fw-bold">Banco / Cuenta de Salida</label>
+                            <select name="bankId" id="bankId" class="form-select" asp-items="ViewBag.Banks">
+                                <option value="">-- Seleccione Banco --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label for="note" class="form-label">Nota / Referencia (Opcional)</label>
+                    <textarea name="note" id="note" class="form-control" rows="2" placeholder="Ej: Transferencia #12345"></textarea>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary me-md-2">Cancelar</a>
+                    <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-check-circle-fill"></i> Confirmar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            function toggleBank() {
+                var method = $('#paymentMethod').val();
+                // Mostrar banco para Transferencia, Tarjetas, Nequi, Daviplata
+                if (['Transfer', 'DebitCard', 'CreditCard', 'Nequi', 'Daviplata'].includes(method)) {
+                    $('#bankGroup').slideDown();
+                    $('#bankId').prop('required', true);
+                } else {
+                    $('#bankGroup').slideUp();
+                    $('#bankId').prop('required', false);
+                    $('#bankId').val('');
+                }
+            }
+            $('#paymentMethod').change(toggleBank);
+            toggleBank(); // Inicializar estado
+        });
+    </script>
+}

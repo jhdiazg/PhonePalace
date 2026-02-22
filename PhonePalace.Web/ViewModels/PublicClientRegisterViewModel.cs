@@ -7,18 +7,18 @@ namespace PhonePalace.Web.ViewModels
         [Required(ErrorMessage = "El correo es obligatorio")]
         [EmailAddress]
         [Display(Name = "Correo Electrónico")]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "La contraseña es obligatoria")]
         [StringLength(100, ErrorMessage = "La {0} debe tener al menos {2} caracteres.", MinimumLength = 6)]
         [DataType(DataType.Password)]
         [Display(Name = "Contraseña")]
-        public string Password { get; set; }
+        public string Password { get; set; } = string.Empty;
 
         [DataType(DataType.Password)]
         [Display(Name = "Confirmar contraseña")]
         [Compare("Password", ErrorMessage = "Las contraseñas no coinciden.")]
-        public string ConfirmPassword { get; set; }
+        public string ConfirmPassword { get; set; } = string.Empty;
 
         // Datos de Facturación
         [Required(ErrorMessage = "Seleccione el tipo de persona")]
@@ -45,21 +45,21 @@ namespace PhonePalace.Web.ViewModels
 
         [Required(ErrorMessage = "El teléfono es obligatorio")]
         [Display(Name = "Teléfono / Celular")]
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "La dirección es obligatoria")]
         [Display(Name = "Dirección Física")]
-        public string Address { get; set; }
+        public string Address { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El departamento es obligatorio")]
         [Display(Name = "Departamento")]
-        public string DepartmentID { get; set; }
+        public string DepartmentID { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El municipio es obligatorio")]
         [Display(Name = "Municipio")]
-        public string MunicipalityID { get; set; }
+        public string MunicipalityID { get; set; } = string.Empty;
 
         [Display(Name = "Autorización de Datos")]
-        public bool DataAuthorization { get; set; }
+        public bool DataAuthorization { get; set; } 
     }
 }

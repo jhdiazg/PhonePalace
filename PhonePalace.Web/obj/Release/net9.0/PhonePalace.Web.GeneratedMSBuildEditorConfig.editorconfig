@@ -246,6 +246,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Pay.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXFBheS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/PhonePalace/PhonePalace.Web/Views/AccountReceivables/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFJlY2VpdmFibGVzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 

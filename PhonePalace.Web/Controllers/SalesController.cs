@@ -130,7 +130,8 @@ namespace PhonePalace.Web.Controllers
             // Calcular total de la consulta antes de paginar
             decimal total = await salesQuery.SumAsync(s => s.Invoice.Total);
             // Calcular utilidad total (Venta - Costo)
-            decimal totalProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - d.Product.Cost));
+            // Ajuste: Usar costo histórico (d.Cost) si existe, de lo contrario usar costo actual (para compatibilidad con datos antiguos)
+            decimal totalProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
 
             var sales = await PaginatedList<Sale>.CreateAsync(salesQuery.OrderByDescending(s => s.SaleDate).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
 
@@ -161,6 +162,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             var sale = await _context.Sales
+                .IgnoreQueryFilters()
                 .Include(s => s.Client)
                 .Include(s => s.Invoice)
                 .ThenInclude(i => i.Payments)
@@ -465,7 +467,8 @@ namespace PhonePalace.Web.Controllers
                                     PaymentMethod = paymentMethod,
                                     Amount = paymentVM.Amount,
                                     ReferenceNumber = paymentVM.ReferenceNumber,
-                                    BankID = paymentVM.BankID
+                                    BankID = paymentVM.BankID,
+                                    PaymentDate = viewModel.SaleDate // Asignar la fecha de la venta al pago
                                 };
                                 payments.Add(payment);
                                 _context.Payments.Add(payment);
@@ -498,6 +501,7 @@ namespace PhonePalace.Web.Controllers
                                     Product = product,
                                     Quantity = detailVM.Quantity,
                                     UnitPrice = detailVM.UnitPrice, // Usar el precio validado
+                                    Cost = product.Cost, // Guardar costo histórico
                                     Sale = sale,
                                     IMEI = detailVM.IMEI?.ToUpper(),
                                     Serial = detailVM.Serial?.ToUpper()
@@ -655,7 +659,18 @@ namespace PhonePalace.Web.Controllers
                             if (inventory != null)
                             {
                                 inventory.Stock += detail.Quantity;
+                                inventory.LastUpdated = DateTime.Now;
                                 _context.Update(inventory);
+                            }
+                            else
+                            {
+                                // Si no existe registro de inventario (caso raro), lo creamos para no perder el stock
+                                _context.Inventories.Add(new Inventory 
+                                { 
+                                    ProductID = detail.ProductID, 
+                                    Stock = detail.Quantity, 
+                                    LastUpdated = DateTime.Now 
+                                });
                             }
                         }
 
@@ -678,6 +693,15 @@ namespace PhonePalace.Web.Controllers
                                 {
                                     // Registrar egreso bancario
                                     await _bankService.RegisterManualMovementAsync(payment.BankID.Value, BankTransactionType.ManualExpense, payment.Amount, $"ANULACIÓN Venta #{sale.Invoice.InvoiceID}");
+                                }
+                                else if (payment.PaymentMethod == PaymentMethod.CustomerBalance)
+                                {
+                                    // Reembolsar al saldo del cliente
+                                    if (sale.Client != null)
+                                    {
+                                        sale.Client.Balance += payment.Amount;
+                                        _context.Update(sale.Client);
+                                    }
                                 }
                             }
                             
@@ -739,6 +763,7 @@ namespace PhonePalace.Web.Controllers
         {
             // 1. Obtener la Venta con todos sus detalles y la Factura asociada
             var sale = await _context.Sales
+                .IgnoreQueryFilters()
                 .Include(s => s.Invoice)
                     .ThenInclude(i => i.Client) // Cargar el cliente asociado a la factura
                 .Include(s => s.Invoice)

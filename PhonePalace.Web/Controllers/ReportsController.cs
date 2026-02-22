@@ -66,7 +66,7 @@ namespace PhonePalace.Web.Controllers
             var query = from p in _context.Payments
                         join s in _context.Sales on p.InvoiceID equals s.InvoiceID into sales
                         from s in sales.DefaultIfEmpty()
-                        where p.PaymentDate >= start && p.PaymentDate <= endFilter
+                        where p.PaymentDate >= start && p.PaymentDate <= endFilter && p.Invoice.Status != InvoiceStatus.Cancelled
                         select new
                         {
                             Payment = p,
@@ -319,8 +319,28 @@ namespace PhonePalace.Web.Controllers
                     item.Sales += sale.Invoice.Total;
                 }
 
-                // Aproximación de costo usando el costo actual del producto
-                item.Cost += sale.Details.Sum(d => d.Quantity * d.Product.Cost);
+                // Usar costo histórico si existe (ventas nuevas), sino usar costo actual (ventas antiguas)
+                item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : d.Product.Cost));
+            }
+
+            // 1.1. Restar Devoluciones de Ventas y Costos
+            var returns = await _context.Returns
+                .Include(r => r.Details)
+                .ThenInclude(d => d.Product)
+                .Where(r => r.Date.Year == reportYear)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ret in returns)
+            {
+                var item = model.Items.First(m => m.Month == ret.Date.Month);
+
+                // Restar el valor de la devolución de las ventas.
+                item.Sales -= ret.TotalAmount;
+
+                // Restar el costo de los productos devueltos.
+                // Usar costo histórico si existe, sino usar costo actual del producto (fallback)
+                item.Cost -= ret.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : d.Product.Cost));
             }
 
             // 2. Gastos Fijos
@@ -385,7 +405,8 @@ namespace PhonePalace.Web.Controllers
             {
                 var desc = (be.Description ?? "").ToUpper();
                 // Excluir movimientos que ya se cuentan en otras secciones o no son gastos operativos puros
-                if (desc.Contains("GASTO FIJO") || desc.Contains("ANULACIÓN") || desc.Contains("PRÉSTAMO") || desc.Contains("COMPRA DE ACTIVO"))
+                if (desc.Contains("GASTO FIJO") || desc.Contains("ANULACIÓN") || desc.Contains("PRÉSTAMO") || 
+                    desc.Contains("COMPRA DE ACTIVO") || desc.Contains("PAGO DE CXP") || desc.Contains("RETIRO HACIA CAJA"))
                 {
                     continue;
                 }
@@ -406,9 +427,21 @@ namespace PhonePalace.Web.Controllers
                 foreach (var d in p.PurchaseDetails)
                 {
                     decimal lineTotal = d.Quantity * d.UnitPrice;
-                    item.Purchases += lineTotal;
                     item.PurchaseVAT += lineTotal * (d.TaxRate / 100);
                 }
+            }
+
+            // 4.1. Sumar los abonos reales a proveedores (Flujo de Caja)
+            // Ahora sumamos los pagos registrados en AccountPayablePayment en lugar de la causación de la compra.
+            var supplierPayments = await _context.Set<AccountPayablePayment>()
+                .Where(p => p.PaymentDate.Year == reportYear)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var sp in supplierPayments)
+            {
+                var item = model.Items.First(m => m.Month == sp.PaymentDate.Month);
+                item.Purchases += sp.Amount;
             }
 
             // 5. Cuentas por Cobrar (Generadas en el mes)
