@@ -83,7 +83,7 @@
        asp-route-pageNumber="@(Model.PageIndex - 1)"
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-pageSize="@ViewData["PageSize"]"
-       class="btn btn-outline-secondary @prevDisabled">
+   class="btn btn-secondary @prevDisabled">
         Anterior
     </a>
     <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
@@ -91,7 +91,7 @@
        asp-route-pageNumber="@(Model.PageIndex + 1)"
        asp-route-searchString="@ViewData["CurrentFilter"]"
        asp-route-pageSize="@ViewData["PageSize"]"
-       class="btn btn-outline-secondary @nextDisabled">
+       class="btn btn-secondary @nextDisabled">
         Siguiente
     </a>
 </div>

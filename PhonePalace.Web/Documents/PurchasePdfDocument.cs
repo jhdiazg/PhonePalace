@@ -55,7 +55,10 @@ namespace PhonePalace.Web.Documents
             {
                 row.RelativeItem().Column(column =>
                 {
-                    column.Item().Width(150).Height(50).Image(_logoBytes).FitArea();
+                    if (_logoBytes != null && _logoBytes.Length > 0)
+                    {
+                        column.Item().Width(150).Height(50).Image(_logoBytes).FitArea();
+                    }
                     column.Item().Text($"Orden de Compra #{_purchase.Id}").Style(titleStyle);
 
                     column.Item().Text(text =>

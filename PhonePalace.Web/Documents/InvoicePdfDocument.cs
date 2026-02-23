@@ -12,14 +12,14 @@ namespace PhonePalace.Web.Documents
 {
     public class InvoicePdfDocument : IDocument
     {
-        private readonly Invoice _invoice;
+        private readonly Sale _sale;
         private readonly byte[] _logoBytes;
         private readonly CompanySettings _companySettings;
         private readonly string _sellerName;
 
-        public InvoicePdfDocument(Invoice invoice, byte[] logoBytes, CompanySettings companySettings, string sellerName)
+        public InvoicePdfDocument(Sale sale, byte[] logoBytes, CompanySettings companySettings, string sellerName)
         {
-            _invoice = invoice;
+            _sale = sale;
             _logoBytes = logoBytes;
             _companySettings = companySettings;
             _sellerName = sellerName;
@@ -29,7 +29,7 @@ namespace PhonePalace.Web.Documents
 
         public void Compose(IDocumentContainer container)
         {
-            var isHalfLetter = _invoice.Details.Count <= 5;
+            var isHalfLetter = _sale.Details.Count <= 5;
 
             container
                 .Page(page =>
@@ -63,16 +63,16 @@ namespace PhonePalace.Web.Documents
             {
                 row.RelativeItem().Column(column =>
                 {
-                    column.Item().Text($"Documento para Garantía # {_invoice.InvoiceID:D5}").Style(titleStyle);
+                    column.Item().Text($"Documento para Garantía # {_sale.Invoice.InvoiceID:D5}").Style(titleStyle);
                     column.Item().Text(text =>
                     {
                         text.Span("Fecha de Venta: ").SemiBold();
-                        text.Span($"{_invoice.SaleDate:d}");
+                        text.Span($"{_sale.SaleDate:d}");
                     });
                     column.Item().Text(text =>
                     {
                         text.Span("Estado: ").SemiBold();
-                        text.Span(_invoice.Status == InvoiceStatus.Cancelled ? "Anulada" : "Completada");
+                        text.Span(_sale.Invoice.Status == InvoiceStatus.Cancelled ? "Anulada" : "Completada");
                     });
                     column.Item().Text(text =>
                     {
@@ -80,7 +80,10 @@ namespace PhonePalace.Web.Documents
                         text.Span(_sellerName);
                     });
                 });
-                row.ConstantItem(100).Image(_logoBytes);
+                if (_logoBytes != null && _logoBytes.Length > 0)
+                {
+                    row.ConstantItem(100).Image(_logoBytes);
+                }
             });
         }
 
@@ -94,20 +97,20 @@ namespace PhonePalace.Web.Documents
                     row.RelativeItem().Column(clientColumn =>
                     {
                         clientColumn.Item().Text("Cliente").SemiBold();
-                        clientColumn.Item().Text(_invoice.Client?.DisplayName ?? "N/A");
-                        if (_invoice.Client is NaturalPerson naturalPerson)
+                        clientColumn.Item().Text(_sale.Client?.DisplayName ?? "N/A");
+                        if (_sale.Client is NaturalPerson naturalPerson)
                         {
                             clientColumn.Item().Text($"{EnumHelper.GetDisplayName(naturalPerson.DocumentType)}: {naturalPerson.DocumentNumber}");
                         }
-                        else if (_invoice.Client is LegalEntity legalEntity)
+                        else if (_sale.Client is LegalEntity legalEntity)
                         {
                             clientColumn.Item().Text($"NIT: {legalEntity.NIT}");
                         }
-                        clientColumn.Item().Text(_invoice.Client?.Email ?? "N/A");
-                        clientColumn.Item().Text(_invoice.Client?.PhoneNumber ?? "N/A");
-                        if (!string.IsNullOrEmpty(_invoice.Client?.MunicipalityID))
+                        clientColumn.Item().Text(_sale.Client?.Email ?? "N/A");
+                        clientColumn.Item().Text(_sale.Client?.PhoneNumber ?? "N/A");
+                        if (!string.IsNullOrEmpty(_sale.Client?.MunicipalityID))
                         {
-                            clientColumn.Item().Text($"ID Municipio: {_invoice.Client.MunicipalityID}");
+                            clientColumn.Item().Text($"ID Municipio: {_sale.Client.MunicipalityID}");
                         }
                     });
                     row.RelativeItem().Column(companyColumn =>
@@ -135,9 +138,9 @@ namespace PhonePalace.Web.Documents
                     {
                         paymentsCol.Spacing(2);
                         paymentsCol.Item().Text("Pagos Recibidos").Bold();
-                        if (_invoice.Payments.Any())
+                        if (_sale.Invoice.Payments.Any())
                         {
-                            foreach (var payment in _invoice.Payments)
+                            foreach (var payment in _sale.Invoice.Payments)
                             {
                                 paymentsCol.Item().Text($"{EnumHelper.GetDisplayName(payment.PaymentMethod)}: {payment.Amount:C}");
                             }
@@ -147,16 +150,16 @@ namespace PhonePalace.Web.Documents
                             paymentsCol.Item().Text("No hay pagos registrados para esta venta.").Italic();
                         }
                         paymentsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-                        paymentsCol.Item().Text($"Total Pagado: {_invoice.Payments.Sum(p => p.Amount):C}").SemiBold();
+                        paymentsCol.Item().Text($"Total Pagado: {_sale.Invoice.Payments.Sum(p => p.Amount):C}").SemiBold();
                     });
 
                     row.RelativeItem().AlignRight().Column(totalsCol =>
                     {
                         totalsCol.Spacing(2);
-                        //totalsCol.Item().AlignRight().Text($"Subtotal: {_invoice.Subtotal:C}").FontSize(8);
-                        //totalsCol.Item().AlignRight().Text($"IVA ({(_invoice.Subtotal > 0 ? Math.Round((_invoice.Tax / _invoice.Subtotal) * 100, 1) : 0)}%): {_invoice.Tax:C}").FontSize(8);
+                        //totalsCol.Item().AlignRight().Text($"Subtotal: {_sale.Invoice.Subtotal:C}").FontSize(8);
+                        //totalsCol.Item().AlignRight().Text($"IVA ({(_sale.Invoice.Subtotal > 0 ? Math.Round((_sale.Invoice.Tax / _sale.Invoice.Subtotal) * 100, 1) : 0)}%): {_sale.Invoice.Tax:C}").FontSize(8);
                         totalsCol.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
-                        totalsCol.Item().AlignRight().Text($"Total: {_invoice.Total:C}").FontSize(10).Bold();
+                        totalsCol.Item().AlignRight().Text($"Total: {_sale.Invoice.Total:C}").FontSize(10).Bold();
                     });
                 });
             });
@@ -182,12 +185,12 @@ namespace PhonePalace.Web.Documents
                     header.Cell().Element(HeaderCellStyle).AlignRight().Text("Subtotal").SemiBold();
                 });
 
-                foreach (var detail in _invoice.Details)
+                foreach (var detail in _sale.Details)
                 {
                     table.Cell().Element(BodyCellStyle).Text(detail.Product?.Name ?? "Producto no encontrado");
                     table.Cell().Element(BodyCellStyle).AlignCenter().Text(detail.Quantity.ToString());
                     table.Cell().Element(BodyCellStyle).AlignRight().Text($"{detail.UnitPrice:C}");
-                    table.Cell().Element(BodyCellStyle).AlignRight().Text($"{detail.LineTotal:C}");
+                    table.Cell().Element(BodyCellStyle).AlignRight().Text($"{(detail.Quantity * detail.UnitPrice):C}");
                 }
 
                 static IContainer HeaderCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(2);

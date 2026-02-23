@@ -873,6 +873,45 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.ToTable("Inventories");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.InventoryMovement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("StockBalance")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("decimal(18, 2)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("InventoryMovements");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Invoice", b =>
                 {
                     b.Property<int>("InvoiceID")
@@ -923,35 +962,6 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.HasIndex("ClientID");
 
                     b.ToTable("Invoices");
-                });
-
-            modelBuilder.Entity("PhonePalace.Domain.Entities.InvoiceDetail", b =>
-                {
-                    b.Property<int>("InvoiceDetailID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvoiceDetailID"));
-
-                    b.Property<int>("InvoiceID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18, 2)");
-
-                    b.HasKey("InvoiceDetailID");
-
-                    b.HasIndex("InvoiceID");
-
-                    b.HasIndex("ProductID");
-
-                    b.ToTable("InvoiceDetails");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Model", b =>
@@ -1811,6 +1821,17 @@ namespace PhonePalace.Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("PhonePalace.Domain.Entities.InventoryMovement", b =>
+                {
+                    b.HasOne("PhonePalace.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("PhonePalace.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("PhonePalace.Domain.Entities.Client", "Client")
@@ -1820,25 +1841,6 @@ namespace PhonePalace.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
-                });
-
-            modelBuilder.Entity("PhonePalace.Domain.Entities.InvoiceDetail", b =>
-                {
-                    b.HasOne("PhonePalace.Domain.Entities.Invoice", "Invoice")
-                        .WithMany("Details")
-                        .HasForeignKey("InvoiceID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PhonePalace.Domain.Entities.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Invoice");
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Model", b =>
@@ -2104,8 +2106,6 @@ namespace PhonePalace.Infrastructure.Migrations
 
             modelBuilder.Entity("PhonePalace.Domain.Entities.Invoice", b =>
                 {
-                    b.Navigation("Details");
-
                     b.Navigation("Payments");
                 });
 

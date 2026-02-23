@@ -21,6 +21,7 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Product> Products { get; set; }
         public DbSet<ProductImage> ProductImages { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
+        public DbSet<InventoryMovement> InventoryMovements { get; set; }
 
         // DbSet para los tipos derivados de Product
         public DbSet<CellPhone> CellPhones { get; set; }
@@ -33,7 +34,6 @@ namespace PhonePalace.Infrastructure.Data
         public DbSet<Quote> Quotes { get; set; }
         public DbSet<QuoteDetail> QuoteDetails { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
-        public DbSet<InvoiceDetail> InvoiceDetails { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<NaturalPersonSupplier> NaturalPersonSuppliers { get; set; }

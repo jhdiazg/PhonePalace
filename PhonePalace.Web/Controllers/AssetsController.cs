@@ -18,11 +18,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
+        private readonly IAuditService _auditService;
 
-        public AssetsController(ApplicationDbContext context, ICashService cashService)
+        public AssetsController(ApplicationDbContext context, ICashService cashService, IAuditService auditService)
         {
             _context = context;
             _cashService = cashService;
+            _auditService = auditService;
         }
 
         [HttpGet]

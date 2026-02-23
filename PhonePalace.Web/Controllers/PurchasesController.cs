@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using PhonePalace.Infrastructure.Data;
+using Microsoft.Extensions.Options;
+using PhonePalace.Infrastructure.Configuration;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,13 +25,15 @@ namespace PhonePalace.Web.Controllers
         private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _webHostEnvironment;
         private readonly IConfiguration _config;
         private readonly IAuditService _auditService;
+        private readonly CompanySettings _companySettings;
 
-        public PurchasesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IConfiguration config, IAuditService auditService)
+        public PurchasesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IConfiguration config, IAuditService auditService, IOptions<CompanySettings> companySettings)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _config = config;
             _auditService = auditService;
+            _companySettings = companySettings.Value;
         }
 
         [Route("Compras")]
@@ -446,7 +450,23 @@ namespace PhonePalace.Web.Controllers
                     if (detail.ReceivedQuantity > 0)
                     {
                         var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == detail.ProductId);
-                        if (inventory != null) inventory.Stock -= detail.ReceivedQuantity;
+                        if (inventory != null) 
+                        {
+                            inventory.Stock -= detail.ReceivedQuantity;
+
+                            // Kardex: Salida por Anulación de Compra
+                            _context.Set<InventoryMovement>().Add(new InventoryMovement
+                            {
+                                ProductId = detail.ProductId,
+                                Date = DateTime.Now,
+                                Type = InventoryMovementType.PurchaseCancellation,
+                                Quantity = -detail.ReceivedQuantity,
+                                UnitCost = detail.UnitPrice,
+                                StockBalance = (int)inventory.Stock,
+                                Reference = $"Anulación Compra #{purchase.Id}",
+                                UserId = User.Identity?.Name
+                            });
+                        }
                     }
                 }
             }
@@ -546,8 +566,12 @@ namespace PhonePalace.Web.Controllers
 
                                 anyItemReceived = true;
                                 
-                                var inventoryLevels = await _context.Inventories.Where(i => i.ProductID == detail.ProductId).ToListAsync();
+                                // 1. Cargar inventarios existentes desde la BD al contexto (ChangeTracker)
+                                await _context.Inventories.Where(i => i.ProductID == detail.ProductId).LoadAsync();
                                 
+                                // 2. Consultar desde .Local para incluir tanto los de BD como los NUEVOS agregados en iteraciones previas de este ciclo
+                                var inventoryLevels = _context.Inventories.Local.Where(i => i.ProductID == detail.ProductId).ToList();
+
                                 // Calcular Costo Promedio Ponderado
                                 var currentStock = inventoryLevels.Sum(i => i.Stock);
                                 var currentCost = detail.Product.Cost;
@@ -604,7 +628,6 @@ namespace PhonePalace.Web.Controllers
                                 PurchaseId = purchase.Id,
                                 Purchase = purchase,
                                 Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
-                                Balance = receivedAmount, // Inicializar saldo
                                 DueDate = purchase.PaymentMethod == PurchasePaymentMethod.Credit ? DateTime.Now.AddDays(30) : DateTime.Now,
                                 IsPaid = false,
                                 DocumentType = model.DocumentType, 

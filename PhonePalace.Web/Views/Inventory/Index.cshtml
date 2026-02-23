@@ -111,6 +111,9 @@
                                 @if (User.IsInRole("Administrador"))
                                 {
                                     <td>
+                                        <a asp-action="Movements" asp-route-productId="@item.ProductID" class="btn btn-sm btn-info text-white" title="Ver Kardex">
+                                            <i class="bi bi-clock-history"></i>
+                                        </a>
                                         <a asp-action="Adjust" asp-route-id="@item.ProductID" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Ajustar</a>
                                     </td>
                                 }

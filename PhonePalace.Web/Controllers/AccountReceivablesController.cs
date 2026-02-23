@@ -184,6 +184,7 @@ namespace PhonePalace.Web.Controllers
 
                         _context.AccountReceivables.Add(ar);
                         await _context.SaveChangesAsync();
+                        await _auditService.LogAsync("CuentasPorCobrar", $"Creó préstamo para {client.DisplayName} por {model.Amount:C}.");
                         await transaction.CommitAsync();
 
                         return RedirectToAction(nameof(Index));

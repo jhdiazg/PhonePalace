@@ -37,7 +37,8 @@ namespace PhonePalace.Web.Controllers
                     (c is NaturalPerson && (
                         ((NaturalPerson)c).FirstName.Contains(searchString) ||
                         ((NaturalPerson)c).LastName.Contains(searchString) ||
-                        ((NaturalPerson)c).DocumentNumber.Contains(searchString))) ||
+                        ((NaturalPerson)c).DocumentNumber.Contains(searchString) ||
+                        (((NaturalPerson)c).FirstName + " " + ((NaturalPerson)c).LastName).Contains(searchString))) ||
                     (c is LegalEntity && (
                         ((LegalEntity)c).CompanyName.Contains(searchString) ||
                         ((LegalEntity)c).NIT.Contains(searchString))));

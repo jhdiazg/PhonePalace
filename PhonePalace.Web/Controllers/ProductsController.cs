@@ -132,9 +132,19 @@ namespace PhonePalace.Web.Controllers
 
             if (!string.IsNullOrWhiteSpace(term) && term.Length >= 1)
             {
-                query = query.Where(p => p.Name.ToLower().Contains(term.ToLower()) ||
-                                         (p.SKU != null && p.SKU.ToLower().Contains(term.ToLower())) ||
-                                         (p.Code != null && p.Code.ToLower().Contains(term.ToLower())));
+                string searchTerm = term.ToLower();
+                query = query.Where(p => p.Name.ToLower().Contains(searchTerm) ||
+                                         (p.SKU != null && p.SKU.ToLower().Contains(searchTerm)) ||
+                                         (p.Code != null && p.Code.ToLower().Contains(searchTerm)) ||
+                                         (p is CellPhone && (
+                                             ((CellPhone)p).Model.Name.ToLower().Contains(searchTerm) ||
+                                             ((CellPhone)p).Model.Brand.Name.ToLower().Contains(searchTerm) ||
+                                             (((CellPhone)p).Model.Brand.Name + " " + ((CellPhone)p).Model.Name + " " + p.Name).ToLower().Contains(searchTerm)
+                                         )) ||
+                                         (p is Accessory && (
+                                             ((Accessory)p).Brand.Name.ToLower().Contains(searchTerm) ||
+                                             (((Accessory)p).Brand.Name + " " + p.Name).ToLower().Contains(searchTerm)
+                                         )));
             }
 
             var products = await query

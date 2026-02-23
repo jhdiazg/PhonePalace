@@ -1,0 +1,92 @@
+@model IEnumerable<PhonePalace.Domain.Entities.InventoryMovement>
+@using PhonePalace.Domain.Enums
+
+@{
+    ViewData["Title"] = "Kardex - " + ViewBag.ProductName;
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center my-4">
+        <div>
+            <h1 class="mt-4">Kardex / Movimientos de Inventario</h1>
+            <p class="text-muted mb-0">Producto: <strong>@ViewBag.ProductName</strong> @(string.IsNullOrEmpty(ViewBag.ProductSKU) ? "" : $"({ViewBag.ProductSKU})")</p>
+        </div>
+        <a asp-action="Index" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Inventario
+        </a>
+    </div>
+
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light">
+            <i class="bi bi-table me-1"></i>
+            Historial de Movimientos
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-bordered align-middle" id="kardexTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha y Hora</th>
+                            <th>Tipo de Movimiento</th>
+                            <th>Referencia / Detalle</th>
+                            <th class="text-end">Cantidad</th>
+                            <th class="text-end">Costo Unit.</th>
+                            <th class="text-end">Saldo (Stock)</th>
+                            <th>Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@item.Date.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                                    <td>
+                                        @switch (item.Type)
+                                        {
+                                            case InventoryMovementType.Sale:
+                                                <span class="badge bg-success">Venta</span>
+                                                break;
+                                            case InventoryMovementType.Purchase:
+                                                <span class="badge bg-primary">Compra</span>
+                                                break;
+                                            case InventoryMovementType.Return:
+                                                <span class="badge bg-warning text-dark">Devolución</span>
+                                                break;
+                                            case InventoryMovementType.Adjustment:
+                                                <span class="badge bg-secondary">Ajuste Manual</span>
+                                                break;
+                                            case InventoryMovementType.SaleCancellation:
+                                                <span class="badge bg-danger">Anulación Venta</span>
+                                                break;
+                                            case InventoryMovementType.PurchaseCancellation:
+                                                <span class="badge bg-danger">Anulación Compra</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-info text-dark">@item.Type</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>@item.Reference</td>
+                                    <td class="text-end fw-bold @(item.Quantity > 0 ? "text-primary" : "text-danger")">
+                                        @(item.Quantity > 0 ? "+" : "")@item.Quantity
+                                    </td>
+                                    <td class="text-end">@item.UnitCost.ToString("C2")</td>
+                                    <td class="text-end fw-bold">@item.StockBalance</td>
+                                    <td><small class="text-muted">@item.UserId</small></td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No hay movimientos registrados para este producto.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

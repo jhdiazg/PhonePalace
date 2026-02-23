@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authorization;
 using PhonePalace.Domain.Interfaces;
 using System;
 using Microsoft.AspNetCore.Hosting;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -74,8 +75,10 @@ namespace PhonePalace.Web.Controllers
                     CurrentStock = (int)((double)i.Stock),
                     LastUpdated = i.LastUpdated,
                     TotalPurchases = (int)_context.PurchaseDetails
-                        .Where(pd => pd.ProductId == i.ProductID && pd.Purchase != null && pd.Purchase.Status == Domain.Enums.PurchaseStatus.Received)
-                        .Sum(pd => (double)pd.Quantity),
+                        .Where(pd => pd.ProductId == i.ProductID && pd.Purchase != null && 
+                                     pd.Purchase.Status != Domain.Enums.PurchaseStatus.Draft && 
+                                     pd.Purchase.Status != Domain.Enums.PurchaseStatus.Cancelled)
+                        .Sum(pd => (double)pd.ReceivedQuantity),
                     TotalSales = (int)(_context.Sales
                         .Where(s => !s.IsDeleted)
                         .SelectMany(s => s.Details)
@@ -138,7 +141,7 @@ namespace PhonePalace.Web.Controllers
             // Obtenemos datos actuales para el log (usando proyección para evitar error de PK)
             var currentData = await _context.Inventories
                 .Where(i => i.ProductID == id)
-                .Select(i => new { Stock = (int)((double)i.Stock), ProductName = i.Product.Name })
+                .Select(i => new { Stock = (int)((double)i.Stock), ProductName = i.Product.Name, Cost = i.Product.Cost })
                 .FirstOrDefaultAsync();
 
             if (currentData == null) return NotFound();
@@ -149,6 +152,22 @@ namespace PhonePalace.Web.Controllers
                 adjustment, DateTime.Now, id);
 
             var newStock = currentData.Stock + adjustment;
+
+            // Registrar Movimiento en Kardex
+            var movement = new InventoryMovement
+            {
+                ProductId = id,
+                Date = DateTime.Now,
+                Type = InventoryMovementType.Adjustment,
+                Quantity = adjustment,
+                UnitCost = currentData.Cost,
+                StockBalance = newStock,
+                Reference = reason ?? "Ajuste Manual",
+                UserId = User.Identity?.Name
+            };
+            _context.InventoryMovements.Add(movement);
+            await _context.SaveChangesAsync();
+
             await _auditService.LogAsync("Inventario", $"Ajuste manual de stock para '{currentData.ProductName}' (ID: {id}). Anterior: {currentData.Stock}, Ajuste: {adjustment:+0;-0}, Nuevo: {newStock}. Razón: {reason}");
 
             return RedirectToAction(nameof(Index));
@@ -201,6 +220,25 @@ namespace PhonePalace.Web.Controllers
             var pdfBytes = document.GeneratePdf();
 
             return File(pdfBytes, "application/pdf", $"Inventario_Fisico_{DateTime.Now:yyyyMMdd}.pdf");
+        }
+
+        [HttpGet]
+        [Route("Inventario/Kardex/{productId}")]
+        public async Task<IActionResult> Movements(int productId)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null) return NotFound();
+
+            var movements = await _context.InventoryMovements
+                .Where(m => m.ProductId == productId)
+                .OrderByDescending(m => m.Date)
+                .AsNoTracking()
+                .ToListAsync();
+
+            ViewBag.ProductName = product.Name;
+            ViewBag.ProductSKU = product.SKU;
+
+            return View(movements);
         }
     }
 }

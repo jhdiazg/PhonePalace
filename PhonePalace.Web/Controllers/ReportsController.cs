@@ -132,6 +132,12 @@ namespace PhonePalace.Web.Controllers
             // Pasar datos adicionales a la vista para las tarjetas de resumen
             ViewData["TotalCustomerBalance"] = totalCustomerBalance;
             ViewData["TotalRealIncome"] = totalSales - totalCustomerBalance;
+            
+            // Calcular devoluciones en el periodo para mostrar como dato informativo
+            var totalReturns = await _context.Returns
+                .Where(r => r.Date >= start && r.Date <= endFilter)
+                .SumAsync(r => r.TotalAmount);
+            ViewData["TotalReturns"] = totalReturns;
 
             return View(model);
         }

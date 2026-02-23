@@ -584,6 +584,19 @@ namespace PhonePalace.Web.Controllers
                             {
                                 inventory.Stock -= detail.Quantity;
                                 _context.Update(inventory);
+
+                                // Kardex: Salida por Venta
+                                _context.Set<InventoryMovement>().Add(new InventoryMovement
+                                {
+                                    ProductId = detail.ProductID,
+                                    Date = viewModel.SaleDate,
+                                    Type = InventoryMovementType.Sale,
+                                    Quantity = -detail.Quantity, // Negativo
+                                    UnitCost = detail.Cost, // Costo histórico
+                                    StockBalance = (int)inventory.Stock,
+                                    Reference = $"Venta #{invoice.InvoiceID}",
+                                    UserId = User.Identity?.Name
+                                });
                             }
                             else
                             {
@@ -593,6 +606,7 @@ namespace PhonePalace.Web.Controllers
                         }
                         await _context.SaveChangesAsync();
 
+                        await _auditService.LogAsync("Ventas", $"Registró venta #{invoice.InvoiceID} por {total:C}. Cliente: {client.DisplayName}");
                         await transaction.CommitAsync();
                         return RedirectToAction(nameof(Index));
                     }
@@ -634,7 +648,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost, ActionName("Delete")]
         [Route("Delete/{id}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
+        public async Task<IActionResult> DeleteConfirmed(int id, string? cancellationReason)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync<IActionResult>(async () =>
@@ -652,6 +666,17 @@ namespace PhonePalace.Web.Controllers
 
                     if (sale != null)
                     {
+                        // 0. Validar motivo de anulación si hay factura electrónica
+                        var electronicInvoice = await _context.Set<ElectronicInvoice>()
+                            .AsNoTracking() // No se necesita rastrear para esta validación
+                            .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
+
+                        if (electronicInvoice != null && string.IsNullOrWhiteSpace(cancellationReason))
+                        {
+                            TempData["Error"] = "El motivo de anulación es obligatorio cuando existe una factura electrónica emitida.";
+                            return RedirectToAction(nameof(Details), new { id });
+                        }
+
                         // 1. Restaurar inventario
                         foreach (var detail in sale.Details)
                         {
@@ -661,6 +686,19 @@ namespace PhonePalace.Web.Controllers
                                 inventory.Stock += detail.Quantity;
                                 inventory.LastUpdated = DateTime.Now;
                                 _context.Update(inventory);
+
+                                // Kardex: Entrada por Anulación
+                                _context.Set<InventoryMovement>().Add(new InventoryMovement
+                                {
+                                    ProductId = detail.ProductID,
+                                    Date = DateTime.Now,
+                                    Type = InventoryMovementType.SaleCancellation,
+                                    Quantity = detail.Quantity, // Positivo
+                                    UnitCost = detail.Cost,
+                                    StockBalance = (int)inventory.Stock,
+                                    Reference = $"Anulación Venta #{sale.Invoice.InvoiceID}",
+                                    UserId = User.Identity?.Name
+                                });
                             }
                             else
                             {
@@ -722,14 +760,12 @@ namespace PhonePalace.Web.Controllers
                         _context.Update(sale);
                         
                         // 5. Emitir Nota Crédito Electrónica si aplica
-                        var electronicInvoice = await _context.Set<ElectronicInvoice>()
-                            .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
-
                         if (electronicInvoice != null)
                         {
                             try 
                             {
-                                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, "Anulación completa de venta por solicitud del cliente", electronicInvoice.CUFE);
+                                string reason = cancellationReason!; // La validación anterior asegura que no es nulo
+                                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, reason, electronicInvoice.CUFE);
                                 if (ncResponse.Success)
                                 {
                                     await _auditService.LogAsync("Facturación", $"Nota Crédito emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
@@ -739,7 +775,10 @@ namespace PhonePalace.Web.Controllers
                                     await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito para {sale.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
                                 }
                             }
-                            catch (Exception ex) { /* Loguear error pero no detener la anulación local */ }
+                            catch (Exception ex) 
+                            { 
+                                await _auditService.LogAsync("Error Facturación", $"Excepción al emitir Nota Crédito para {sale.Invoice.InvoiceID}: {ex.Message}");
+                            }
                         }
 
                         await _context.SaveChangesAsync();
@@ -764,6 +803,7 @@ namespace PhonePalace.Web.Controllers
             // 1. Obtener la Venta con todos sus detalles y la Factura asociada
             var sale = await _context.Sales
                 .IgnoreQueryFilters()
+                .Include(s => s.Client)
                 .Include(s => s.Invoice)
                     .ThenInclude(i => i.Client) // Cargar el cliente asociado a la factura
                 .Include(s => s.Invoice)
@@ -778,22 +818,9 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            // 2. Mapeo en memoria: Como Sale.Details tiene los productos, se los pasamos a Invoice.Details
-            // para que el generador de PDF tenga qué imprimir.
-            if (sale.Invoice.Details == null || !sale.Invoice.Details.Any())
-            {
-                sale.Invoice.Details = sale.Details.Select(d => new InvoiceDetail
-                {
-                    ProductID = d.ProductID,
-                    Product = d.Product,
-                    Quantity = d.Quantity,
-                    UnitPrice = d.UnitPrice
-                }).ToList();
-            }
-
             // 3. Obtener Logo
             string wwwRootPath = _webHostEnvironment.WebRootPath;
-            string logoPath = Path.Combine(wwwRootPath, "images", "Logo_fact.png");
+            string logoPath = Path.Combine(wwwRootPath, _companySettings.LogoFacturaPath);
             byte[] logoBytes = Array.Empty<byte>();
 
             if (System.IO.File.Exists(logoPath))
@@ -803,7 +830,7 @@ namespace PhonePalace.Web.Controllers
 
             string sellerName = sale.Invoice.UserId ?? "N/A";
             // 4. Generar PDF usando la configuración centralizada (_companySettings)
-            var document = new InvoicePdfDocument(sale.Invoice, logoBytes, _companySettings, sellerName);
+            var document = new InvoicePdfDocument(sale, logoBytes, _companySettings, sellerName);
             var pdfBytes = document.GeneratePdf();
 
             return File(pdfBytes, "application/pdf", $"Factura-{sale.Invoice.InvoiceID}.pdf");
@@ -931,6 +958,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Add(electronicInvoice);
                     await _context.SaveChangesAsync();
+                    await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.SaleID}. DIAN: {electronicInvoice.DianNumber}");
 
                     TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
                 }

@@ -40,7 +40,6 @@ namespace PhonePalace.Domain.Entities
         public string? CancelledByUserId { get; set; }
         public DateTime? CompletionDate { get; set; } // New property
 
-        public virtual ICollection<InvoiceDetail> Details { get; set; } = new List<InvoiceDetail>();
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }

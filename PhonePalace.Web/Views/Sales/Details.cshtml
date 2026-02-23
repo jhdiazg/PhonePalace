@@ -317,22 +317,32 @@
                 <h5 class="modal-title" id="deleteModalLabel">Confirmar Anulación</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p>¿Está seguro que desea anular esta venta?</p>
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <strong>Advertencia:</strong> Esta acción devolverá los productos al inventario, reversará el dinero de caja/bancos y anulará la deuda si existe.
-                    <br/><br/>
-                    <strong>Esta acción no se puede deshacer.</strong>
+            <form asp-action="Delete" asp-route-id="@Model.SaleID" method="post">
+                <div class="modal-body">
+                    <p>¿Está seguro que desea anular esta venta?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Advertencia:</strong> Esta acción devolverá los productos al inventario, reversará el dinero de caja/bancos y anulará la deuda si existe.
+                    </div>
+                    @{
+                        var eInvoiceForModal = ViewBag.ElectronicInvoice as ElectronicInvoice;
+                        bool isElectronic = eInvoiceForModal != null && eInvoiceForModal.Status == "Accepted";
+                    }
+                    @if (isElectronic)
+                    {
+                        <div class="mb-3">
+                            <label for="cancellationReason" class="form-label fw-bold">Motivo de Anulación (DIAN):</label>
+                            <textarea name="cancellationReason" id="cancellationReason" class="form-control" rows="2" placeholder="Ej: Error en digitación, Devolución total..." required></textarea>
+                            <div class="invalid-feedback">El motivo es obligatorio para anular una factura electrónica.</div>
+                        </div>
+                    }
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <form asp-action="Delete" asp-route-id="@Model.SaleID" method="post">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-danger">Confirmar Anulación</button>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>

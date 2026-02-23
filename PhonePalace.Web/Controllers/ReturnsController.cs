@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -94,6 +95,12 @@ namespace PhonePalace.Web.Controllers
                         .FirstOrDefaultAsync(s => s.SaleID == model.SaleID);
                     if (sale == null) throw new Exception("Venta no encontrada.");
 
+                    // 1. SEGURIDAD: Consultar historial real de devoluciones en BD para evitar duplicados
+                    var previousReturns = await _context.Returns
+                        .Include(r => r.Details)
+                        .Where(r => r.SaleID == model.SaleID)
+                        .ToListAsync();
+
                     var returnEntity = new Return
                     {
                         SaleID = model.SaleID,
@@ -106,17 +113,19 @@ namespace PhonePalace.Web.Controllers
 
                     foreach (var item in itemsToReturn)
                     {
-                        // Buscar el detalle de venta original para obtener el costo histórico
                         var originalSaleDetail = sale.Details.FirstOrDefault(d => d.ProductID == item.ProductID);
-                        if (originalSaleDetail == null)
-                        {
-                            throw new Exception($"No se encontró el detalle de venta original para el producto '{item.ProductName}'.");
-                        }
+                        if (originalSaleDetail == null) throw new Exception($"El producto {item.ProductName} no pertenece a esta venta.");
 
-                        // Validar que no devuelva más de lo permitido (lógica simple, idealmente re-validar contra DB)
-                        if (item.QuantityToReturn > (item.SoldQuantity - item.PreviouslyReturned))
+                        // 2. SEGURIDAD: Calcular lo que ya se ha devuelto anteriormente
+                        var previouslyReturnedQty = previousReturns
+                            .SelectMany(r => r.Details)
+                            .Where(d => d.ProductID == item.ProductID)
+                            .Sum(d => d.Quantity);
+
+                        // 3. SEGURIDAD: Validar que la nueva devolución no exceda lo disponible
+                        if (item.QuantityToReturn > (originalSaleDetail.Quantity - previouslyReturnedQty))
                         {
-                            throw new Exception($"La cantidad a devolver del producto '{item.ProductName}' excede lo permitido.");
+                            throw new Exception($"Error de seguridad: Intenta devolver {item.QuantityToReturn} unidades de '{item.ProductName}', pero solo quedan {originalSaleDetail.Quantity - previouslyReturnedQty} disponibles para devolución.");
                         }
 
                         // 1. Aumentar Inventario
@@ -126,6 +135,19 @@ namespace PhonePalace.Web.Controllers
                             inventory.Stock += item.QuantityToReturn;
                             inventory.LastUpdated = DateTime.Now;
                             _context.Update(inventory);
+
+                            // 4. KARDEX: Registrar el movimiento en el historial
+                            _context.Set<InventoryMovement>().Add(new InventoryMovement
+                            {
+                                ProductId = item.ProductID,
+                                Date = DateTime.Now,
+                                Type = InventoryMovementType.Return,
+                                Quantity = item.QuantityToReturn,
+                                UnitCost = originalSaleDetail.Cost,
+                                StockBalance = (int)inventory.Stock,
+                                Reference = $"Devolución Venta #{model.SaleID}",
+                                UserId = User.Identity?.Name
+                            });
                         }
 
                         // 2. Crear Detalle
@@ -134,7 +156,7 @@ namespace PhonePalace.Web.Controllers
                             ProductID = item.ProductID,
                             Quantity = item.QuantityToReturn,
                             UnitPrice = item.UnitPrice,
-                            Cost = originalSaleDetail.Cost // Guardar el costo histórico de la venta
+                            Cost = originalSaleDetail?.Cost ?? 0
                         });
 
                         totalRefund += (item.QuantityToReturn * item.UnitPrice);

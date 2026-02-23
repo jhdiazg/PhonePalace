@@ -208,7 +208,22 @@ namespace PhonePalace.Infrastructure.Services
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError("Plemsi API Error (Credit Note): {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    return new PlemsiResponse { Success = false, ErrorMessage = $"Error HTTP {response.StatusCode}" };
+
+                    string friendlyMessage = $"Error HTTP {response.StatusCode}";
+                    try
+                    {
+                        // Intentar parsear el error de Plemsi
+                        using (JsonDocument doc = JsonDocument.Parse(errorContent))
+                        {
+                            var root = doc.RootElement;
+                            if (root.TryGetProperty("info", out var info)) friendlyMessage = info.GetString() ?? friendlyMessage;
+                            else if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.String) friendlyMessage = data.GetString() ?? friendlyMessage;
+                            else if (root.TryGetProperty("message", out var message)) friendlyMessage = message.GetString() ?? friendlyMessage;
+                        }
+                    }
+                    catch { /* Si falla el parseo, devolvemos el default */ }
+
+                    return new PlemsiResponse { Success = false, ErrorMessage = friendlyMessage };
                 }
             }
             catch (Exception ex)
@@ -259,7 +274,22 @@ namespace PhonePalace.Infrastructure.Services
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError("Plemsi API Error (Partial Credit Note): {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    return new PlemsiResponse { Success = false, ErrorMessage = $"Error HTTP {response.StatusCode}" };
+                    
+                    string friendlyMessage = $"Error HTTP {response.StatusCode}";
+                    try
+                    {
+                        // Intentar parsear el error de Plemsi
+                        using (JsonDocument doc = JsonDocument.Parse(errorContent))
+                        {
+                            var root = doc.RootElement;
+                            if (root.TryGetProperty("info", out var info)) friendlyMessage = info.GetString() ?? friendlyMessage;
+                            else if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.String) friendlyMessage = data.GetString() ?? friendlyMessage;
+                            else if (root.TryGetProperty("message", out var message)) friendlyMessage = message.GetString() ?? friendlyMessage;
+                        }
+                    }
+                    catch { /* Si falla el parseo, devolvemos el default */ }
+
+                    return new PlemsiResponse { Success = false, ErrorMessage = friendlyMessage };
                 }
             }
             catch (Exception ex)
@@ -488,53 +518,48 @@ namespace PhonePalace.Infrastructure.Services
             string invoiceNumber = sale.Invoice.InvoiceID.ToString();
             string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
 
-            string ncPrefix = _companySettings.CreditNotePrefix;
-            string ncResolution = _companySettings.CreditNoteResolutionNumber;
+            // Usar la resolución de NC si está definida, si no, usar la de facturación como fallback.
+            string ncPrefix = !string.IsNullOrEmpty(_companySettings.CreditNotePrefix) 
+                ? _companySettings.CreditNotePrefix 
+                : _companySettings.DianResolutionPrefix;
+            string ncResolution = !string.IsNullOrEmpty(_companySettings.CreditNoteResolutionNumber) 
+                ? _companySettings.CreditNoteResolutionNumber : _companySettings.DianResolutionNumber;
 
             // Construcción específica para Nota Crédito
             return new
             {
-                // type_document_id = 91 es Nota de Crédito
-                type_document_id = 91,
-                date = DateTime.Now.ToString("yyyy-MM-dd"),
-                time = DateTime.Now.ToString("HH:mm:ss"),
-                send_email = true,
                 prefix = ncPrefix,
                 resolution = ncResolution,
+                send_email = true,
                 
                 // Referencia a la factura original (Obligatorio para NC)
-                billing_reference = new
+                invoiceReference = new
                 {
                     number = fullInvoiceNumber,
-                    prefix = invoicePrefix,
-                    date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd"),
-                    scheme_name = "CUFE-SHA384",
-                    cufe = originalCufe
+                    uuid = originalCufe,
+                    issue_date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd")
                 },
 
                 // Razón de la anulación
-                discrepancy_response = new
+                discrepancy = new
                 {
-                    reference_id = fullInvoiceNumber,
-                    response_code = 2, // 2: Anulación de factura electrónica
+                    code = 2, // 2: Anulación de factura electrónica
                     description = reason ?? "Anulación de venta"
                 },
 
                 // Datos reutilizados de la factura original
                 customer = dynamicBase.customer,
                 items = dynamicBase.items,
-                payment = dynamicBase.payment, // La forma de pago de la nota suele ser la misma
                 
-                // Resolución: Las NC suelen usar la misma resolución o una asociada. 
-                // Plemsi suele manejar la numeración de NC automáticamente si no se envía, 
-                // o se debe configurar una resolución de NC en el panel de Plemsi.
-                // Enviamos null en resolution para que Plemsi use la resolución de contingencia/NC configurada por defecto.
+                payment = dynamicBase.payment, // Restaurado según prototipo
                 
                 notes = $"Nota Crédito por anulación de venta #{sale.SaleID}",
                 
                 // Totales
                 invoiceBaseTotal = dynamicBase.invoiceBaseTotal,
                 invoiceTaxInclusiveTotal = dynamicBase.invoiceTaxInclusiveTotal,
+                invoiceTaxExclusiveTotal = dynamicBase.invoiceTaxExclusiveTotal,
+                totalToPay = dynamicBase.totalToPay,
                 allTaxTotals = dynamicBase.allTaxTotals
             };
         }
@@ -549,8 +574,12 @@ namespace PhonePalace.Infrastructure.Services
             string invoiceNumber = sale.Invoice.InvoiceID.ToString();
             string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
 
-            string ncPrefix = _companySettings.CreditNotePrefix;
-            string ncResolution = _companySettings.CreditNoteResolutionNumber;
+            // Usar la resolución de NC si está definida, si no, usar la de facturación como fallback.
+            string ncPrefix = !string.IsNullOrEmpty(_companySettings.CreditNotePrefix) 
+                ? _companySettings.CreditNotePrefix 
+                : _companySettings.DianResolutionPrefix;
+            string ncResolution = !string.IsNullOrEmpty(_companySettings.CreditNoteResolutionNumber) 
+                ? _companySettings.CreditNoteResolutionNumber : _companySettings.DianResolutionNumber;
 
             // Obtener tasa de IVA
             decimal taxRate = _configuration.GetValue<decimal>("TaxSettings:IVARate");
@@ -613,31 +642,29 @@ namespace PhonePalace.Infrastructure.Services
             return new
             {
                 type_document_id = 91, // Nota Crédito
-                date = DateTime.Now.ToString("yyyy-MM-dd"),
-                time = DateTime.Now.ToString("HH:mm:ss"),
-                send_email = true,
                 prefix = ncPrefix,
                 resolution = ncResolution,
-                billing_reference = new
+                send_email = true,
+
+                invoiceReference = new
                 {
                     number = fullInvoiceNumber,
-                    prefix = invoicePrefix,
-                    date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd"),
-                    scheme_name = "CUFE-SHA384",
-                    cufe = originalCufe
+                    uuid = originalCufe,
+                    issue_date = sale.Invoice.SaleDate.ToString("yyyy-MM-dd")
                 },
-                discrepancy_response = new
+                discrepancy = new
                 {
-                    reference_id = fullInvoiceNumber,
-                    response_code = 1, // 1: Devolución parcial de bienes
+                    code = 1, // 1: Devolución parcial de bienes
                     description = reason ?? "Devolución parcial"
                 },
                 customer = dynamicBase.customer,
                 items = items,
-                payment = dynamicBase.payment,
+                payment = dynamicBase.payment, // Restaurado
                 notes = $"Nota Crédito Parcial por devolución venta #{sale.SaleID}",
                 invoiceBaseTotal,
                 invoiceTaxInclusiveTotal,
+                invoiceTaxExclusiveTotal = invoiceBaseTotal, // En parciales suele ser igual si no hay descuentos globales
+                totalToPay = invoiceTaxInclusiveTotal,
                 allTaxTotals
             };
         }

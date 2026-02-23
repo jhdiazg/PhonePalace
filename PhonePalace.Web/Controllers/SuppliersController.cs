@@ -39,10 +39,11 @@ namespace PhonePalace.Web.Controllers
                     (s is NaturalPersonSupplier && (
                         ((NaturalPersonSupplier)s).FirstName.Contains(searchString) ||
                         ((NaturalPersonSupplier)s).LastName.Contains(searchString) ||
-                        ((NaturalPersonSupplier)s).DocumentNumber.Contains(searchString))) ||
+                        ((NaturalPersonSupplier)s).DocumentNumber.Contains(searchString) ||
+                        (((NaturalPersonSupplier)s).FirstName + " " + ((NaturalPersonSupplier)s).LastName).Contains(searchString))) ||
                     (s is LegalEntitySupplier && (
-                        (((LegalEntitySupplier)s).CompanyName != null && ((LegalEntitySupplier)s).CompanyName.Contains(searchString)) ||
-                        (((LegalEntitySupplier)s).NIT != null && ((LegalEntitySupplier)s).NIT.Contains(searchString)))) ||
+                        ((LegalEntitySupplier)s).CompanyName.Contains(searchString) ||
+                        ((LegalEntitySupplier)s).NIT.Contains(searchString))) ||
                     (s.Email != null && s.Email.Contains(searchString)));
             }
 
@@ -51,8 +52,8 @@ namespace PhonePalace.Web.Controllers
                 .Select(s => new SupplierIndexViewModel
                 {
                     SupplierID = s.SupplierID,
-                    DisplayName = s is NaturalPersonSupplier ? ((NaturalPersonSupplier)s).FirstName + " " + ((NaturalPersonSupplier)s).LastName : (s is LegalEntitySupplier ? (((LegalEntitySupplier)s).CompanyName ?? "") : ""),
-                    Document = s is NaturalPersonSupplier ? ((NaturalPersonSupplier)s).DocumentNumber : (s is LegalEntitySupplier ? (((LegalEntitySupplier)s).NIT ?? "") : ""),
+                    DisplayName = s is NaturalPersonSupplier ? ((NaturalPersonSupplier)s).FirstName + " " + ((NaturalPersonSupplier)s).LastName : ((LegalEntitySupplier)s).CompanyName,
+                    Document = s is NaturalPersonSupplier ? ((NaturalPersonSupplier)s).DocumentNumber : ((LegalEntitySupplier)s).NIT,
                     SupplierType = s is NaturalPersonSupplier ? "Persona Natural" : "Persona Jurídica",
                     Email = s.Email ?? "",
                     PhoneNumber = s.PhoneNumber ?? "",

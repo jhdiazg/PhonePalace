@@ -2,6 +2,7 @@ D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\site.webmanifest.gz
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.svg.gz
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.ico.gz
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\apple-touch-icon.png
+D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\docs\PoliticaTratamientoDatos.pdf
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon-96x96.png
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.ico
 D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\favicon.svg
@@ -502,4 +503,3 @@ D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\refint\PhonePalace.Web.dll
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.pdb
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\PhonePalace.Web.genruntimeconfig.cache
 D:\PhonePalace\PhonePalace.Web\obj\Release\net9.0\ref\PhonePalace.Web.dll
-D:\PhonePalace\PhonePalace.Web\bin\Release\net9.0\wwwroot\docs\PoliticaTratamientoDatos.pdf

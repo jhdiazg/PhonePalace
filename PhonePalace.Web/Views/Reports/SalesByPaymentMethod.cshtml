@@ -37,7 +37,7 @@
 
 <!-- Sección de Totales Destacados -->
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-white bg-primary h-100">
             <div class="card-body text-center">
                 <h5 class="card-title">Total Ventas</h5>
@@ -46,7 +46,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-white bg-success h-100">
             <div class="card-body text-center">
                 <h5 class="card-title">Ingreso Real (Caja/Bancos)</h5>
@@ -55,12 +55,21 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-dark bg-warning h-100">
             <div class="card-body text-center">
                 <h5 class="card-title">Pagado con Saldo a Favor</h5>
                 <p class="card-text display-6">@totalCustomerBalance.ToString("C")</p>
                 <small>Uso de billetera de clientes (Devoluciones/Anticipos)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-dark bg-light border-warning h-100">
+            <div class="card-body text-center">
+                <h5 class="card-title text-warning fw-bold">Devoluciones</h5>
+                <p class="card-text display-6">@(((decimal)(ViewData["TotalReturns"] ?? 0)).ToString("C"))</p>
+                <small class="text-muted">Informativo (No resta)</small>
             </div>
         </div>
     </div>
