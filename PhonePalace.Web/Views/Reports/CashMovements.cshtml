@@ -12,9 +12,19 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <form asp-action="CashMovements" method="get" class="row g-3 align-items-end">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label asp-for="ReportDate" class="form-label">Seleccione la Fecha</label>
                 <input asp-for="ReportDate" type="date" class="form-control" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Mostrar</label>
+                <select name="pageSize" class="form-select" onchange="this.form.submit()">
+                    @{ int pageSize = (int)(ViewData["PageSize"] ?? 20); }
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="100" selected="@(pageSize == 100)">100</option>
+                    <option value="200" selected="@(pageSize == 200)">200</option>
+                </select>
             </div>
             <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100">Generar Reporte</button>
@@ -40,7 +50,7 @@
                 <div class="col">
                     <div class="stat-card border-start border-4 border-success p-3">
                         <h6 class="text-muted">Total Ingresos</h6>
-                        <h4 class="fw-bold text-success">@Model.Movements.Where(m => m.MovementType == CashMovementType.Income).Sum(m => m.Amount).ToString("C")</h4>
+                        <h4 class="fw-bold text-success">@((Model.TotalIncome - Model.OpeningBalance).ToString("C"))</h4>
                     </div>
                 </div>
                 <div class="col">
@@ -95,6 +105,35 @@
                 </table>
             </div>
         </div>
+        @{
+            var paginated = ViewData["PaginatedMovements"] as PaginatedList<CashMovement>;
+        }
+        @if (paginated != null && paginated.TotalPages > 1)
+        {
+            <div class="card-footer">
+                @{
+                    var prevDisabled = !paginated.HasPreviousPage ? "disabled" : "";
+                    var nextDisabled = !paginated.HasNextPage ? "disabled" : "";
+                }
+                <div class="d-flex justify-content-center align-items-center">
+                    <a asp-action="CashMovements"
+                       asp-route-pageNumber="@(paginated.PageIndex - 1)"
+                       asp-route-reportDate="@Model.ReportDate.ToString("yyyy-MM-dd")"
+                       asp-route-pageSize="@ViewData["PageSize"]"
+                       class="btn btn-secondary @prevDisabled">
+                        Anterior
+                    </a>
+                    <span class="mx-3">Página @paginated.PageIndex de @paginated.TotalPages</span>
+                    <a asp-action="CashMovements"
+                       asp-route-pageNumber="@(paginated.PageIndex + 1)"
+                       asp-route-reportDate="@Model.ReportDate.ToString("yyyy-MM-dd")"
+                       asp-route-pageSize="@ViewData["PageSize"]"
+                       class="btn btn-secondary @nextDisabled">
+                        Siguiente
+                    </a>
+                </div>
+            </div>
+        }
     </div>
 }
 else

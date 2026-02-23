@@ -243,9 +243,10 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("MovimientosCaja")]
-        public async Task<IActionResult> CashMovements(DateTime? reportDate)
+        public async Task<IActionResult> CashMovements(DateTime? reportDate, int? pageNumber, int? pageSize)
         {
             var date = reportDate ?? DateTime.Today;
+            ViewData["PageSize"] = pageSize ?? 20;
 
             var model = new CashMovementReportViewModel
             {
@@ -256,8 +257,6 @@ namespace PhonePalace.Web.Controllers
             // Buscar la caja que se abrió en la fecha especificada.
             // Asumimos que solo hay una caja por día. Si pueden haber más, se necesitaría un selector.
             var cashRegister = await _context.CashRegisters
-                .Include(cr => cr.CashMovements)
-                // .ThenInclude(cm => cm.User) // Incluir el usuario para mostrar quién hizo el movimiento (eliminado por error de compilación)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(cr => cr.OpeningDate.Date == date.Date);
 
@@ -265,20 +264,37 @@ namespace PhonePalace.Web.Controllers
             {
                 model.IsCashRegisterFound = true;
                 model.OpeningBalance = cashRegister.OpeningAmount;
-                model.Movements = cashRegister.CashMovements?.OrderBy(m => m.MovementDate).ToList() ?? new List<CashMovement>();
+
+                // Consulta base para movimientos
+                var query = _context.CashMovements
+                    .Where(cm => cm.CashRegisterID == cashRegister.CashRegisterID)
+                    .OrderBy(m => m.MovementDate);
+
+                // Calcular totales sobre TODOS los movimientos del día (para que el resumen sea correcto)
+                var allMovementsForTotals = await _context.CashMovements
+                    .Where(cm => cm.CashRegisterID == cashRegister.CashRegisterID)
+                    .Select(m => new { m.MovementType, m.Amount })
+                    .ToListAsync();
+
+                model.TotalIncome = allMovementsForTotals
+                    .Where(m => m.MovementType == CashMovementType.Income || m.MovementType == CashMovementType.Opening)
+                    .Sum(m => m.Amount);
+                
+                model.TotalExpenses = allMovementsForTotals.Where(m => m.MovementType == CashMovementType.Expense).Sum(m => m.Amount);
+                
+                var incomeOnly = allMovementsForTotals.Where(m => m.MovementType == CashMovementType.Income).Sum(m => m.Amount);
+                model.ExpectedBalance = (cashRegister.OpeningAmount + incomeOnly) - model.TotalExpenses;
+
+                // Paginación de la lista a mostrar
+                var paginatedMovements = await PaginatedList<CashMovement>.CreateAsync(query.AsNoTracking(), pageNumber ?? 1, pageSize ?? 20);
+                model.Movements = paginatedMovements;
+                ViewData["PaginatedMovements"] = paginatedMovements;
 
                 // Obtener nombres de usuarios para mostrar en la vista
-                var userIds = model.Movements.Where(m => m.UserId != null).Select(m => m.UserId).Distinct().ToList();
+                var userIds = paginatedMovements.Where(m => m.UserId != null).Select(m => m.UserId).Distinct().ToList();
                 ViewBag.UserNames = await _context.Users
                     .Where(u => userIds.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id, u => u.UserName);
-
-                // Calcular totales
-                model.TotalIncome = model.Movements
-                    .Where(m => m.MovementType == CashMovementType.Income || m.MovementType == CashMovementType.Opening)
-                    .Sum(m => m.Amount);
-                model.TotalExpenses = model.Movements.Where(m => m.MovementType == CashMovementType.Expense).Sum(m => m.Amount);
-                model.ExpectedBalance = (cashRegister.OpeningAmount + model.Movements.Where(m => m.MovementType == CashMovementType.Income).Sum(m => m.Amount)) - model.TotalExpenses;
             }
 
             return View(model);

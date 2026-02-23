@@ -61,6 +61,27 @@ namespace PhonePalace.Web.Controllers
             return View(model);
         }
 
+        // GET: FixedExpenses/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var fixedExpense = await _context.FixedExpenses
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (fixedExpense == null) return NotFound();
+
+            var payments = await _context.FixedExpensePayments
+                .Where(p => p.FixedExpenseId == id)
+                .OrderByDescending(p => p.PaymentDate)
+                .ToListAsync();
+
+            ViewBag.Payments = payments;
+
+            return View(fixedExpense);
+        }
+
         // GET: FixedExpenses/Create
         public IActionResult Create()
         {

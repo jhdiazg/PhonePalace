@@ -65,6 +65,7 @@
                             {
                                 <a asp-action="Pay" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-success" title="Registrar Nuevo Pago"><i class="bi bi-currency-dollar"></i> Pagar</a>
                             }
+                            <a asp-action="Details" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-info text-white" title="Ver Historial"><i class="bi bi-clock-history"></i></a>
                             <a asp-action="Edit" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-primary" title="Editar Definición"><i class="bi bi-pencil-fill"></i></a>
                             <a asp-action="Delete" asp-route-id="@item.FixedExpense?.Id" class="btn btn-sm btn-outline-danger" title="Eliminar Definición"><i class="bi bi-trash-fill"></i></a>
                         </div>
