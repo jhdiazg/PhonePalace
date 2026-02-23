@@ -194,10 +194,11 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("MovimientosBancarios")]
-        public async Task<IActionResult> BankTransactions(int? bankId, DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> BankTransactions(int? bankId, DateTime? startDate, DateTime? endDate, int? pageNumber, int? pageSize)
         {
             var start = startDate ?? DateTime.Today.AddDays(-30);
             var end = endDate ?? DateTime.Today;
+            ViewData["PageSize"] = pageSize ?? 10;
 
             // Ajustar fecha fin para incluir todo el día
             var endFilter = end.Date.AddDays(1).AddTicks(-1);
@@ -212,11 +213,9 @@ namespace PhonePalace.Web.Controllers
 
             if (bankId.HasValue)
             {
-                model.Transactions = await _context.BankTransactions
+                var query = _context.BankTransactions
                     .Where(t => t.BankID == bankId.Value && t.Date >= start && t.Date <= endFilter)
-                    .OrderBy(t => t.Date)
-                    .AsNoTracking()
-                    .ToListAsync();
+                    .OrderBy(t => t.Date);
 
                 // Calcular saldo anterior buscando la última transacción antes del rango
                 var lastTransactionBefore = await _context.BankTransactions
@@ -225,6 +224,18 @@ namespace PhonePalace.Web.Controllers
                     .FirstOrDefaultAsync();
 
                 model.PreviousBalance = lastTransactionBefore?.BalanceAfterTransaction ?? 0;
+
+                // Paginación
+                var paginatedList = await PaginatedList<BankTransaction>.CreateAsync(query.AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
+                model.Transactions = paginatedList;
+                
+                // Pasar objeto paginado a ViewData para usar sus propiedades en la vista (HasPreviousPage, etc.)
+                // ya que el ViewModel probablemente espera una List<> genérica.
+                ViewData["PaginatedTransactions"] = paginatedList;
+            }
+            else
+            {
+                model.Transactions = new List<BankTransaction>();
             }
 
             return View(model);
@@ -326,7 +337,7 @@ namespace PhonePalace.Web.Controllers
                 }
 
                 // Usar costo histórico si existe (ventas nuevas), sino usar costo actual (ventas antiguas)
-                item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : d.Product.Cost));
+                item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
             }
 
             // 1.1. Restar Devoluciones de Ventas y Costos
@@ -346,7 +357,7 @@ namespace PhonePalace.Web.Controllers
 
                 // Restar el costo de los productos devueltos.
                 // Usar costo histórico si existe, sino usar costo actual del producto (fallback)
-                item.Cost -= ret.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : d.Product.Cost));
+                item.Cost -= ret.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
             }
 
             // 2. Gastos Fijos

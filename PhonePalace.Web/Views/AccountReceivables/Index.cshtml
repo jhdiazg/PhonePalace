@@ -29,11 +29,11 @@
                 <label class="form-label">Fecha Fin</label>
                 <input type="date" name="endDate" value="@ViewBag.EndDate" class="form-control" />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <label class="form-label">Cliente</label>
                 <input type="text" name="clientName" value="@ViewBag.ClientName" class="form-control" placeholder="Buscar..." />
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label class="form-label">Tipo</label>
                 <select name="type" class="form-select" asp-items="ViewBag.TypeList">
                     <option value="">-- Todos --</option>
@@ -44,7 +44,18 @@
                 <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
+                <label class="form-label">Mostrar</label>
+                <select name="pageSize" class="form-select" onchange="this.form.submit()">
+                    @{ int pageSize = (int)(ViewData["PageSize"] ?? 10); }
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="100" selected="@(pageSize == 100)">100</option>
+                </select>
+            </div>
+            <div class="col-md-12 d-flex justify-content-end gap-2">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
             </div>
         </form>
     </div>
@@ -123,7 +134,9 @@
            asp-route-type="@ViewBag.CurrentType"
            asp-route-startDate="@ViewBag.StartDate"
            asp-route-endDate="@ViewBag.EndDate"
-           class="btn btn-outline-secondary @prevDisabled">Anterior</a>
+           asp-route-pageSize="@ViewData["PageSize"]"
+           class="btn btn-secondary @prevDisabled">Anterior</a>
+        <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
         <a asp-action="Index"
            asp-route-pageNumber="@(Model.PageIndex + 1)"
            asp-route-clientName="@ViewBag.ClientName"
@@ -131,10 +144,8 @@
            asp-route-type="@ViewBag.CurrentType"
            asp-route-startDate="@ViewBag.StartDate"
            asp-route-endDate="@ViewBag.EndDate"
-           class="btn btn-outline-secondary @nextDisabled">Siguiente</a>
-    </div>
-    <div class="text-muted">
-        Página @Model.PageIndex de @Model.TotalPages
+           asp-route-pageSize="@ViewData["PageSize"]"
+           class="btn btn-secondary @nextDisabled">Siguiente</a>
     </div>
 </div>
 

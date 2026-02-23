@@ -31,11 +31,11 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <form asp-action="Index" method="get" class="row g-3 align-items-end" id="apFilterForm">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Fecha Vencimiento (Inicio)</label>
                 <input type="date" name="startDate" value="@ViewData["StartDate"]" class="form-control" />
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label">Fecha Vencimiento (Fin)</label>
                 <input type="date" name="endDate" value="@ViewData["EndDate"]" class="form-control" />
             </div>
@@ -43,8 +43,19 @@
                 <label class="form-label">Estado</label>
                 <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
             </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            <div class="col-md-2">
+                <label class="form-label">Mostrar</label>
+                <select name="pageSize" class="form-select" onchange="this.form.submit()">
+                    @{ int pageSize = (int)(ViewData["PageSize"] ?? 10); }
+                    <option value="10" selected="@(pageSize == 10)">10</option>
+                    <option value="20" selected="@(pageSize == 20)">20</option>
+                    <option value="50" selected="@(pageSize == 50)">50</option>
+                    <option value="100" selected="@(pageSize == 100)">100</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Filtrar</button>
+                <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
             </div>
         </form>
     </div>
@@ -109,15 +120,15 @@
                             </td>
                             <td class="text-end">
                                 <div class="btn-group" role="group">
-                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Detalles">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white" title="Detalles">
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if (!item.IsPaid)
                                     {
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Editar">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" title="Editar">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" title="Eliminar">
                                             <i class="bi bi-trash"></i>
                                         </a>
                                     }
@@ -134,29 +145,25 @@
             var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
             var nextDisabled = !Model.HasNextPage ? "disabled" : "";
         }
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center mb-0">
-                <li class="page-item @prevDisabled">
-                    <a asp-action="Index" 
-                       asp-route-pageNumber="@(Model.PageIndex - 1)" 
-                       asp-route-startDate="@ViewData["StartDate"]"
-                       asp-route-endDate="@ViewData["EndDate"]"
-                       asp-route-status="@ViewData["CurrentStatus"]"
-                       class="page-link">Anterior</a>
-                </li>
-                <li class="page-item disabled">
-                    <span class="page-link">Página @Model.PageIndex de @Model.TotalPages</span>
-                </li>
-                <li class="page-item @nextDisabled">
-                    <a asp-action="Index" 
-                       asp-route-pageNumber="@(Model.PageIndex + 1)" 
-                       asp-route-startDate="@ViewData["StartDate"]"
-                       asp-route-endDate="@ViewData["EndDate"]"
-                       asp-route-status="@ViewData["CurrentStatus"]"
-                       class="page-link">Siguiente</a>
-                </li>
-            </ul>
-        </nav>
+        <div class="d-flex justify-content-center align-items-center py-3">
+            <a asp-action="Index" 
+               asp-route-pageNumber="@(Model.PageIndex - 1)" 
+               asp-route-startDate="@ViewData["StartDate"]"
+               asp-route-endDate="@ViewData["EndDate"]"
+               asp-route-status="@ViewData["CurrentStatus"]"
+               asp-route-pageSize="@ViewData["PageSize"]"
+               class="btn btn-secondary @prevDisabled">Anterior</a>
+            
+            <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
+            
+            <a asp-action="Index" 
+               asp-route-pageNumber="@(Model.PageIndex + 1)" 
+               asp-route-startDate="@ViewData["StartDate"]"
+               asp-route-endDate="@ViewData["EndDate"]"
+               asp-route-status="@ViewData["CurrentStatus"]"
+               asp-route-pageSize="@ViewData["PageSize"]"
+               class="btn btn-secondary @nextDisabled">Siguiente</a>
+        </div>
     </div>
 </div>
 
