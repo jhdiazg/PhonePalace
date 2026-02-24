@@ -22,6 +22,7 @@ namespace PhonePalace.Web.ViewModels
         public decimal PurchaseVAT { get; set; }
         public decimal AccountsReceivable { get; set; }
         public decimal AssetsValue { get; set; }
+        public decimal OtherIncome { get; set; }
         public decimal Profit { get; set; }
     }
 }

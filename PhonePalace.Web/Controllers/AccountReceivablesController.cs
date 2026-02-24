@@ -122,43 +122,47 @@ namespace PhonePalace.Web.Controllers
                     using var transaction = await _context.Database.BeginTransactionAsync();
                     try
                     {
-                        // Validar caja abierta SOLO si el desembolso es en Efectivo
-                        if (disbursementMethod == PaymentMethod.Cash)
+                        // Solo registrar egreso de dinero si NO es un ingreso devengado (es decir, si es un préstamo real)
+                        if (!model.IsIncomeGenerating)
                         {
-                            var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                            if (currentCash == null)
+                            // Validar caja abierta SOLO si el desembolso es en Efectivo
+                            if (disbursementMethod == PaymentMethod.Cash)
                             {
-                                throw new InvalidOperationException("Debe abrir la caja antes de registrar un préstamo en efectivo.");
-                            }
-
-                            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                            if (string.IsNullOrEmpty(userId)) return Unauthorized();
-
-                            // 1. Registrar Egreso de Caja
-                            await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
-                        }
-                        else if (disbursementMethod == PaymentMethod.Transfer)
-                        {
-                            // Desembolso por Banco (Egreso)
-                            if (!bankId.HasValue)
-                            {
-                                throw new InvalidOperationException("Debe seleccionar un banco para el desembolso.");
-                            }
-
-                            var bank = await _context.Banks.FindAsync(bankId.Value);
-                            if (bank != null)
-                            {
-                                var bankTransaction = new BankTransaction
+                                var currentCash = await _cashService.GetCurrentCashRegisterAsync();
+                                if (currentCash == null)
                                 {
-                                    BankID = bank.BankID,
-                                    Date = DateTime.Now,
-                                    Amount = -model.Amount, // Egreso es negativo
-                                    Description = $"Desembolso Préstamo: {model.Description}",
-                                    BalanceAfterTransaction = bank.Balance - model.Amount
-                                };
-                                _context.BankTransactions.Add(bankTransaction);
-                                bank.Balance -= model.Amount;
-                                _context.Update(bank);
+                                    throw new InvalidOperationException("Debe abrir la caja antes de registrar un préstamo en efectivo.");
+                                }
+
+                                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                                // 1. Registrar Egreso de Caja
+                                await _cashService.RegisterExpenseAsync(model.Amount, $"Préstamo a cliente: {model.Description}", userId);
+                            }
+                            else if (disbursementMethod == PaymentMethod.Transfer)
+                            {
+                                // Desembolso por Banco (Egreso)
+                                if (!bankId.HasValue)
+                                {
+                                    throw new InvalidOperationException("Debe seleccionar un banco para el desembolso.");
+                                }
+
+                                var bank = await _context.Banks.FindAsync(bankId.Value);
+                                if (bank != null)
+                                {
+                                    var bankTransaction = new BankTransaction
+                                    {
+                                        BankID = bank.BankID,
+                                        Date = DateTime.Now,
+                                        Amount = -model.Amount, // Egreso es negativo
+                                        Description = $"Desembolso Préstamo: {model.Description}",
+                                        BalanceAfterTransaction = bank.Balance - model.Amount
+                                    };
+                                    _context.BankTransactions.Add(bankTransaction);
+                                    bank.Balance -= model.Amount;
+                                    _context.Update(bank);
+                                }
                             }
                         }
 
@@ -177,14 +181,14 @@ namespace PhonePalace.Web.Controllers
                             Date = model.Date,
                             TotalAmount = model.Amount,
                             Balance = model.Amount,
-                            Type = "Prestamo",
-                            Description = $"{model.Description?.ToUpper()} ({EnumHelper.GetDisplayName(disbursementMethod)})",
+                            Type = model.IsIncomeGenerating ? "Otro" : "Prestamo",
+                            Description = model.IsIncomeGenerating ? model.Description?.ToUpper() : $"{model.Description?.ToUpper()} ({EnumHelper.GetDisplayName(disbursementMethod)})",
                             IsPaid = false
                         };
 
                         _context.AccountReceivables.Add(ar);
                         await _context.SaveChangesAsync();
-                        await _auditService.LogAsync("CuentasPorCobrar", $"Creó préstamo para {client.DisplayName} por {model.Amount:C}.");
+                        await _auditService.LogAsync("CuentasPorCobrar", $"Creó {(model.IsIncomeGenerating ? "CxC (Ingreso)" : "préstamo")} para {client.DisplayName} por {model.Amount:C}.");
                         await transaction.CommitAsync();
 
                         return RedirectToAction(nameof(Index));

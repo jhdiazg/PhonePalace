@@ -25,11 +25,12 @@
                             <th>IVA Ventas</th>
                             <th>Costo Aprox.</th>
                             <th>Utilidad Bruta</th>
+                            <th class="text-success">Otros Ingresos</th>
                             <th>Gastos Fijos</th>
                             <th>Gastos Local</th>
-                            <th>Saldo CxP</th>
+                            <th>Pagos a Prov.</th>
                             <th>IVA Compras</th>
-                            <th>CxC (Créditos)</th>
+                            <th>Créditos Otorgados</th>
                             <th class="bg-info text-dark">Activos (Valor)</th>
                             <th>Utilidad Neta</th>
                         </tr>
@@ -43,6 +44,18 @@
                                 <td class="text-muted"><small>@item.SalesVAT.ToString("C0")</small></td>
                                 <td class="text-muted"><small>@item.Cost.ToString("C0")</small></td>
                                 <td class="fw-bold text-primary">@((item.Sales - item.Cost).ToString("C0"))</td>
+                                <td class="text-success">
+                                    @if (item.OtherIncome > 0)
+                                    {
+                                        <a href="#" class="text-success text-decoration-none fw-bold" onclick="showOtherIncomeDetails(@item.Month, @Model.Year); return false;" title="Ver detalle">
+                                            @item.OtherIncome.ToString("C0")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        @item.OtherIncome.ToString("C0")
+                                    }
+                                </td>
                                 <td>@item.FixedExpenses.ToString("C0")</td>
                                 <td>@item.LocalExpenses.ToString("C0")</td>
                                 <td>@item.Purchases.ToString("C0")</td>
@@ -60,6 +73,7 @@
                             <td>@Model.Totals.SalesVAT.ToString("C0")</td>
                             <td>@Model.Totals.Cost.ToString("C0")</td>
                             <td>@((Model.Totals.Sales - Model.Totals.Cost).ToString("C0"))</td>
+                            <td class="text-success">@Model.Totals.OtherIncome.ToString("C0")</td>
                             <td>@Model.Totals.FixedExpenses.ToString("C0")</td>
                             <td>@Model.Totals.LocalExpenses.ToString("C0")</td>
                             <td>@Model.Totals.Purchases.ToString("C0")</td>
@@ -74,3 +88,77 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Detalle -->
+<div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">Detalle de Otros Ingresos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Fuente</th>
+                                <th>Descripción</th>
+                                <th class="text-end">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalTableBody">
+                            <!-- Contenido dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function showOtherIncomeDetails(month, year) {
+            var modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+            var tbody = document.getElementById('modalTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><br>Cargando detalles...</td></tr>';
+            modal.show();
+
+            fetch(`/Reportes/DetalleOtrosIngresos?month=${month}&year=${year}`)
+                .then(response => response.json())
+                .then(data => {
+                    tbody.innerHTML = '';
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron detalles.</td></tr>';
+                        return;
+                    }
+                    
+                    let total = 0;
+                    const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+
+                    data.forEach(item => {
+                        total += item.Amount;
+                        let row = `<tr>
+                            <td>${item.Date}</td>
+                            <td><span class="badge bg-info text-dark">${item.Source}</span></td>
+                            <td>${item.Description || '-'}</td>
+                            <td class="text-end fw-bold text-success">${formatter.format(item.Amount)}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                    
+                    // Fila de Total
+                    tbody.innerHTML += `<tr class="table-active border-top border-2">
+                        <td colspan="3" class="text-end fw-bold">TOTAL</td>
+                        <td class="text-end fw-bold text-success fs-6">${formatter.format(total)}</td>
+                    </tr>`;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos. Intente nuevamente.</td></tr>';
+                });
+        }
+    </script>
+}

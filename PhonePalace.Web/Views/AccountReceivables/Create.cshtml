@@ -38,7 +38,17 @@
                 <span asp-validation-for="Description" class="text-danger"></span>
             </div>
 
-            <div class="mb-3">
+            <div class="form-check mb-3">
+                <input class="form-check-input" asp-for="IsIncomeGenerating" id="isIncomeCheck" />
+                <label class="form-check-label" asp-for="IsIncomeGenerating">
+                    @Html.DisplayNameFor(model => model.IsIncomeGenerating)
+                </label>
+                <small class="form-text text-muted d-block">
+                    Marque esta opción si este registro es un ingreso devengado (ej. saldo de rifa) y <strong>NO</strong> implica entregar dinero al cliente.
+                </small>
+            </div>
+
+            <div class="mb-3" id="disbursement-group">
                 <label class="form-label">Forma de Desembolso</label>
                 <select name="disbursementMethod" id="disbursementMethod" class="form-select" asp-items="ViewBag.PaymentMethods">
                 </select>
@@ -65,20 +75,28 @@
         $(document).ready(function() {
             $('#ClientID').select2({ placeholder: "-- Seleccione un Cliente --", width: '100%' });
 
-            function toggleBank() {
-                var method = $('#disbursementMethod').val();
-                // Mostrar banco si es Transferencia o Cheque (ajustar según enum)
-                if (method === 'Transfer') {
-                    $('#bank-group').show();
-                } else {
+            function toggleFields() {
+                if ($('#isIncomeCheck').is(':checked')) {
+                    $('#disbursement-group').hide();
                     $('#bank-group').hide();
+                } else {
+                    $('#disbursement-group').show();
+                    var method = $('#disbursementMethod').val();
+                    if (method === 'Transfer') {
+                        $('#bank-group').show();
+                    } else {
+                        $('#bank-group').hide();
+                    }
                 }
             }
 
-            $('#disbursementMethod').change(toggleBank);
-            toggleBank(); // Run on load
+            $('#isIncomeCheck').change(toggleFields);
+            $('#disbursementMethod').change(toggleFields);
+            toggleFields(); // Run on load
 
             $('form').on('submit', function(e) {
+                if ($('#isIncomeCheck').is(':checked')) return;
+
                 var method = $('#disbursementMethod').val();
                 var bankId = $('select[name="bankId"]').val();
                 if (method === 'Transfer' && !bankId) {

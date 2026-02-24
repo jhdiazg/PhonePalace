@@ -16,5 +16,8 @@ namespace PhonePalace.Web.ViewModels
 
         [Required]
         public DateTime Date { get; set; } = DateTime.Now;
+
+        [Display(Name = "Es Ingreso (No genera salida de dinero)")]
+        public bool IsIncomeGenerating { get; set; }
     }
 }

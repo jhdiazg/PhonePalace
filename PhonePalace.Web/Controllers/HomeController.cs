@@ -69,13 +69,45 @@ namespace PhonePalace.Web.Controllers
                 .Where(r => r.Date.Month == DateTime.Now.Month &&
                             r.Date.Year == DateTime.Now.Year)
                 .SumAsync(r => r.TotalAmount);
+
+            // --- INICIO: Añadir Otros Ingresos del mes (que no son ventas) ---
+            var today = DateTime.Now;
+            var startOfMonth = new DateTime(today.Year, today.Month, 1);
+            var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
+
+            // Ingresos de Caja que no son abonos a cartera
+            var otherCashIncome = await _context.CashMovements
+                .Where(cm => cm.MovementDate >= startOfMonth && cm.MovementDate <= endOfMonth &&
+                             cm.MovementType == CashMovementType.Income &&
+                             !cm.Description.ToUpper().Contains("ABONO A CXC") &&
+                             !cm.Description.ToUpper().Contains("POR VENTA"))
+                .SumAsync(cm => cm.Amount);
+
+            // Ingresos de Banco que no son de ventas, abonos o transferencias
+            var otherBankIncome = await _context.BankTransactions
+                .Where(bt => bt.Date >= startOfMonth && bt.Date <= endOfMonth &&
+                             bt.Amount > 0 && // Ingresos
+                             !bt.Description.ToUpper().Contains("INGRESO POR VENTA") &&
+                             !bt.Description.ToUpper().Contains("ABONO CXC") &&
+                             !bt.Description.ToUpper().Contains("TRANSFERENCIA") &&
+                             !bt.Description.ToUpper().Contains("RETIRO"))
+                .SumAsync(bt => bt.Amount);
+
+            // Ingresos devengados (CxC tipo Otro) del mes
+            var otherReceivablesIncome = await _context.AccountReceivables
+                .Where(ar => ar.Date >= startOfMonth && ar.Date <= endOfMonth && ar.Type == "Otro")
+                .SumAsync(ar => ar.TotalAmount);
+
+            currentMonthSales += otherCashIncome + otherBankIncome + otherReceivablesIncome;
+            // --- FIN: Añadir Otros Ingresos del mes ---
+
             currentMonthSales -= currentMonthReturns;
 
             // Obtener saldos actuales de Caja y Bancos
             var cashBalance = await _cashService.GetCurrentBalanceAsync();
             var banksBalance = await _context.Banks.Where(b => b.IsActive).SumAsync(b => b.Balance);
             var totalReceivables = await _context.AccountReceivables.Where(ar => !ar.IsPaid).SumAsync(ar => ar.Balance);
-            var totalPayables = await _context.AccountPayables.Where(ap => !ap.IsPaid).SumAsync(ap => ap.Amount);
+            var totalPayables = await _context.AccountPayables.Where(ap => !ap.IsPaid).SumAsync(ap => ap.Balance);
 
             // --- Lógica para Gráfica de Márgenes (Mes Actual) ---
             // Obtenemos los detalles de venta del mes actual

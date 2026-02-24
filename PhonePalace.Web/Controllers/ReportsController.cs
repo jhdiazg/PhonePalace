@@ -407,6 +407,9 @@ namespace PhonePalace.Web.Controllers
                 "ANULACIÓN VENTA" // Devolución de dinero por venta anulada
             };
 
+            // Palabras clave para gastos de eventos (Rifas, Sorteos) que deben restar de Otros Ingresos en lugar de sumar a Gastos Local
+            var eventExpenseKeywords = new[] { "RIFA", "PREMIO", "SORTEO", "EVENTO", "CONCURSO", "CELEBRACION","TAPAZO"};
+
             foreach (var ce in cashExpenses)
             {
                 // Excluir si ya está contado como Gasto Fijo
@@ -415,8 +418,17 @@ namespace PhonePalace.Web.Controllers
                     continue;
                 }
 
-                // Excluir si es un movimiento de capital/financiero y no un gasto operativo
                 var upperDescription = (ce.Description ?? "").ToUpper();
+
+                // Si es un gasto de evento (ej. Premio Rifa), restarlo de Otros Ingresos para mostrar la utilidad neta del evento
+                if (eventExpenseKeywords.Any(k => upperDescription.Contains(k)))
+                {
+                    var eventItem = model.Items.First(m => m.Month == ce.MovementDate.Month);
+                    eventItem.OtherIncome -= ce.Amount;
+                    continue;
+                }
+
+                // Excluir si es un movimiento de capital/financiero y no un gasto operativo
                 if (nonOperationalExpensePrefixes.Any(prefix => upperDescription.StartsWith(prefix)))
                 {
                     continue;
@@ -443,8 +455,74 @@ namespace PhonePalace.Web.Controllers
                 {
                     continue;
                 }
+
+                // Si es un gasto de evento bancario (ej. Transferencia del premio)
+                if (eventExpenseKeywords.Any(k => desc.Contains(k)))
+                {
+                    var eventItem = model.Items.First(m => m.Month == be.Date.Month);
+                    eventItem.OtherIncome -= Math.Abs(be.Amount);
+                    continue;
+                }
                 var item = model.Items.First(m => m.Month == be.Date.Month);
                 item.LocalExpenses += Math.Abs(be.Amount);
+            }
+
+            // 3.2. Otros Ingresos (que no son ventas de productos)
+            // Sumar a "OtherIncome" los ingresos de caja que no son abonos a CxC ni pagos de ventas
+            var cashIncomes = await _context.CashMovements
+                .Where(cm => cm.MovementDate.Year == reportYear && cm.MovementType == CashMovementType.Income)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ci in cashIncomes)
+            {
+                var upperDescription = (ci.Description ?? "").ToUpper();
+                // Excluir abonos a CxC, pagos por venta y aperturas para evitar duplicidad con Sales o CxC
+                if (upperDescription.Contains("ABONO A CXC") || 
+                    upperDescription.Contains("POR VENTA") || 
+                    upperDescription.Contains("APERTURA") ||
+                    upperDescription.Contains("GASTO") || // Excluir pagos de gastos mal clasificados como ingreso
+                    upperDescription.Contains("PAGO") ||
+                    upperDescription.Contains("SALDO PENDIENTE"))
+                {
+                    continue;
+                }
+                var item = model.Items.First(m => m.Month == ci.MovementDate.Month);
+                item.OtherIncome += ci.Amount;
+            }
+
+            // Sumar a "OtherIncome" los ingresos bancarios manuales
+            var bankIncomes = await _context.BankTransactions
+                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0) // Ingresos son positivos
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var bi in bankIncomes)
+            {
+                var desc = (bi.Description ?? "").ToUpper();
+                // Excluir ingresos que ya se cuentan en ventas, abonos, o son transferencias internas.
+                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
+                    desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
+                    desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
+                    desc.Contains("GASTO") || // Excluir devoluciones de gastos o errores
+                    desc.Contains("PAGO"))
+                {
+                    continue;
+                }
+                var item = model.Items.First(m => m.Month == bi.Date.Month);
+                item.OtherIncome += bi.Amount;
+            }
+
+            // Sumar a "OtherIncome" las Cuentas por Cobrar de tipo "Otro" (Ingresos devengados no cobrados)
+            var otherReceivables = await _context.AccountReceivables
+                .Where(ar => ar.Date.Year == reportYear && ar.Type == "Otro")
+                .AsNoTracking()
+                .ToListAsync();
+            
+            foreach (var ar in otherReceivables)
+            {
+                var item = model.Items.First(m => m.Month == ar.Date.Month);
+                item.OtherIncome += ar.TotalAmount;
             }
 
             // 4. Compras e IVA Compras
@@ -504,10 +582,11 @@ namespace PhonePalace.Web.Controllers
             // Calcular Utilidad y Totales Generales
             foreach (var item in model.Items)
             {
-                item.Profit = (item.Sales - item.Cost) - item.FixedExpenses - item.LocalExpenses;
+                item.Profit = (item.Sales + item.OtherIncome - item.Cost) - item.FixedExpenses - item.LocalExpenses;
                 
                 model.Totals.Sales += item.Sales;
                 model.Totals.Cost += item.Cost;
+                model.Totals.OtherIncome += item.OtherIncome;
                 model.Totals.Profit += item.Profit;
                 model.Totals.FixedExpenses += item.FixedExpenses;
                 model.Totals.LocalExpenses += item.LocalExpenses;
@@ -519,6 +598,104 @@ namespace PhonePalace.Web.Controllers
             }
 
             return View(model);
+        }
+
+        [HttpGet]
+        [Route("DetalleOtrosIngresos")]
+        public async Task<IActionResult> GetOtherIncomeDetails(int month, int year)
+        {
+            var rawDetails = new List<(DateTime Date, string Source, string? Description, decimal Amount)>();
+
+            // 1. Caja: Ingresos que no son abonos, ventas ni aperturas
+            var cashIncomes = await _context.CashMovements
+                .Where(cm => cm.MovementDate.Year == year && cm.MovementDate.Month == month && cm.MovementType == CashMovementType.Income)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ci in cashIncomes)
+            {
+                var upperDescription = (ci.Description ?? "").ToUpper();
+                if (upperDescription.Contains("ABONO A CXC") || 
+                    upperDescription.Contains("POR VENTA") || 
+                    upperDescription.Contains("APERTURA") ||
+                    upperDescription.Contains("GASTO") ||
+                    upperDescription.Contains("PAGO") ||
+                    upperDescription.Contains("SALDO PENDIENTE"))
+                {
+                    continue;
+                }
+                rawDetails.Add((ci.MovementDate, "Caja", ci.Description, ci.Amount));
+            }
+
+            // 2. Bancos: Ingresos manuales que no son ventas, transferencias, etc.
+            var bankIncomes = await _context.BankTransactions
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount > 0)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var bi in bankIncomes)
+            {
+                var desc = (bi.Description ?? "").ToUpper();
+                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
+                    desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
+                    desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
+                    desc.Contains("GASTO") ||
+                    desc.Contains("PAGO"))
+                {
+                    continue;
+                }
+                rawDetails.Add((bi.Date, "Banco", bi.Description, bi.Amount));
+            }
+
+            // 3. CxC: Cuentas por cobrar de tipo "Otro" (Ingresos devengados)
+            var otherReceivables = await _context.AccountReceivables
+                .Where(ar => ar.Date.Year == year && ar.Date.Month == month && ar.Type == "Otro")
+                .AsNoTracking()
+                .ToListAsync();
+            
+            foreach (var ar in otherReceivables)
+            {
+                rawDetails.Add((ar.Date, "CxC (Crédito)", ar.Description, ar.TotalAmount));
+            }
+
+            // 4. Restar Egresos de Eventos (Rifas, etc.) para mostrar el neto en el detalle
+            var eventExpenseKeywords = new[] { "RIFA", "PREMIO", "SORTEO", "EVENTO", "CONCURSO", "CELEBRACION", "TAPAZO" };
+            
+            var cashExpenses = await _context.CashMovements
+                .Where(cm => cm.MovementDate.Year == year && cm.MovementDate.Month == month && cm.MovementType == CashMovementType.Expense)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ce in cashExpenses)
+            {
+                if (eventExpenseKeywords.Any(k => (ce.Description ?? "").ToUpper().Contains(k)))
+                {
+                    rawDetails.Add((ce.MovementDate, "Gasto Evento (Caja)", ce.Description ?? "???", -ce.Amount));
+                }
+            }
+
+            var bankExpenses = await _context.BankTransactions
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount < 0)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var be in bankExpenses)
+            {
+                if (eventExpenseKeywords.Any(k => (be.Description ?? "").ToUpper().Contains(k)))
+                {
+                    rawDetails.Add((be.Date, "Gasto Evento (Banco)", be.Description, be.Amount)); // Amount ya es negativo
+                }
+            }
+
+            var result = rawDetails.OrderBy(x => x.Date).Select(x => new 
+            {
+                Date = x.Date.ToString("dd/MM/yyyy"),
+                Source = x.Source,
+                Description = x.Description,
+                Amount = x.Amount
+            });
+
+            return Json(result);
         }
     }
 }
