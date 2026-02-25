@@ -230,6 +230,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/CreateManual.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXENyZWF0ZU1hbnVhbC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
@@ -552,6 +556,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [D:/PhonePalace/PhonePalace.Web/Views/Reports/CashMovements.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xDYXNoTW92ZW1lbnRzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/GeneralBalance.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xHZW5lcmFsQmFsYW5jZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/PhonePalace/PhonePalace.Web/Views/Reports/MonthlyBalance.cshtml]

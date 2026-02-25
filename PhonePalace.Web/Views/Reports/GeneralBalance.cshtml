@@ -1,0 +1,105 @@
+@model PhonePalace.Web.ViewModels.GeneralBalanceViewModel
+
+@{
+    ViewData["Title"] = "Balance General";
+}
+
+<div class="container py-4">
+    <div class="text-center mb-5">
+        <h1 class="display-6 fw-bold text-primary">Balance PhonePalace</h1>
+        <p class="text-muted fs-5">Corte a: @Model.ReportDate.ToString("dd 'de' MMMM 'de' yyyy")</p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Columna de ACTIVOS -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-arrow-up-circle me-2"></i>ACTIVOS</h4>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="ps-4 py-3">Inventario (Costo)</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.InventoryValue.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Cuentas por Cobrar (CxC)</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.AccountsReceivable.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Bancos</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.Banks.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Efectivo (Caja)</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.Cash.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Daviplata</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.Daviplata.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Nequi</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.Nequi.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Activos Fijos</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.FixedAssets.ToString("C0")</td>
+                            </tr>
+                        </tbody>
+                        <tfoot class="table-light border-top">
+                            <tr>
+                                <td class="ps-4 py-3 fs-5"><strong>Subtotal Activos</strong></td>
+                                <td class="text-end pe-4 py-3 fs-5 text-success fw-bold">@Model.TotalAssets.ToString("C0")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna de PASIVOS -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-danger text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-arrow-down-circle me-2"></i>PASIVOS</h4>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="ps-4 py-3">Cuentas por Pagar (CxP)</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.AccountsPayable.ToString("C0")</td>
+                            </tr>
+                            <tr>
+                                <td class="ps-4 py-3">Créditos / Obligaciones</td>
+                                <td class="text-end pe-4 py-3 fw-bold">@Model.Credits.ToString("C0")</td>
+                            </tr>
+                            <!-- Espaciadores para alinear visualmente si es necesario -->
+                            <tr><td colspan="2" class="py-3">&nbsp;</td></tr>
+                            <tr><td colspan="2" class="py-3">&nbsp;</td></tr>
+                            <tr><td colspan="2" class="py-3">&nbsp;</td></tr>
+                            <tr><td colspan="2" class="py-3">&nbsp;</td></tr>
+                            <tr><td colspan="2" class="py-3">&nbsp;</td></tr>
+                        </tbody>
+                        <tfoot class="table-light border-top">
+                            <tr>
+                                <td class="ps-4 py-3 fs-5"><strong>Subtotal Pasivos</strong></td>
+                                <td class="text-end pe-4 py-3 fs-5 text-danger fw-bold">@Model.TotalLiabilities.ToString("C0")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4 shadow border-primary">
+        <div class="card-body d-flex justify-content-between align-items-center py-4 px-5">
+            <h2 class="mb-0 text-dark">Patrimonio Neto (Activos - Pasivos)</h2>
+            <h1 class="mb-0 @(Model.NetResult >= 0 ? "text-primary" : "text-danger") fw-bold">@Model.NetResult.ToString("C0")</h1>
+        </div>
+    </div>
+</div>

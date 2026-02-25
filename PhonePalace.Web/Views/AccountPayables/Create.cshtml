@@ -17,6 +17,17 @@
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
                         <div class="mb-3">
+                            <label asp-for="Type" class="form-label fw-bold">Tipo de Obligación</label>
+                            <select asp-for="Type" class="form-select">
+                                <option value="Proveedor">Proveedor / Compra</option>
+                                <option value="CreditoBancario">Crédito Bancario</option>
+                                <option value="Impuestos">Impuestos</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                            <span asp-validation-for="Type" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
                             <label asp-for="Beneficiary" class="form-label fw-bold"></label>
                             <select asp-for="Beneficiary" class="form-control" asp-items="ViewBag.Beneficiary">
                                 <option value="">-- Seleccione un Proveedor --</option>

@@ -28,7 +28,7 @@ namespace PhonePalace.Web.Controllers
             _bankService = bankService;
         }
 
-        public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string status = "Pending", int? pageNumber = null, int? pageSize = null)
+        public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string status = "Pending", string? type = null, int? pageNumber = null, int? pageSize = null)
         {
             if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
             {
@@ -39,6 +39,7 @@ namespace PhonePalace.Web.Controllers
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
             ViewData["CurrentStatus"] = status;
+            ViewData["CurrentType"] = type;
 
             var accountPayablesQuery = _context.AccountPayables
                 .AsNoTracking() // Improves performance for read-only queries
@@ -54,6 +55,11 @@ namespace PhonePalace.Web.Controllers
             if (endDate.HasValue)
             {
                 accountPayablesQuery = accountPayablesQuery.Where(a => a.DueDate < endDate.Value.Date.AddDays(1));
+            }
+
+            if (!string.IsNullOrEmpty(type))
+            {
+                accountPayablesQuery = accountPayablesQuery.Where(a => a.Type == type);
             }
 
             switch (status)
@@ -72,6 +78,14 @@ namespace PhonePalace.Web.Controllers
                 new SelectListItem { Text = "Pagadas", Value = "Paid", Selected = status == "Paid" },
                 new SelectListItem { Text = "Todas", Value = "All", Selected = status == "All" }
             };
+
+            // Cargar lista de tipos existentes para el filtro desplegable
+            var types = await _context.AccountPayables
+                .Select(a => a.Type)
+                .Distinct()
+                .OrderBy(t => t)
+                .ToListAsync();
+            ViewBag.TypeList = new SelectList(types, type);
 
             // Calcular totales antes de paginar
             ViewBag.TotalPayable = await accountPayablesQuery.SumAsync(x => x.Balance);
@@ -108,7 +122,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("DocumentType,DocumentNumber,Amount,DueDate,Beneficiary")] AccountPayable accountPayable)
+        public async Task<IActionResult> Create([Bind("DocumentType,DocumentNumber,Amount,DueDate,Beneficiary,Type")] AccountPayable accountPayable)
         {
             // Regla de negocio: El estado inicial no puede ser Pagada
             accountPayable.IsPaid = false;
@@ -153,6 +167,7 @@ namespace PhonePalace.Web.Controllers
             // Mantenemos el monto original (saldo actual)
             accountPayable.Amount = originalAp.Amount;
             accountPayable.Balance = originalAp.Balance;
+            accountPayable.Type = originalAp.Type; // Preservar el tipo original si no se edita en la vista
 
             if (ModelState.IsValid)
             {

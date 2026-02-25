@@ -632,6 +632,7 @@ namespace PhonePalace.Web.Controllers
                                 IsPaid = false,
                                 DocumentType = model.DocumentType, 
                                 DocumentNumber = !string.IsNullOrEmpty(model.SupplierInvoiceNumber) ? model.SupplierInvoiceNumber : purchase.Id.ToString() + (purchase.Status == PurchaseStatus.PartiallyReceived ? "-P" : ""),
+                                Type = "Proveedor",
                                 CreatedDate = DateTime.Now
                             };
                             _context.AccountPayables.Add(accountPayable);

@@ -13,6 +13,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
+using PhonePalace.Domain.Interfaces;
 using System.IO;
 
 namespace PhonePalace.Web.Controllers
@@ -23,11 +24,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly ICashService _cashService;
 
-        public ReportsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment)
+        public ReportsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, ICashService cashService)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _cashService = cashService;
         }
 
         [HttpGet]
@@ -696,6 +699,55 @@ namespace PhonePalace.Web.Controllers
             });
 
             return Json(result);
+        }
+
+        [HttpGet]
+        [Route("BalanceGeneral")]
+        public async Task<IActionResult> GeneralBalance()
+        {
+            var model = new GeneralBalanceViewModel
+            {
+                ReportDate = DateTime.Now
+            };
+
+            // 1. ACTIVOS
+            // Inventario: Suma del costo de todos los productos en stock
+            model.InventoryValue = await _context.Inventories
+                .SumAsync(i => i.Stock * i.Product.Cost);
+
+            // Cuentas por Cobrar: Saldo pendiente de clientes
+            model.AccountsReceivable = await _context.AccountReceivables
+                .Where(ar => !ar.IsPaid)
+                .SumAsync(ar => ar.Balance);
+
+            // Efectivo: Saldo actual de caja
+            model.Cash = await _cashService.GetCurrentBalanceAsync();
+
+            // Bancos: Separar Nequi y Daviplata del resto
+            var allBanks = await _context.Banks.Where(b => b.IsActive).ToListAsync();
+            
+            model.Nequi = allBanks.Where(b => b.Name.ToUpper().Contains("NEQUI")).Sum(b => b.Balance);
+            model.Daviplata = allBanks.Where(b => b.Name.ToUpper().Contains("DAVIPLATA")).Sum(b => b.Balance);
+            // El resto de bancos que no son ni Nequi ni Daviplata
+            model.Banks = allBanks.Where(b => !b.Name.ToUpper().Contains("NEQUI") && !b.Name.ToUpper().Contains("DAVIPLATA")).Sum(b => b.Balance);
+
+            // Activos Fijos: Valor de adquisición de activos activos
+            model.FixedAssets = await _context.Assets
+                .Where(a => a.Status == AssetStatus.Active)
+                .SumAsync(a => a.AcquisitionCost);
+
+            // 2. PASIVOS
+            // Cuentas por Pagar: Saldo pendiente a proveedores
+            model.AccountsPayable = await _context.AccountPayables
+                .Where(ap => !ap.IsPaid && (ap.Type == "Proveedor" || ap.Type == null))
+                .SumAsync(ap => ap.Balance);
+
+            // Créditos: Otras obligaciones (Bancos, Impuestos, etc.)
+            model.Credits = await _context.AccountPayables
+                .Where(ap => !ap.IsPaid && ap.Type != "Proveedor" && ap.Type != null)
+                .SumAsync(ap => ap.Balance);
+
+            return View(model);
         }
     }
 }

@@ -37,6 +37,10 @@ namespace PhonePalace.Domain.Entities
         [StringLength(100)]
         public string? Beneficiary { get; set; }
 
+        [DisplayName("Tipo de Obligación")]
+        [StringLength(50)]
+        public string Type { get; set; } = "Proveedor"; // Por defecto es Proveedor
+
         [DisplayName("Fecha de creación")]
         public DateTime CreatedDate { get; set; }
         public DateTime? DeletedDate { get; set; }

@@ -113,6 +113,12 @@
                             Balance Mensual
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a asp-controller="Reports" asp-action="GeneralBalance" class="nav-link text-white @(ViewContext.RouteData.Values["Controller"]?.ToString() == "Reports" && ViewContext.RouteData.Values["Action"]?.ToString() == "GeneralBalance" ? "active" : "")">
+                            <i class="bi bi-file-earmark-spreadsheet-fill me-2"></i>
+                            Balance General
+                        </a>
+                    </li>
                 </ul>
             </div>
         </li>
