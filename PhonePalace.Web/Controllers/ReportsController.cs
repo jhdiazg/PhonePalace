@@ -721,7 +721,21 @@ namespace PhonePalace.Web.Controllers
                 .SumAsync(ar => ar.Balance);
 
             // Efectivo: Saldo actual de caja
-            model.Cash = await _cashService.GetCurrentBalanceAsync();
+            // Si hay caja abierta, usamos el saldo actual. Si no, usamos el último cierre (dinero en custodia).
+            var currentCashRegister = await _cashService.GetCurrentCashRegisterAsync();
+            if (currentCashRegister != null)
+            {
+                model.Cash = await _cashService.GetCurrentBalanceAsync();
+            }
+            else
+            {
+                var lastClosed = await _context.CashRegisters
+                    .Where(cr => cr.ClosingDate != null)
+                    .OrderByDescending(cr => cr.ClosingDate)
+                    .Select(cr => cr.ClosingAmount)
+                    .FirstOrDefaultAsync();
+                model.Cash = lastClosed ?? 0;
+            }
 
             // Bancos: Separar Nequi y Daviplata del resto
             var allBanks = await _context.Banks.Where(b => b.IsActive).ToListAsync();
@@ -737,14 +751,17 @@ namespace PhonePalace.Web.Controllers
                 .SumAsync(a => a.AcquisitionCost);
 
             // 2. PASIVOS
-            // Cuentas por Pagar: Saldo pendiente a proveedores
+            // Definir tipos que se consideran "Créditos / Obligaciones Financieras"
+            var creditTypes = new[] { "CreditoBancario", "Impuestos", "Otros", "Prestamo" };
+
+            // Cuentas por Pagar: Todo lo que NO sea explícitamente un crédito (Proveedores, Compras, null, vacíos)
             model.AccountsPayable = await _context.AccountPayables
-                .Where(ap => !ap.IsPaid && (ap.Type == "Proveedor" || ap.Type == null))
+                .Where(ap => !ap.IsPaid && !creditTypes.Contains(ap.Type))
                 .SumAsync(ap => ap.Balance);
 
-            // Créditos: Otras obligaciones (Bancos, Impuestos, etc.)
+            // Créditos: Solo los tipos específicos
             model.Credits = await _context.AccountPayables
-                .Where(ap => !ap.IsPaid && ap.Type != "Proveedor" && ap.Type != null)
+                .Where(ap => !ap.IsPaid && creditTypes.Contains(ap.Type))
                 .SumAsync(ap => ap.Balance);
 
             return View(model);

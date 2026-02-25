@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using PhonePalace.Domain.Entities;
@@ -62,6 +63,11 @@ namespace PhonePalace.Web.Controllers
                 accountPayablesQuery = accountPayablesQuery.Where(a => a.Type == type);
             }
 
+            if (!string.IsNullOrEmpty(type))
+            {
+                accountPayablesQuery = accountPayablesQuery.Where(a => a.Type == type);
+            }
+
             switch (status)
             {
                 case "Paid":
@@ -84,7 +90,7 @@ namespace PhonePalace.Web.Controllers
                 .Select(a => a.Type)
                 .Distinct()
                 .OrderBy(t => t)
-                .ToListAsync();
+               .ToListAsync();
             ViewBag.TypeList = new SelectList(types, type);
 
             // Calcular totales antes de paginar
@@ -158,7 +164,8 @@ namespace PhonePalace.Web.Controllers
         public async Task<IActionResult> Edit(int id, [Bind("Id,PurchaseId,DocumentType,DocumentNumber,CreatedDate,DueDate,IsPaid")] AccountPayable accountPayable)
         {
             if (id != accountPayable.Id) return NotFound();
-
+           
+           
             // Eliminamos Amount del Bind para no sobrescribirlo con 0 si está disabled en la vista
             // Recuperamos la entidad original para mantener el saldo y otros datos críticos
             var originalAp = await _context.AccountPayables.AsNoTracking().FirstOrDefaultAsync(ap => ap.Id == id);
@@ -336,6 +343,35 @@ namespace PhonePalace.Web.Controllers
                     return RedirectToAction(nameof(Details), new { id });
                 }
             });
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador")]
+        [Route("CuentasPorPagar/ActualizarTiposAntiguos")]
+        public async Task<IActionResult> UpdateOldPayableTypes()
+        {
+            // Busca todas las CxP que tienen un PurchaseId y cuyo tipo aún no ha sido establecido.
+            var payablesToUpdate = await _context.AccountPayables
+                .Where(ap => ap.PurchaseId != null && (ap.Type == null || ap.Type == ""))
+                .ToListAsync();
+
+            if (!payablesToUpdate.Any())
+            {
+                TempData["Info"] = "No se encontraron Cuentas por Pagar de compras que necesiten ser actualizadas.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            foreach (var payable in payablesToUpdate)
+            {
+                payable.Type = "Proveedor";
+            }
+
+            int count = await _context.SaveChangesAsync();
+
+            await _auditService.LogAsync("Sistema", $"Actualización masiva de tipos de CxP. Se actualizaron {count} registros a 'Proveedor'.");
+            TempData["Success"] = $"Se han actualizado {count} Cuentas por Pagar antiguas al tipo 'Proveedor'.";
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }

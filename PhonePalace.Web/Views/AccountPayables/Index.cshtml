@@ -43,6 +43,10 @@
                 <label class="form-label">Estado</label>
                 <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
             </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select name="type" class="form-select" asp-items="ViewBag.TypeList"><option value="">-- Todos --</option></select>
+            </div>
             <div class="col-md-2">
                 <label class="form-label">Mostrar</label>
                 <select name="pageSize" class="form-select" onchange="this.form.submit()">
@@ -68,6 +72,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>Fecha</th>
+                        <th>Tipo</th>
                         <th>Proveedor / Beneficiario</th>
                         <th>Documento</th>
                         <th>Vencimiento</th>
@@ -82,6 +87,7 @@
                     {
                         <tr>
                             <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                            <td>@item.Type</td>
                             <td>
                                 @if (item.Purchase != null && item.Purchase.Supplier != null)
                                 {
