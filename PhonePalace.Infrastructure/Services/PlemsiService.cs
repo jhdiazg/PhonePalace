@@ -702,18 +702,18 @@ namespace PhonePalace.Infrastructure.Services
         private class PlemsiApiResponse
         {
             public bool Success { get; set; }
-            public string Message { get; set; }
-            public PlemsiApiData Data { get; set; }
+            public string? Message { get; set; }
+            public PlemsiApiData? Data { get; set; }
         }
 
         private class PlemsiApiData
         {
-            public string Cufe { get; set; }
-            public string Cude { get; set; }
-            public string Prefix { get; set; }
-            public string Number { get; set; }
-            public string QrUrl { get; set; }
-            public string QRCode { get; set; }
+            public string? Cufe { get; set; }
+            public string? Cude { get; set; }
+            public string? Prefix { get; set; }
+            public string? Number { get; set; }
+            public string? QrUrl { get; set; }
+            public string? QRCode { get; set; }
             public string? Status { get; set; }
         }
     }
