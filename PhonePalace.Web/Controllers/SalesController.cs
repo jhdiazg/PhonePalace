@@ -16,6 +16,7 @@ using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using PhonePalace.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -32,6 +33,7 @@ namespace PhonePalace.Web.Controllers
         private readonly IPlemsiService _plemsiService;
         private readonly IAuditService _auditService;
         private readonly IEmailSender _emailSender;
+        private readonly ILogger<SalesController> _logger;
 
         public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService, IEmailSender emailSender)
         {
@@ -48,7 +50,7 @@ namespace PhonePalace.Web.Controllers
 
     [HttpGet]
     [Route("")]
-    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string? clientName, int? pageNumber, int? pageSize)
+    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string clientName, int? pageNumber, int? pageSize)
         {
             // Validaciones de fechas
             bool datesAdjusted = false;
@@ -133,7 +135,9 @@ namespace PhonePalace.Web.Controllers
             // Ajuste: Usar costo histórico (d.Cost) si existe, de lo contrario usar costo actual (para compatibilidad con datos antiguos)
             decimal totalProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
 
-            var sales = await PaginatedList<Sale>.CreateAsync(salesQuery.OrderByDescending(s => s.SaleDate).AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
+            var sales = await PaginatedList<Sale>.CreateAsync(
+                salesQuery.OrderByDescending(s => s.SaleDate).ThenByDescending(s => s.SaleID).AsNoTracking(), 
+                pageNumber ?? 1, pageSize ?? 10);
 
             // Identificar ventas con saldo pendiente (Crédito) para mostrar icono en el Index
             var saleIds = sales.Select(s => s.SaleID).ToList();
@@ -345,6 +349,12 @@ namespace PhonePalace.Web.Controllers
                 {
                     ModelState.AddModelError("", $"Stock insuficiente para el producto '{product?.Name ?? "Desconocido"}'. Disponible: {inventory?.Stock ?? 0}, Solicitado: {detailVM.Quantity}");
                 }
+
+                // RESTAURACIÓN: Validar que el precio no sea inferior al costo
+                if (product != null && detailVM.UnitPrice < product.Cost)
+                {
+                    ModelState.AddModelError("", $"El precio del producto '{product.Name}' no puede ser inferior al costo ({product.Cost:C}).");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -379,13 +389,6 @@ namespace PhonePalace.Web.Controllers
                             {
                                 var product = await _context.Products.FindAsync(detailVM.ProductID);
                                 if (product == null) continue;
-
-                                // Validar rango de precio (Costo <= Precio <= Costo * 3)
-                                if (detailVM.UnitPrice < product.Cost || detailVM.UnitPrice > product.Cost * 3)
-                                {
-                                    ModelState.AddModelError("", $"El precio del producto '{product.Name}' debe estar entre {product.Cost:C} y {(product.Cost * 3):C}.");
-                                    return View(viewModel);
-                                }
 
                                 decimal price = detailVM.UnitPrice; // Usar el precio definido por el usuario
                                 total += detailVM.Quantity * price;
@@ -645,6 +648,19 @@ namespace PhonePalace.Web.Controllers
             return View(sale);
         }
 
+        [HttpGet]
+        [Route("GetClientBalance/{clientId}")]
+        public async Task<IActionResult> GetClientBalance(int clientId)
+        {
+            var client = await _context.Clients
+                .AsNoTracking()
+                .Select(c => new { c.ClientID, c.Balance })
+                .FirstOrDefaultAsync(c => c.ClientID == clientId);
+
+            if (client == null) return NotFound();
+            return Json(new { balance = client.Balance });
+        }
+
         [HttpPost, ActionName("Delete")]
         [Route("Delete/{id}")]
         [ValidateAntiForgeryToken]
@@ -718,28 +734,14 @@ namespace PhonePalace.Web.Controllers
                         {
                             foreach (var payment in sale.Invoice.Payments)
                             {
-                                if (payment.PaymentMethod == PaymentMethod.Cash)
+                                // No reembolsar métodos que representan deuda (Crédito)
+                                if (payment.PaymentMethod == PaymentMethod.Credit) continue;
+
+                                // En lugar de devolver el dinero (Gasto), se genera un saldo a favor del cliente
+                                if (sale.Client != null)
                                 {
-                                    // Validar si hay caja abierta para registrar el egreso (devolución)
-                                    var currentCash = await _cashService.GetCurrentCashRegisterAsync();
-                                    if (currentCash != null && !string.IsNullOrEmpty(userId))
-                                    {
-                                        await _cashService.RegisterExpenseAsync(payment.Amount, $"ANULACIÓN Venta #{sale.Invoice.InvoiceID}", userId);
-                                    }
-                                }
-                                else if (payment.BankID.HasValue)
-                                {
-                                    // Registrar egreso bancario
-                                    await _bankService.RegisterManualMovementAsync(payment.BankID.Value, BankTransactionType.ManualExpense, payment.Amount, $"ANULACIÓN Venta #{sale.Invoice.InvoiceID}");
-                                }
-                                else if (payment.PaymentMethod == PaymentMethod.CustomerBalance)
-                                {
-                                    // Reembolsar al saldo del cliente
-                                    if (sale.Client != null)
-                                    {
-                                        sale.Client.Balance += payment.Amount;
-                                        _context.Update(sale.Client);
-                                    }
+                                    sale.Client.Balance += payment.Amount;
+                                    _context.Update(sale.Client);
                                 }
                             }
                             
@@ -958,7 +960,7 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Add(electronicInvoice);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.SaleID}. DIAN: {electronicInvoice.DianNumber}");
+                    await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
 
                     TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
                 }

@@ -105,7 +105,9 @@ namespace PhonePalace.Web.Controllers
 
             // Obtener saldos actuales de Caja y Bancos
             var cashBalance = await _cashService.GetCurrentBalanceAsync();
+            // Aseguramos que sea la consulta simple
             var banksBalance = await _context.Banks.Where(b => b.IsActive).SumAsync(b => b.Balance);
+
             var totalReceivables = await _context.AccountReceivables.Where(ar => !ar.IsPaid).SumAsync(ar => ar.Balance);
             var totalPayables = await _context.AccountPayables.Where(ap => !ap.IsPaid).SumAsync(ap => ap.Balance);
 

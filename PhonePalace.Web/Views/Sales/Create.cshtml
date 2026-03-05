@@ -322,7 +322,7 @@
                 if (clientId) {
                     // Asumiendo que crearás un endpoint API para obtener el saldo
                     // O alternativamente, pasar el saldo como data-attribute en el select list desde el controlador
-                    fetch('/api/clients/' + clientId + '/balance')
+                    fetch('/Ventas/GetClientBalance/' + clientId)
                         .then(r => r.json())
                         .then(data => {
                             $('#client-balance-amount').text(formatCurrency(data.balance));
@@ -465,25 +465,6 @@
                 }
             });
 
-            $('#price-input').on('blur', function() {
-                const price = parseFloat($(this).val());
-                const productId = $('#product-select').val();
-
-                if (!productId || !allProductsDict[productId] || isNaN(price)) {
-                    return; // No product selected or invalid price
-                }
-
-                const productInfo = allProductsDict[productId];
-                if (price < productInfo.cost) {
-                    alert(`El precio de venta no puede ser inferior al costo del producto ($${formatCurrency(productInfo.cost)}). Se restaurará el precio calculado.`);
-                    
-                    // Restore the calculated price
-                    const priceListPercentage = $('#price-list-select').val();
-                    const restoredPrice = calculatePrice(productInfo, priceListPercentage);
-                    $(this).val(restoredPrice);
-                }
-            });
-
             // --- PRODUCT LOGIC ---
             $('#add-product-btn').on('click', function () {
                 const productId = $('#product-select').val();
@@ -497,21 +478,15 @@
                     return;
                 }
 
-                // Validación de Precio (Mínimo Costo, Máximo Doble del Costo)
                 const productInfo = allProductsDict[productId];
-                if (productInfo) {
-                    if (price < productInfo.cost) {
-                        alert(`El precio no puede ser menor al costo ($${formatCurrency(productInfo.cost)}).`);
-                        return;
-                    }
-                    if (price > productInfo.cost * 3) {
-                        alert(`El precio no puede ser mayor al triple del costo ($${formatCurrency(productInfo.cost * 3)}).`);
-                        return;
-                    }
-                }
-
                 // Usar datos locales en lugar de fetch para evitar dependencia de API
                 if (productInfo) {
+                    // RESTAURACIÓN: Validación de Precio (Mínimo Costo)
+                    if (price < productInfo.cost) {
+                        alert(`El precio no puede ser menor al costo (${formatCurrency(productInfo.cost)}).`);
+                        return;
+                    }
+
                     const existingProduct = products.find(p => p.id === productInfo.id);
                     if (existingProduct) {
                         existingProduct.quantity += quantity;

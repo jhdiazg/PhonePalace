@@ -81,7 +81,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in Model.AuditLogs)
+            @foreach (var item in Model.AuditLogs!)
             {
                 <tr>
                     <td>@item.Timestamp.ToString("dd/MM/yyyy HH:mm:ss")</td>

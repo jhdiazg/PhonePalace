@@ -9,14 +9,23 @@ using PhonePalace.Infrastructure.Services;
 using PhonePalace.Infrastructure.Configuration;
 using System.Globalization;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Configuración híbrida: Prioriza variable de entorno (Prod) sobre appsettings (Dev)
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
                        ?? builder.Configuration.GetConnectionString("DefaultConnection") 
                        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+// --- INICIO: Corrección de error de conexión SSL a SQL Server ---
+// El error "El nombre de entidad de seguridad de destino es incorrecto" ocurre porque el cliente
+// intenta validar el certificado SSL del servidor SQL y falla. Agregar "TrustServerCertificate=True"
+// instruye al cliente a confiar en el certificado del servidor, solucionando el problema en entornos
+// de desarrollo o donde no se ha configurado un certificado SSL validado por una CA.
+if (!connectionString.Contains("TrustServerCertificate", StringComparison.OrdinalIgnoreCase))
+{
+    connectionString = $"{connectionString.TrimEnd(';')};TrustServerCertificate=True;";
+}
+// --- FIN: Corrección de error de conexión SSL a SQL Server ---
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sqlOptions =>
@@ -139,31 +148,6 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 // --- FIN: Configuración de Cultura para Colombia ---
 
-// --- Ejecutar Seeders ---
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        await context.Database.MigrateAsync();
-
-        // 1. Poblar roles y usuario administrador
-        await DbSeeder.SeedRolesAndAdminAsync(services);
-        logger.LogInformation("Roles and admin user seeded successfully.");
-
-        // 2. Poblar datos de Departamentos y Municipios
-        await DataSeeder.SeedDaneDataAsync(context);
-        logger.LogInformation("DANE data seeded successfully.");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while seeding the DB.");
-    }
-}
-// --- Fin de los Seeders ---
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -186,6 +170,7 @@ app.UseRouting();
 app.UseSession();
 // --- FIN: Habilitar Middleware de Sesión ---
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

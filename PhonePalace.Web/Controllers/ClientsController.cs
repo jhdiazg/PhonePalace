@@ -1,3 +1,5 @@
+
+#nullable disable
 using PhonePalace.Web.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -413,7 +415,7 @@ namespace PhonePalace.Web.Controllers
             return _context.Clients.Any(e => e.ClientID == id);
         }
 
-        private async Task PopulateDropdowns(string? departmentId = null, string? municipalityId = null)
+        private async Task PopulateDropdowns(string departmentId = null, string municipalityId = null)
         {
             var departments = await _context.Departments.AsNoTracking().OrderBy(d => d.Name).ToListAsync();
             ViewData["DepartmentID"] = new SelectList(departments, "DepartmentID", "Name", departmentId);

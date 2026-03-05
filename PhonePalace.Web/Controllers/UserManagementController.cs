@@ -32,8 +32,8 @@ namespace PhonePalace.Web.Controllers
                 var thisViewModel = new UserRolesViewModel
                 {
                     UserId = user.Id,
-                    Email = user.Email,
-                    UserName = user.UserName,
+                    Email = user.Email!,
+                    UserName = user.UserName!,
                     Roles = await GetUserRoles(user),
                     IsLocked = await _userManager.IsLockedOutAsync(user)
                 };

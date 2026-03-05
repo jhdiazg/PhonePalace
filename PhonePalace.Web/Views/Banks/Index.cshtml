@@ -19,6 +19,12 @@
     <a asp-action="Transfer" class="btn btn-success ms-2">
         <i class="bi bi-arrow-left-right me-2"></i> Nueva Transferencia
     </a>
+    <form asp-action="RecalculateBalances" method="post" class="d-inline ms-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-warning" onclick="return confirm('Esta acción recalculará el saldo de TODOS los bancos basándose en su historial de transacciones. Puede tardar unos segundos. ¿Desea continuar?');" title="Corrige el saldo actual basándose en el historial de movimientos.">
+            <i class="bi bi-arrow-clockwise"></i> Sincronizar Saldos
+        </button>
+    </form>
 </p>
 
 <div class="card shadow-sm">

@@ -17,7 +17,7 @@
                     <div class="text-center mb-4">
                         <img src="~/images/logo_fact.png" alt="PhonePalace" class="img-fluid" style="max-height: 120px;" />
                     </div>
-                    <form asp-action="Register" method="post">
+                    <form asp-action="Register" method="post" novalidate>
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                         <h5 class="text-muted mb-3">Información de Acceso</h5>
@@ -152,15 +152,13 @@
     <script>
         $(document).ready(function () {
             function toggleClientType() {
-                var selectedType = $('#clientTypeSelect').val();
-                // Asumiendo que el enum ClientTypeSelection: 0 = NaturalPerson, 1 = LegalEntity
-                // Ajusta estos valores según el orden en tu enum si es diferente.
-                if (selectedType == "0") {
-                    $('#naturalPersonSection').show();
-                    $('#legalEntitySection').hide();
-                } else {
+                var selectedType = $('#clientTypeSelect').val(); // Esto devuelve "NaturalPerson" o "LegalEntity"
+                if (selectedType === 'LegalEntity') {
                     $('#naturalPersonSection').hide();
                     $('#legalEntitySection').show();
+                } else { // Por defecto, o si es "NaturalPerson"
+                    $('#naturalPersonSection').show();
+                    $('#legalEntitySection').hide();
                 }
             }
 
@@ -180,7 +178,7 @@
                 municipalitySelect.append('<option value="">-- Seleccione Municipio --</option>');
 
                 if (departmentId) {
-                    $.getJSON('@Url.Action("GetMunicipalities")', { departmentId: departmentId }, function (data) {
+                    $.getJSON('@Url.Action("GetMunicipalities", "Clients")', { departmentId: departmentId }, function (data) {
                         $.each(data, function (index, item) {
                             municipalitySelect.append($('<option></option>').val(item.value).text(item.text));
                         });

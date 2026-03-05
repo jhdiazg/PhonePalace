@@ -112,7 +112,8 @@ namespace PhonePalace.Web.Controllers
                 Date = x.Payment.PaymentDate,
                 InvoiceId = x.Payment.InvoiceID,
                 SaleId = x.SaleId,
-                ClientName = x.Client!.DisplayName ?? "Cliente General",
+                // CORRECCIÓN: Uso de operador '?' para evitar advertencia de posible nulo (CS8602)
+                ClientName = x.Client.DisplayName ?? "Cliente General",
                 PaymentMethod = EnumHelper.GetDisplayName(x.Payment.PaymentMethod),
                 Amount = x.Payment.Amount,
                 Reference = x.Payment.ReferenceNumber ?? string.Empty
@@ -201,7 +202,9 @@ namespace PhonePalace.Web.Controllers
         {
             var start = startDate ?? DateTime.Today.AddDays(-30);
             var end = endDate ?? DateTime.Today;
-            ViewData["PageSize"] = pageSize ?? 10;
+            // Se estandariza el tamaño de página a 15 para consistencia con otros reportes.
+            var currentPageSize = pageSize ?? 15;
+            ViewData["PageSize"] = currentPageSize;
 
             // Ajustar fecha fin para incluir todo el día
             var endFilter = end.Date.AddDays(1).AddTicks(-1);
@@ -218,7 +221,8 @@ namespace PhonePalace.Web.Controllers
             {
                 var query = _context.BankTransactions
                     .Where(t => t.BankID == bankId.Value && t.Date >= start && t.Date <= endFilter)
-                    .OrderBy(t => t.Date);
+                    // Se añade un ordenamiento secundario para garantizar una paginación estable.
+                    .OrderByDescending(t => t.Date).ThenByDescending(t => t.BankTransactionID);
 
                 // Calcular saldo anterior buscando la última transacción antes del rango
                 var lastTransactionBefore = await _context.BankTransactions
@@ -229,7 +233,7 @@ namespace PhonePalace.Web.Controllers
                 model.PreviousBalance = lastTransactionBefore?.BalanceAfterTransaction ?? 0;
 
                 // Paginación
-                var paginatedList = await PaginatedList<BankTransaction>.CreateAsync(query.AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
+                var paginatedList = await PaginatedList<BankTransaction>.CreateAsync(query.AsNoTracking(), pageNumber ?? 1, currentPageSize);
                 model.Transactions = paginatedList;
                 
                 // Pasar objeto paginado a ViewData para usar sus propiedades en la vista (HasPreviousPage, etc.)
@@ -738,7 +742,8 @@ namespace PhonePalace.Web.Controllers
             }
 
             // Bancos: Separar Nequi y Daviplata del resto
-            var allBanks = await _context.Banks.Where(b => b.IsActive).ToListAsync();
+            // CORRECCIÓN: Incluir bancos inactivos para que el total coincida con el activo real.
+            var allBanks = await _context.Banks.ToListAsync();
             
             model.Nequi = allBanks.Where(b => b.Name.ToUpper().Contains("NEQUI")).Sum(b => b.Balance);
             model.Daviplata = allBanks.Where(b => b.Name.ToUpper().Contains("DAVIPLATA")).Sum(b => b.Balance);

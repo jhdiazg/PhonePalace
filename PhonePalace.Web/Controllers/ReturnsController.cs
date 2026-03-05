@@ -145,7 +145,7 @@ namespace PhonePalace.Web.Controllers
                                 Quantity = item.QuantityToReturn,
                                 UnitCost = originalSaleDetail.Cost,
                                 StockBalance = (int)inventory.Stock,
-                                Reference = $"Devolución Venta #{model.SaleID}",
+                                Reference = $"Devolución Venta #{sale.Invoice.InvoiceID}",
                                 UserId = User.Identity?.Name
                             });
                         }
@@ -174,7 +174,7 @@ namespace PhonePalace.Web.Controllers
                     }
 
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Devoluciones", $"Registró devolución para Venta #{model.SaleID}. Monto abonado a cliente: {totalRefund:C}");
+                    await _auditService.LogAsync("Devoluciones", $"Registró devolución para Venta #{sale.Invoice.InvoiceID}. Monto abonado a cliente: {totalRefund:C}");
                     
                     // 4. Emitir Nota Crédito Electrónica Parcial si aplica
                     if (sale.Invoice != null)

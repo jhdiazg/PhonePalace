@@ -8,6 +8,7 @@ using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Infrastructure.Configuration;
 using PhonePalace.Infrastructure.Data;
+using PhonePalace.Web.Helpers;
 using PhonePalace.Web.ViewModels;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,14 +32,14 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
-        public IActionResult Register()
+        public async Task<IActionResult> Register()
         {
             if (_signInManager.IsSignedIn(User))
             {
                 return RedirectToAction("Index", "Home");
             }
             
-            ViewData["DepartmentID"] = new SelectList(_context.Departments.OrderBy(d => d.Name), "DepartmentID", "Name");
+            ViewData["DepartmentID"] = new SelectList(await _context.Departments.OrderBy(d => d.Name).ToListAsync(), "DepartmentID", "Name");
             ViewData["CompanyName"] = _companySettings.CompanyName;
             
             return View(new PublicClientRegisterViewModel());
@@ -53,10 +54,22 @@ namespace PhonePalace.Web.Controllers
                 ModelState.AddModelError("DataAuthorization", "Debe autorizar el tratamiento de datos personales para continuar.");
             }
 
+            if (model.ClientType == ClientTypeSelection.LegalEntity)
+            {
+                if (!string.IsNullOrEmpty(model.NitNumber) && !string.IsNullOrEmpty(model.VerificationDigit))
+                {
+                    var calculatedDv = ValidationHelper.CalculateNitVerificationDigit(model.NitNumber);
+                    if (calculatedDv < 0 || calculatedDv.ToString() != model.VerificationDigit)
+                    {
+                        ModelState.AddModelError("VerificationDigit", "El dígito de verificación no es válido para el NIT proporcionado.");
+                    }
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 // 1. Crear el Usuario de Login (Identity)
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, EmailConfirmed = true };
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, EmailConfirmed = true, PhoneNumber = model.PhoneNumber };
                 var result = await _userManager.CreateAsync(user, model.Password);
 
                 if (result.Succeeded)
@@ -66,7 +79,6 @@ namespace PhonePalace.Web.Controllers
 
                     // 3. Crear la Entidad de Negocio (Client)
                     Client newClient;
-
                     if (model.ClientType == ClientTypeSelection.NaturalPerson)
                     {
                         newClient = new NaturalPerson
@@ -94,13 +106,11 @@ namespace PhonePalace.Web.Controllers
                     newClient.DepartmentID = model.DepartmentID;
                     newClient.MunicipalityID = model.MunicipalityID;
                     newClient.IsActive = true;
-                    // Nota: Idealmente agregarías una propiedad UserId a la entidad Client para enlazarlos fuertemente.
-                    // Por ahora, el sistema los enlazará por Email cuando busques el cliente.
 
                     _context.Clients.Add(newClient);
                     await _context.SaveChangesAsync();
 
-                    // 4. Iniciar sesión y redirigir
+                    // 4. Iniciar sesión y redirigir al portal del cliente
                     await _signInManager.SignInAsync(user, isPersistent: false);
                     return RedirectToAction("MyData", "ClientPortal");
                 }
@@ -111,20 +121,9 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
-            ViewData["DepartmentID"] = new SelectList(_context.Departments.OrderBy(d => d.Name), "DepartmentID", "Name", model.DepartmentID);
+            ViewData["DepartmentID"] = new SelectList(await _context.Departments.OrderBy(d => d.Name).ToListAsync(), "DepartmentID", "Name", model.DepartmentID);
             ViewData["CompanyName"] = _companySettings.CompanyName;
             return View(model);
-        }
-
-        [HttpGet]
-        public async Task<JsonResult> GetMunicipalities(string departmentId)
-        {
-            var municipalities = await _context.Municipalities
-                .Where(m => m.DepartmentID == departmentId)
-                .OrderBy(m => m.Name)
-                .Select(m => new { value = m.MunicipalityID, text = m.Name })
-                .ToListAsync();
-            return Json(municipalities);
         }
     }
 }

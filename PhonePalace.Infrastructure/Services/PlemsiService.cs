@@ -53,10 +53,6 @@ namespace PhonePalace.Infrastructure.Services
             {
                 var payload = BuildPayload(sale);
                 
-                // Serializar el payload a JSON para guardarlo en los logs (Depuración)
-                string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
-                _logger.LogInformation("Enviando Factura Electrónica #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
-                
                 // Enviar petición a Plemsi (Endpoint 'billing/invoice')
                 var response = await _httpClient.PostAsJsonAsync("billing/invoice", payload);
                 
@@ -484,7 +480,7 @@ namespace PhonePalace.Infrastructure.Services
                 prefix = _companySettings.DianResolutionPrefix,
                 resolution = _companySettings.DianResolutionNumber, // Corregido: 'resolution' en lugar de 'resolution_number'
                 resolutionText = resolutionText, // Texto legal de la resolución
-                head_note = $"Venta POS #{sale.SaleID}", // Encabezado opcional
+                head_note = $"Venta POS #{invoice.InvoiceID}", // Encabezado opcional
                 foot_note = "Gracias por su compra en PhonePalace", // Pie de página opcional
                 customer,
                 items,
@@ -553,7 +549,7 @@ namespace PhonePalace.Infrastructure.Services
                 
                 payment = dynamicBase.payment, // Restaurado según prototipo
                 
-                notes = $"Nota Crédito por anulación de venta #{sale.SaleID}",
+                notes = $"Nota Crédito por anulación de venta. Factura: {invoicePrefix}{sale.Invoice.InvoiceID}",
                 
                 // Totales
                 invoiceBaseTotal = dynamicBase.invoiceBaseTotal,
@@ -660,7 +656,7 @@ namespace PhonePalace.Infrastructure.Services
                 customer = dynamicBase.customer,
                 items = items,
                 payment = dynamicBase.payment, // Restaurado
-                notes = $"Nota Crédito Parcial por devolución venta #{sale.SaleID}",
+                notes = $"Nota Crédito Parcial por devolución. Factura: {invoicePrefix}{sale.Invoice.InvoiceID}",
                 invoiceBaseTotal,
                 invoiceTaxInclusiveTotal,
                 invoiceTaxExclusiveTotal = invoiceBaseTotal, // En parciales suele ser igual si no hay descuentos globales

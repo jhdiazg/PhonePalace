@@ -1,0 +1,30 @@
+@model dynamic
+
+@{
+    // Este diccionario contendrá todos los parámetros de la URL actual (filtros, etc.)
+    var routeData = ViewContext.HttpContext.Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString());
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+}
+
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-end mb-0">
+            @{
+                // Botón "Anterior"
+                routeData["pageNumber"] = (Model.PageIndex - 1).ToString();
+            }
+            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                <a class="page-link" asp-action="@action" asp-all-route-data="routeData">Anterior</a>
+            </li>
+
+            @{
+                // Botón "Siguiente"
+                routeData["pageNumber"] = (Model.PageIndex + 1).ToString();
+            }
+            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                <a class="page-link" asp-action="@action" asp-all-route-data="routeData">Siguiente</a>
+            </li>
+        </ul>
+    </nav>
+}

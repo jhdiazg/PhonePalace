@@ -347,5 +347,38 @@ namespace PhonePalace.Web.Controllers
             }
             return View(model);
         }
+
+        // POST: Banks/RecalculateBalances
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RecalculateBalances()
+        {
+            var banks = await _context.Banks.ToListAsync();
+            int updatedCount = 0;
+
+            foreach (var bank in banks)
+            {
+                // Buscar la última transacción registrada para obtener el saldo real histórico
+                var lastTransaction = await _context.BankTransactions
+                    .Where(t => t.BankID == bank.BankID)
+                    .OrderByDescending(t => t.Date)
+                    .ThenByDescending(t => t.BankTransactionID)
+                    .FirstOrDefaultAsync();
+
+                decimal realBalance = lastTransaction?.BalanceAfterTransaction ?? 0;
+
+                if (bank.Balance != realBalance)
+                {
+                    bank.Balance = realBalance;
+                    _context.Update(bank);
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0) await _context.SaveChangesAsync();
+            
+            TempData[updatedCount > 0 ? "Success" : "Info"] = updatedCount > 0 ? $"Se corrigieron los saldos de {updatedCount} bancos." : "Los saldos ya están sincronizados.";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }
