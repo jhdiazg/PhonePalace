@@ -19,697 +19,697 @@ build_property.TargetFrameworkIdentifier = .NETCoreApp
 build_property.TargetFrameworkVersion = v9.0
 build_property.RootNamespace = PhonePalace.Web
 build_property.RootNamespace = PhonePalace.Web
-build_property.ProjectDir = D:\PhonePalace\phonepalace.web\
+build_property.ProjectDir = D:\PhonePalace\PhonePalace.Web\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = D:\PhonePalace\phonepalace.web
+build_property.MSBuildProjectDirectory = D:\PhonePalace\PhonePalace.Web
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/AccessDenied.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/AccessDenied.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxBY2Nlc3NEZW5pZWQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ConfirmEmail.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxDb25maXJtRW1haWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ConfirmEmailChange.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ConfirmEmailChange.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxDb25maXJtRW1haWxDaGFuZ2UuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ForgotPassword.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ForgotPassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxGb3Jnb3RQYXNzd29yZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ForgotPasswordConfirmation.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ForgotPasswordConfirmation.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxGb3Jnb3RQYXNzd29yZENvbmZpcm1hdGlvbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Lockout.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Lockout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2Nrb3V0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Login.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/LoginWith2fa.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/LoginWith2fa.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2dpbldpdGgyZmEuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/LoginWithRecoveryCode.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/LoginWithRecoveryCode.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2dpbldpdGhSZWNvdmVyeUNvZGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Logout.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Logout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxMb2dvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/ChangePassword.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/ChangePassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcQ2hhbmdlUGFzc3dvcmQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/DeletePersonalData.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/DeletePersonalData.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRGVsZXRlUGVyc29uYWxEYXRhLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/Disable2fa.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/Disable2fa.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRGlzYWJsZTJmYS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/DownloadPersonalData.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/DownloadPersonalData.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRG93bmxvYWRQZXJzb25hbERhdGEuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/Email.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/Email.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRW1haWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/EnableAuthenticator.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/EnableAuthenticator.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRW5hYmxlQXV0aGVudGljYXRvci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/ExternalLogins.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/ExternalLogins.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcRXh0ZXJuYWxMb2dpbnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/GenerateRecoveryCodes.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/GenerateRecoveryCodes.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcR2VuZXJhdGVSZWNvdmVyeUNvZGVzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/PersonalData.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/PersonalData.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcUGVyc29uYWxEYXRhLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/ResetAuthenticator.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/ResetAuthenticator.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcUmVzZXRBdXRoZW50aWNhdG9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/SalesByPaymentMethod.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/SalesByPaymentMethod.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcU2FsZXNCeVBheW1lbnRNZXRob2QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/SetPassword.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/SetPassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcU2V0UGFzc3dvcmQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/ShowRecoveryCodes.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/ShowRecoveryCodes.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcU2hvd1JlY292ZXJ5Q29kZXMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/TwoFactorAuthentication.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/TwoFactorAuthentication.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcVHdvRmFjdG9yQXV0aGVudGljYXRpb24uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/_Layout.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcX0xheW91dC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/_ManageNav.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/_ManageNav.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcX01hbmFnZU5hdi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/_StatusMessage.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/_StatusMessage.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcX1N0YXR1c01lc3NhZ2UuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/Manage/_ViewImports.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/Manage/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxNYW5hZ2VcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/RegisterConfirmation.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/RegisterConfirmation.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxSZWdpc3RlckNvbmZpcm1hdGlvbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ResendEmailConfirmation.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ResendEmailConfirmation.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxSZXNlbmRFbWFpbENvbmZpcm1hdGlvbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ResetPassword.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ResetPassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxSZXNldFBhc3N3b3JkLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/ResetPasswordConfirmation.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/ResetPasswordConfirmation.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxSZXNldFBhc3N3b3JkQ29uZmlybWF0aW9uLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/_StatusMessage.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/_StatusMessage.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxfU3RhdHVzTWVzc2FnZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Account/_ViewImports.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Account/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcQWNjb3VudFxfVmlld0ltcG9ydHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/Error.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcRXJyb3IuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/_ValidationScriptsPartial.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZhbGlkYXRpb25TY3JpcHRzUGFydGlhbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/_ViewImports.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Areas/Identity/Pages/_ViewStart.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Areas/Identity/Pages/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Controllers/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Controllers/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Controllers/Pay.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Controllers/Pay.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcUGF5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Controllers/PriceList.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Controllers/PriceList.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcUHJpY2VMaXN0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Controllers/SalesByPaymentMethod.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Controllers/SalesByPaymentMethod.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcU2FsZXNCeVBheW1lbnRNZXRob2QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Documents/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Documents/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = RG9jdW1lbnRzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Accessories/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Accessories/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjZXNzb3JpZXNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Accessories/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Accessories/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjZXNzb3JpZXNcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Accessories/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Accessories/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjZXNzb3JpZXNcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Accessories/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Accessories/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjZXNzb3JpZXNcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Accessories/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Accessories/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjZXNzb3JpZXNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/CreateManual.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/CreateManual.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXENyZWF0ZU1hbnVhbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountPayables/Pay.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountPayables/Pay.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFBheWFibGVzXFBheS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountReceivables/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountReceivables/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFJlY2VpdmFibGVzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountReceivables/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountReceivables/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFJlY2VpdmFibGVzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AccountReceivables/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AccountReceivables/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFJlY2VpdmFibGVzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Assets/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Assets/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXNzZXRzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Assets/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Assets/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXNzZXRzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/AuditLogs/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/AuditLogs/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXVkaXRMb2dzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Backup/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Backup/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFja3VwXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/BankExpenses/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/BankExpenses/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua0V4cGVuc2VzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Adjust.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Adjust.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcQWRqdXN0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Banks/Transfer.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Banks/Transfer.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQmFua3NcVHJhbnNmZXIuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Brands/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Brands/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQnJhbmRzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Brands/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Brands/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQnJhbmRzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Brands/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Brands/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQnJhbmRzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Brands/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Brands/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQnJhbmRzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Brands/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Brands/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQnJhbmRzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Cash/Close.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Cash/Close.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2FzaFxDbG9zZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Cash/Expense.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Cash/Expense.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2FzaFxFeHBlbnNlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Cash/Income.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Cash/Income.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2FzaFxJbmNvbWUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Cash/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Cash/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2FzaFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Cash/Open.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Cash/Open.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2FzaFxPcGVuLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Categories/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Categories/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2F0ZWdvcmllc1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Categories/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Categories/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2F0ZWdvcmllc1xEZWxldGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Categories/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Categories/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2F0ZWdvcmllc1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Categories/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Categories/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2F0ZWdvcmllc1xFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Categories/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Categories/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2F0ZWdvcmllc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CellPhones/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CellPhones/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2VsbFBob25lc1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CellPhones/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CellPhones/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2VsbFBob25lc1xEZWxldGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CellPhones/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CellPhones/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2VsbFBob25lc1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CellPhones/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CellPhones/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2VsbFBob25lc1xFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CellPhones/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CellPhones/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2VsbFBob25lc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/ClientPortal/MyData.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/ClientPortal/MyData.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50UG9ydGFsXE15RGF0YS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xEZWxldGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/EditLegalEntity.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/EditLegalEntity.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xFZGl0TGVnYWxFbnRpdHkuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/EditNaturalPerson.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/EditNaturalPerson.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xFZGl0TmF0dXJhbFBlcnNvbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Clients/_AddressFields.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Clients/_AddressFields.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ2xpZW50c1xfQWRkcmVzc0ZpZWxkcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/CreditCardVerifications/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/CreditCardVerifications/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3JlZGl0Q2FyZFZlcmlmaWNhdGlvbnNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/FixedExpenses/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/FixedExpenses/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRml4ZWRFeHBlbnNlc1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/FixedExpenses/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/FixedExpenses/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRml4ZWRFeHBlbnNlc1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/FixedExpenses/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/FixedExpenses/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRml4ZWRFeHBlbnNlc1xFZGl0LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/FixedExpenses/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/FixedExpenses/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRml4ZWRFeHBlbnNlc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/FixedExpenses/Pay.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/FixedExpenses/Pay.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcRml4ZWRFeHBlbnNlc1xQYXkuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Home/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Home/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Home/Privacy.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Home/Privacy.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxQcml2YWN5LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Inventory/Adjust.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Inventory/Adjust.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSW52ZW50b3J5XEFkanVzdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Inventory/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Inventory/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSW52ZW50b3J5XEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Inventory/Movement.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Inventory/Movement.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSW52ZW50b3J5XE1vdmVtZW50LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Inventory/Movements.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Inventory/Movements.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSW52ZW50b3J5XE1vdmVtZW50cy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Models/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Models/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW9kZWxzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Models/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Models/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW9kZWxzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Models/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Models/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW9kZWxzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Models/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Models/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW9kZWxzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Models/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Models/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcTW9kZWxzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Products/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Products/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHJvZHVjdHNcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Products/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Products/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHJvZHVjdHNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/PublicAccess/Register.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/PublicAccess/Register.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVibGljQWNjZXNzXFJlZ2lzdGVyLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Purchases/Receive.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Purchases/Receive.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXFJlY2VpdmUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Quotes/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Quotes/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUXVvdGVzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Quotes/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Quotes/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUXVvdGVzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Quotes/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Quotes/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUXVvdGVzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Quotes/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Quotes/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUXVvdGVzXEVkaXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Quotes/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Quotes/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUXVvdGVzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/BankTransactions.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/BankTransactions.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xCYW5rVHJhbnNhY3Rpb25zLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/CashMovements.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/CashMovements.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xDYXNoTW92ZW1lbnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/GeneralBalance.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/GeneralBalance.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xHZW5lcmFsQmFsYW5jZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/MonthlyBalance.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/MonthlyBalance.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xNb250aGx5QmFsYW5jZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/PriceList.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/PriceList.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xQcmljZUxpc3QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Reports/SalesByPaymentMethod.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Reports/SalesByPaymentMethod.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmVwb3J0c1xTYWxlc0J5UGF5bWVudE1ldGhvZC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Returns/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Returns/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmV0dXJuc1xDcmVhdGUuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Returns/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Returns/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmV0dXJuc1xEZXRhaWxzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Returns/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Returns/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUmV0dXJuc1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Sales/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Sales/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Sales/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Sales/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcRGVsZXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Sales/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Sales/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcRGV0YWlscy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Sales/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Sales/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Sales/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Sales/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FsZXNcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/Components/CashRegisterStatus/Default.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/Components/CashRegisterStatus/Default.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXENvbXBvbmVudHNcQ2FzaFJlZ2lzdGVyU3RhdHVzXERlZmF1bHQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/Error.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/Error.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/SalesByPaymentMethod.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/SalesByPaymentMethod.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXFNhbGVzQnlQYXltZW50TWV0aG9kLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_AddressEditPartial.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_AddressEditPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9BZGRyZXNzRWRpdFBhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_AddressFields.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_AddressFields.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9BZGRyZXNzRmllbGRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_ImageGalleryPartial.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_ImageGalleryPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9JbWFnZUdhbGxlcnlQYXJ0aWFsLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_LoginPartial.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_LoginPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9Mb2dpblBhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_PageSizeSelector.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_PageSizeSelector.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9QYWdlU2l6ZVNlbGVjdG9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_Pagination.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_Pagination.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9QYWdpbmF0aW9uLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_Sidebar.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_Sidebar.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9TaWRlYmFyLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_ToggleButton.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_ToggleButton.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9Ub2dnbGVCdXR0b24uY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_ValidationScriptsPartial.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_ValidationScriptsPartial.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXENyZWF0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/Delete.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/Delete.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXERlbGV0ZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/Details.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/Details.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXERldGFpbHMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/EditLegalEntity.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/EditLegalEntity.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEVkaXRMZWdhbEVudGl0eS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/EditLegalEntitySupplier.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/EditLegalEntitySupplier.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEVkaXRMZWdhbEVudGl0eVN1cHBsaWVyLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/EditNaturalPerson.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/EditNaturalPerson.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEVkaXROYXR1cmFsUGVyc29uLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/EditNaturalPersonSupplier.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/EditNaturalPersonSupplier.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEVkaXROYXR1cmFsUGVyc29uU3VwcGxpZXIuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Suppliers/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Suppliers/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU3VwcGxpZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/UserManagement/ChangePassword.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/UserManagement/ChangePassword.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlck1hbmFnZW1lbnRcQ2hhbmdlUGFzc3dvcmQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/UserManagement/Create.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/UserManagement/Create.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlck1hbmFnZW1lbnRcQ3JlYXRlLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/UserManagement/Edit.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/UserManagement/Edit.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlck1hbmFnZW1lbnRcRWRpdC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/UserManagement/Index.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/UserManagement/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlck1hbmFnZW1lbnRcSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/_ViewImports.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/_ViewImports.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/_ViewStart.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/_ViewStart.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/phonepalace.web/Views/Shared/_Layout.cshtml]
+[D:/PhonePalace/PhonePalace.Web/Views/Shared/_Layout.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = b-m2h1k80xb6
