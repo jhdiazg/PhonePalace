@@ -598,7 +598,7 @@ namespace PhonePalace.Web.Controllers
                                     UnitCost = detail.Cost, // Costo histórico
                                     StockBalance = (int)inventory.Stock,
                                     Reference = $"Venta #{invoice.InvoiceID}",
-                                    UserId = User.Identity?.Name
+                                    UserId = User!.Identity?.Name 
                                 });
                             }
                             else
