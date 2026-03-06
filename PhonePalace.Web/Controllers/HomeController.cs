@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
+using PhonePalace.Domain.Entities;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -63,6 +64,18 @@ namespace PhonePalace.Web.Controllers
                             i.SaleDate.Year == DateTime.Now.Year &&
                             i.Status == InvoiceStatus.Completed)
                 .SumAsync(i => i.Total);
+
+            // --- NUEVO: Desglose Facturación Electrónica vs Local ---
+            var electronicSales = await _context.Set<ElectronicInvoice>()
+                .Include(e => e.Invoice)
+                .Where(e => e.Invoice.SaleDate.Month == DateTime.Now.Month &&
+                            e.Invoice.SaleDate.Year == DateTime.Now.Year &&
+                            e.Invoice.Status == InvoiceStatus.Completed &&
+                            e.Status == "Accepted")
+                .SumAsync(e => e.Invoice.Total);
+
+            ViewBag.ElectronicSales = electronicSales;
+            ViewBag.LocalSales = currentMonthSales - electronicSales;
 
             // Restar devoluciones realizadas en el mes actual para obtener Ventas Netas
             var currentMonthReturns = await _context.Returns

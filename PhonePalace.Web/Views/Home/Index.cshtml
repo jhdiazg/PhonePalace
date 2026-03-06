@@ -46,6 +46,58 @@
                 </div>
             </div>
         </div>
+        <!-- Tarjeta de Desglose de Facturación -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Tipo de Facturación (Mes)
+                            </div>
+                            
+                            <!-- Facturación Electrónica -->
+                            <div class="row no-gutters align-items-center mb-2">
+                                <div class="col-auto">
+                                    <div class="h6 mb-0 mr-3 font-weight-bold text-gray-800">
+                                        @(((decimal)ViewBag.ElectronicSales).ToString("C0"))
+                                    </div>
+                                    <div class="text-xs text-success"><i class="bi bi-cloud-check-fill"></i> Electrónica</div>
+                                </div>
+                            </div>
+        
+                            <!-- Facturación Local -->
+                            <div class="row no-gutters align-items-center">
+                                <div class="col-auto">
+                                    <div class="h6 mb-0 mr-3 font-weight-bold text-gray-800">
+                                        @(((decimal)ViewBag.LocalSales).ToString("C0"))
+                                    </div>
+                                    <div class="text-xs text-secondary"><i class="bi bi-shop"></i> Local / Remisión</div>
+                                </div>
+                            </div>
+        
+                            <!-- Barra de Progreso Visual -->
+                            <div class="progress progress-sm mt-2" style="height: 5px;">
+                                @{
+                                    decimal totalMix = (decimal)ViewBag.ElectronicSales + (decimal)ViewBag.LocalSales;
+                                    decimal pctElec = totalMix > 0 ? ((decimal)ViewBag.ElectronicSales / totalMix) * 100 : 0;
+                                }
+                                <div class="progress-bar bg-success" role="progressbar" style="width: @pctElec%" 
+                                     aria-valuenow="@pctElec" aria-valuemin="0" aria-valuemax="100" 
+                                     title="Electrónica: @pctElec.ToString("0")%"></div>
+                                <div class="progress-bar bg-secondary" role="progressbar" style="width: @(100 - pctElec)%" 
+                                     aria-valuenow="@(100 - pctElec)" aria-valuemin="0" aria-valuemax="100"
+                                     title="Local: @((100 - pctElec).ToString("0"))%"></div>
+                            </div>
+        
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-receipt-cutoff fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="col-xl-3 col-md-6">
             <div class="card bg-primary text-white mb-4">
                 <div class="card-body">

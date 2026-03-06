@@ -35,7 +35,7 @@ namespace PhonePalace.Web.Controllers
         private readonly IEmailSender _emailSender;
         private readonly ILogger<SalesController> _logger;
 
-        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService, IEmailSender emailSender)
+        public SalesController(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, IPlemsiService plemsiService, IAuditService auditService, IEmailSender emailSender, ILogger<SalesController> logger)
         {
             _context = context;
             _cashService = cashService;
@@ -46,6 +46,7 @@ namespace PhonePalace.Web.Controllers
             _plemsiService = plemsiService;
             _auditService = auditService;
             _emailSender = emailSender;
+            _logger = logger;
         }
 
     [HttpGet]
@@ -223,6 +224,50 @@ namespace PhonePalace.Web.Controllers
             // Obtener caja actual para validaciones de anulación en la vista
             var currentCash = await _cashService.GetCurrentCashRegisterAsync();
             ViewData["CurrentCashDate"] = currentCash?.OpeningDate.Date;
+
+            // Pasar configuración para mostrar resolución en la vista
+            ViewBag.CompanySettings = _companySettings;
+
+            // Obtener el último consecutivo de factura electrónica para mostrar el siguiente.
+            // Se hace al final para no interferir con otras lógicas.
+            var lastIdFromTable = await _context.Set<ElectronicInvoice>()
+                .OrderByDescending(e => e.ElectronicInvoiceID)
+                .Select(e => e.ElectronicInvoiceID)
+                .FirstOrDefaultAsync();
+
+            // El método anterior (buscar el MAX(ID)) falla si se eliminan facturas, lo que crea "huecos" en la secuencia de identidad.
+            // Esto es más común en producción.
+            // La solución es consultar directamente a la base de datos por el valor de identidad actual de la tabla.
+            // Esto es específico de SQL Server, pero es la forma más fiable de predecir el siguiente ID.
+            long nextElectronicInvoiceNumber;
+            using (var command = _context.Database.GetDbConnection().CreateCommand())
+            {
+                var entityType = _context.Model.FindEntityType(typeof(ElectronicInvoice));
+                var tableName = entityType.GetTableName();
+
+                command.CommandText = $"SELECT IDENT_CURRENT('[{tableName}]');";
+                await _context.Database.OpenConnectionAsync();
+                var result = await command.ExecuteScalarAsync();
+                await _context.Database.CloseConnectionAsync();
+
+                long lastIdentityValue = 0;
+                if (result != null && result != DBNull.Value)
+                {
+                    lastIdentityValue = Convert.ToInt64(result);
+                }
+
+                // Si la tabla está vacía, IDENT_CURRENT devuelve el valor semilla (ej. 1). El próximo ID será ese valor.
+                // Si la tabla tiene registros, IDENT_CURRENT devuelve el último ID usado. El próximo será ese valor + 1.
+                nextElectronicInvoiceNumber = (lastIdFromTable == 0) ? lastIdentityValue : lastIdentityValue + 1;
+            }
+
+            // Asegurarse de que el número consecutivo no sea menor que el número inicial de la resolución.
+            if (nextElectronicInvoiceNumber < _companySettings.DianResolutionStartNumber)
+            {
+                nextElectronicInvoiceNumber = _companySettings.DianResolutionStartNumber;
+            }
+
+            ViewBag.NextElectronicInvoiceNumber = nextElectronicInvoiceNumber;
 
             return View(sale);
         }
