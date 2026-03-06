@@ -49,6 +49,31 @@ namespace PhonePalace.Infrastructure.Services
 
         public async Task<PlemsiResponse> SendInvoiceAsync(Sale sale, int electronicInvoiceNumber)
         {
+            // --- INICIO: Validación de Vigencia de Resolución ---
+            // Es crucial validar que la fecha actual esté dentro del rango de vigencia de la resolución
+            // para evitar errores de la DIAN y dar feedback inmediato al usuario.
+            var currentDate = DateTime.Now.Date;
+            if (DateTime.TryParse(_companySettings.DianResolutionStartDate, out var startDate) &&
+                DateTime.TryParse(_companySettings.DianResolutionEndDate, out var endDate))
+            {
+                if (currentDate < startDate)
+                {
+                    string errorMessage = $"La resolución de facturación no es válida todavía. Su vigencia inicia el {startDate:yyyy-MM-dd}.";
+                    _logger.LogError(errorMessage);
+                    return new PlemsiResponse { Success = false, ErrorMessage = errorMessage };
+                }
+                if (currentDate > endDate)
+                {
+                    string errorMessage = $"La resolución de facturación ha expirado. Su vigencia terminó el {endDate:yyyy-MM-dd}.";
+                    _logger.LogError(errorMessage);
+                    return new PlemsiResponse { Success = false, ErrorMessage = errorMessage };
+                }
+            }
+            else
+            {
+                _logger.LogWarning("No se pudieron parsear las fechas de inicio/fin de la resolución desde la configuración. Se omitirá la validación de vigencia.");
+            }
+            // --- FIN: Validación de Vigencia de Resolución ---
             try
             {
                 var payload = BuildPayload(sale, electronicInvoiceNumber);
@@ -371,7 +396,14 @@ namespace PhonePalace.Infrastructure.Services
             }
 
             // Construcción del texto de resolución legal
-            string resolutionText = $"Autorización de Facturación No. {_companySettings.DianResolutionNumber} de {_companySettings.DianResolutionDate} Prefijo {_companySettings.DianResolutionPrefix} desde {_companySettings.DianResolutionStartNumber} hasta {_companySettings.DianResolutionEndNumber}";
+            // Se normaliza la fecha de la resolución al formato YYYY-MM-DD para consistencia,
+            // independientemente de cómo esté escrita en el archivo de configuración.
+            string formattedResolutionDate = _companySettings.DianResolutionDate;
+            if (DateTime.TryParse(_companySettings.DianResolutionDate, out var resDate))
+            {
+                formattedResolutionDate = resDate.ToString("yyyy-MM-dd");
+            }
+            string resolutionText = $"Autorización de Facturación No. {_companySettings.DianResolutionNumber} de {formattedResolutionDate} Prefijo {_companySettings.DianResolutionPrefix} desde {_companySettings.DianResolutionStartNumber} hasta {_companySettings.DianResolutionEndNumber}";
 
             var customer = new
             {

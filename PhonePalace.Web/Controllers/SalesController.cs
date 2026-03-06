@@ -770,16 +770,16 @@ namespace PhonePalace.Web.Controllers
                                 var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, reason, electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
                                 if (ncResponse.Success)
                                 {
-                                    await _auditService.LogAsync("Facturación", $"Nota Crédito emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
+                                    await _auditService.LogAsync("Facturación", $"Nota Crédito emitida para factura {sale.Invoice!.InvoiceID}. Número: {ncResponse.Number}");
                                 }
                                 else
                                 {
-                                    await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito para {sale.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
+                                    await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito para {sale.Invoice!.InvoiceID}: {ncResponse.ErrorMessage}");
                                 }
                             }
                             catch (Exception ex) 
                             { 
-                                await _auditService.LogAsync("Error Facturación", $"Excepción al emitir Nota Crédito para {sale.Invoice.InvoiceID}: {ex.Message}");
+                                await _auditService.LogAsync("Error Facturación", $"Excepción al emitir Nota Crédito para {sale.Invoice!.InvoiceID}: {ex.Message}");
                             }
                         }
 
@@ -958,9 +958,9 @@ namespace PhonePalace.Web.Controllers
                 if (plemsiResponse.Success)
                 {
                     // 5. Actualizar el registro de factura electrónica con los datos de la DIAN
-                    electronicInvoice.CUFE = plemsiResponse.Cufe;
-                    electronicInvoice.DianNumber = plemsiResponse.Number;
-                    electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl;
+                    electronicInvoice.CUFE = plemsiResponse.Cufe!;
+                    electronicInvoice.DianNumber = plemsiResponse.Number!;
+                    electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl!;
                     electronicInvoice.Status = "Accepted";
 
                     _context.Update(electronicInvoice);
