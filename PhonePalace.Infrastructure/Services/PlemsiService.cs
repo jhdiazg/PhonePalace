@@ -47,11 +47,11 @@ namespace PhonePalace.Infrastructure.Services
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.Token}");
         }
 
-        public async Task<PlemsiResponse> SendInvoiceAsync(Sale sale)
+        public async Task<PlemsiResponse> SendInvoiceAsync(Sale sale, int electronicInvoiceNumber)
         {
             try
             {
-                var payload = BuildPayload(sale);
+                var payload = BuildPayload(sale, electronicInvoiceNumber);
                 
                 // Enviar petición a Plemsi (Endpoint 'billing/invoice')
                 var response = await _httpClient.PostAsJsonAsync("billing/invoice", payload);
@@ -161,11 +161,11 @@ namespace PhonePalace.Infrastructure.Services
             }
         }
 
-        public async Task<PlemsiResponse> SendCreditNoteAsync(Sale sale, string reason, string originalCufe)
+        public async Task<PlemsiResponse> SendCreditNoteAsync(Sale sale, string reason, string originalCufe, int? invoiceNumber = null)
         {
             try
             {
-                var payload = BuildCreditNotePayload(sale, reason, originalCufe);
+                var payload = BuildCreditNotePayload(sale, reason, originalCufe, invoiceNumber);
                 
                 string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
                 _logger.LogInformation("Enviando Nota Crédito para Factura #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
@@ -229,11 +229,11 @@ namespace PhonePalace.Infrastructure.Services
             }
         }
 
-        public async Task<PlemsiResponse> SendPartialCreditNoteAsync(Return returnEntity, Sale sale, string reason, string originalCufe)
+        public async Task<PlemsiResponse> SendPartialCreditNoteAsync(Return returnEntity, Sale sale, string reason, string originalCufe, int? invoiceNumber = null)
         {
             try
             {
-                var payload = BuildPartialCreditNotePayload(returnEntity, sale, reason, originalCufe);
+                var payload = BuildPartialCreditNotePayload(returnEntity, sale, reason, originalCufe, invoiceNumber);
                 
                 string jsonDebug = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
                 _logger.LogInformation("Enviando Nota Crédito Parcial para Factura #{InvoiceId}. JSON Payload:\n{JsonPayload}", sale.Invoice.InvoiceID, jsonDebug);
@@ -344,14 +344,14 @@ namespace PhonePalace.Infrastructure.Services
             return new PlemsiResponse { Success = false, ErrorMessage = "Excepción al consultar estado." };
         }
 
-       private object BuildPayload(Sale sale)
+       private object BuildPayload(Sale sale, int? electronicInvoiceNumber = null)
         {
             var client = sale.Client;
             var invoice = sale.Invoice;
 
             // Mapeo de Cliente (con dígito verificador)
             string nit;
-            string dv = null;
+            string dv = null!;
             if (client is LegalEntity le && !string.IsNullOrEmpty(le.NIT))
             {
                 var nitParts = le.NIT.Split('-');
@@ -472,7 +472,7 @@ namespace PhonePalace.Infrastructure.Services
 
             return new
             {
-                number = invoice.InvoiceID,
+                number = electronicInvoiceNumber ?? invoice.InvoiceID,
                 orderReference = new { id_order = sale.SaleID.ToString() }, // Referencia interna de la venta
                 send_email = true, // Indicar a Plemsi que envíe el correo al cliente
                 date = DateTime.Now.ToString("yyyy-MM-dd"), // Fecha de emisión (Hoy) para cumplir FAD09e
@@ -495,7 +495,7 @@ namespace PhonePalace.Infrastructure.Services
             };
         }
 
-        private object BuildCreditNotePayload(Sale sale, string reason, string originalCufe)
+        private object BuildCreditNotePayload(Sale sale, string reason, string originalCufe, int? invoiceNumber = null)
         {
             // Reutilizamos la lógica base de construcción de items y cliente
             // Nota: Para una implementación robusta, se debería refactorizar BuildPayload para compartir lógica común.
@@ -511,8 +511,8 @@ namespace PhonePalace.Infrastructure.Services
             dynamic dynamicBase = basePayload;
 
             string invoicePrefix = _companySettings.DianResolutionPrefix;
-            string invoiceNumber = sale.Invoice.InvoiceID.ToString();
-            string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
+            string numberStr = (invoiceNumber ?? sale.Invoice.InvoiceID).ToString();
+            string fullInvoiceNumber = $"{invoicePrefix}{numberStr}";
 
             // Usar la resolución de NC si está definida, si no, usar la de facturación como fallback.
             string ncPrefix = !string.IsNullOrEmpty(_companySettings.CreditNotePrefix) 
@@ -560,15 +560,15 @@ namespace PhonePalace.Infrastructure.Services
             };
         }
 
-        private object BuildPartialCreditNotePayload(Return returnEntity, Sale sale, string reason, string originalCufe)
+        private object BuildPartialCreditNotePayload(Return returnEntity, Sale sale, string reason, string originalCufe, int? invoiceNumber = null)
         {
             // 1. Reutilizamos la estructura base de la venta para cliente y pagos
             var basePayload = BuildPayload(sale);
             dynamic dynamicBase = basePayload;
 
             string invoicePrefix = _companySettings.DianResolutionPrefix;
-            string invoiceNumber = sale.Invoice.InvoiceID.ToString();
-            string fullInvoiceNumber = $"{invoicePrefix}{invoiceNumber}";
+            string numberStr = (invoiceNumber ?? sale.Invoice.InvoiceID).ToString();
+            string fullInvoiceNumber = $"{invoicePrefix}{numberStr}";
 
             // Usar la resolución de NC si está definida, si no, usar la de facturación como fallback.
             string ncPrefix = !string.IsNullOrEmpty(_companySettings.CreditNotePrefix) 

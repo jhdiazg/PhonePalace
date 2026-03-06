@@ -12,11 +12,11 @@ namespace PhonePalace.Domain.Entities
         
         public int SaleID { get; set; }
         [ForeignKey("SaleID")]
-        public virtual Sale Sale { get; set; }
+        public virtual Sale Sale { get; set; } = null!;
         
         public int ClientID { get; set; }
         [ForeignKey("ClientID")]
-        public virtual Client Client { get; set; }
+        public virtual Client Client { get; set; } = null!;
         
         public DateTime Date { get; set; } = DateTime.Now;
         

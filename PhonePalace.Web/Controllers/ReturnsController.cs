@@ -186,7 +186,7 @@ namespace PhonePalace.Web.Controllers
                         {
                             try 
                             {
-                                var ncResponse = await _plemsiService.SendPartialCreditNoteAsync(returnEntity, sale, "Devolución parcial de productos", electronicInvoice.CUFE);
+                                var ncResponse = await _plemsiService.SendPartialCreditNoteAsync(returnEntity, sale, "Devolución parcial de productos", electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
                                 if (ncResponse.Success)
                                 {
                                     await _auditService.LogAsync("Facturación", $"Nota Crédito Parcial emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");

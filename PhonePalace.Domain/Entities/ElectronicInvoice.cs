@@ -7,16 +7,16 @@ namespace PhonePalace.Domain.Entities
     public class ElectronicInvoice
     {
         [Key]
-        public int Id { get; set; }
+        public int ElectronicInvoiceID { get; set; }
 
         public int InvoiceID { get; set; }
         [ForeignKey("InvoiceID")]
-        public virtual Invoice Invoice { get; set; }
+        public virtual Invoice Invoice { get; set; } = null!;
 
-        public string CUFE { get; set; }
-        public string DianNumber { get; set; } // Ej: SETT-1001
-        public string QRCodeUrl { get; set; }
-        public string Status { get; set; } // Accepted, Rejected, Pending
+        public string CUFE { get; set; } = null!;
+        public string DianNumber { get; set; } = null!; // Ej: SETT-1001
+        public string QRCodeUrl { get; set; } = null!;
+        public string Status { get; set; } = "Pending"; // Accepted, Rejected, Pending
         public string? ErrorMessage { get; set; }
         public DateTime IssueDate { get; set; } = DateTime.Now;
     }

@@ -10,11 +10,11 @@ namespace PhonePalace.Domain.Entities
         
         public int ReturnID { get; set; }
         [ForeignKey("ReturnID")]
-        public virtual Return Return { get; set; }
+        public virtual Return Return { get; set; } = null!;
         
         public int ProductID { get; set; }
         [ForeignKey("ProductID")]
-        public virtual Product Product { get; set; }
+        public virtual Product Product { get; set; } = null!;
         
         public int Quantity { get; set; }
         

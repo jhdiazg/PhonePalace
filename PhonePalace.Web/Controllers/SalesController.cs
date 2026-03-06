@@ -767,7 +767,7 @@ namespace PhonePalace.Web.Controllers
                             try 
                             {
                                 string reason = cancellationReason!; // La validación anterior asegura que no es nulo
-                                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, reason, electronicInvoice.CUFE);
+                                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, reason, electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
                                 if (ncResponse.Success)
                                 {
                                     await _auditService.LogAsync("Facturación", $"Nota Crédito emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
@@ -942,23 +942,28 @@ namespace PhonePalace.Web.Controllers
 
             try
             {
-                // 3. Lógica de integración con Plemsi
-                var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale);
+                // 3. Crear un registro de factura electrónica en estado 'Pending' para obtener el consecutivo.
+                var electronicInvoice = new ElectronicInvoice
+                {
+                    InvoiceID = sale.Invoice.InvoiceID,
+                    Status = "Pending", // Estado inicial
+                    IssueDate = DateTime.Now
+                };
+                _context.Add(electronicInvoice);
+                await _context.SaveChangesAsync(); // Guardar para obtener el ID que será el consecutivo.
+
+                // 4. Lógica de integración con Plemsi, pasando el nuevo consecutivo
+                var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale, electronicInvoice.ElectronicInvoiceID);
 
                 if (plemsiResponse.Success)
                 {
-                    // 4. Crear el registro en la entidad independiente
-                    var electronicInvoice = new ElectronicInvoice
-                    {
-                        InvoiceID = sale.Invoice.InvoiceID,
-                        CUFE = plemsiResponse.Cufe,
-                        DianNumber = plemsiResponse.Number,
-                        QRCodeUrl = plemsiResponse.QrUrl,
-                        Status = "Accepted",
-                        IssueDate = DateTime.Now
-                    };
+                    // 5. Actualizar el registro de factura electrónica con los datos de la DIAN
+                    electronicInvoice.CUFE = plemsiResponse.Cufe;
+                    electronicInvoice.DianNumber = plemsiResponse.Number;
+                    electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl;
+                    electronicInvoice.Status = "Accepted";
 
-                    _context.Add(electronicInvoice);
+                    _context.Update(electronicInvoice);
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
 
@@ -966,6 +971,10 @@ namespace PhonePalace.Web.Controllers
                 }
                 else
                 {
+                    // Si la emisión falla, eliminamos el registro pendiente para no ocupar un consecutivo.
+                    _context.Remove(electronicInvoice);
+                    await _context.SaveChangesAsync();
+
                     TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}";
                 }
             }

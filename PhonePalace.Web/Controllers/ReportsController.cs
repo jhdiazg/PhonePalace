@@ -69,7 +69,7 @@ namespace PhonePalace.Web.Controllers
             var query = from p in _context.Payments
                         join s in _context.Sales on p.InvoiceID equals s.InvoiceID into sales
                         from s in sales.DefaultIfEmpty()
-                        where p.PaymentDate >= start && p.PaymentDate <= endFilter && p.Invoice.Status != InvoiceStatus.Cancelled
+                        where p.PaymentDate >= start && p.PaymentDate <= endFilter && p.Invoice!.Status != InvoiceStatus.Cancelled
                         select new
                         {
                             Payment = p,

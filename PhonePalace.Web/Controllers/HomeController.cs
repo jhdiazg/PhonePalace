@@ -79,15 +79,15 @@ namespace PhonePalace.Web.Controllers
             var otherCashIncome = await _context.CashMovements
                 .Where(cm => cm.MovementDate >= startOfMonth && cm.MovementDate <= endOfMonth &&
                              cm.MovementType == CashMovementType.Income &&
-                             !cm.Description.ToUpper().Contains("ABONO A CXC") &&
-                             !cm.Description.ToUpper().Contains("POR VENTA"))
+                             cm.Description!.ToUpper().Contains("ABONO A CXC") &&
+                             cm.Description.ToUpper().Contains("POR VENTA"))
                 .SumAsync(cm => cm.Amount);
 
             // Ingresos de Banco que no son de ventas, abonos o transferencias
             var otherBankIncome = await _context.BankTransactions
                 .Where(bt => bt.Date >= startOfMonth && bt.Date <= endOfMonth &&
                              bt.Amount > 0 && // Ingresos
-                             !bt.Description.ToUpper().Contains("INGRESO POR VENTA") &&
+                             !bt.Description!.ToUpper().Contains("INGRESO POR VENTA") &&
                              !bt.Description.ToUpper().Contains("ABONO CXC") &&
                              !bt.Description.ToUpper().Contains("TRANSFERENCIA") &&
                              !bt.Description.ToUpper().Contains("RETIRO"))

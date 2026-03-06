@@ -156,7 +156,7 @@ namespace PhonePalace.Web.Controllers
                 newClient = new LegalEntity
                 {
                     CompanyName = viewModel.CompanyName!.ToUpper(),
-                    NIT = string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null
+                    NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null
                 };
             }
             else
@@ -326,7 +326,7 @@ namespace PhonePalace.Web.Controllers
                     if (clientToUpdate == null) return NotFound();
 
                     clientToUpdate.CompanyName = (viewModel.CompanyName ?? string.Empty).ToUpper();
-                    clientToUpdate.NIT = string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null;
+                    clientToUpdate.NIT = !string.IsNullOrWhiteSpace(viewModel.NitNumber) ? fullNit.ToUpper() : null;
                     clientToUpdate.Email = viewModel.Email;
                     clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                     clientToUpdate.DepartmentID = viewModel.DepartmentID;
