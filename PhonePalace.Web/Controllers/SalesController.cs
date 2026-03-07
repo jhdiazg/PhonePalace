@@ -243,7 +243,7 @@ namespace PhonePalace.Web.Controllers
             using (var command = _context.Database.GetDbConnection().CreateCommand())
             {
                 var entityType = _context.Model.FindEntityType(typeof(ElectronicInvoice));
-                var tableName = entityType.GetTableName();
+                var tableName = entityType!.GetTableName();
 
                 command.CommandText = $"SELECT IDENT_CURRENT('[{tableName}]');";
                 await _context.Database.OpenConnectionAsync();

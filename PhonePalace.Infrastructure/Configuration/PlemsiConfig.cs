@@ -2,12 +2,14 @@ namespace PhonePalace.Infrastructure.Configuration
 {
     public class PlemsiConfig
     {
-        // Estos valores por defecto actúan como fallback si no se encuentran en Secrets/Env
-        public string BaseUrl { get; set; } = "https://pruebas.plemsi.com/api/";
+        // Se elimina BaseUrl para forzar una configuración explícita.
+        public string TestUrl { get; set; } = "https://pruebas.plemsi.com/api/";
+        public string ProductionUrl { get; set; } = "https://api.plemsi.com/api/"; // URL de producción de Plemsi
 
         // El Token se llenará automáticamente desde User Secrets o Variables de Entorno
         public string Token { get; set; } = string.Empty;
 
-        public bool IsTestEnvironment { get; set; } = false;
+        // Este valor se puede seguir usando si es necesario para otras lógicas.
+        public bool IsTestEnvironment { get; set; } = true;
     }
 }

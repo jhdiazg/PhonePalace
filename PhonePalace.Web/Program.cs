@@ -70,8 +70,13 @@ builder.Services.Configure<BackupSettings>(builder.Configuration.GetSection("Bac
 // Registro del Servicio Plemsi con HttpClient tipado
 builder.Services.AddHttpClient<IPlemsiService, PlemsiService>((serviceProvider, client) =>
 {
+    var environment = serviceProvider.GetRequiredService<IWebHostEnvironment>();
     var config = serviceProvider.GetRequiredService<IOptions<PlemsiConfig>>().Value;
-    client.BaseAddress = new Uri(config.BaseUrl);
+
+    // Selección explícita de la URL basada en el entorno de ejecución
+    var baseUrl = environment.IsProduction() ? config.ProductionUrl : config.TestUrl;
+
+    client.BaseAddress = new Uri(baseUrl);
     client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", config.Token);
 });
 

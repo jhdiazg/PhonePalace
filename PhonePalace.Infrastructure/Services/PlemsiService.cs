@@ -36,11 +36,15 @@ namespace PhonePalace.Infrastructure.Services
             _configuration = configuration;
 
             // Configuración básica del cliente si no viene inyectado configurado
-            if (_httpClient.BaseAddress == null && !string.IsNullOrEmpty(_config.BaseUrl))
+            if (_httpClient.BaseAddress == null)
             {
-                var url = _config.BaseUrl;
-                if (!url.EndsWith("/")) url += "/";
-                _httpClient.BaseAddress = new Uri(url);
+                // Fallback: Si no se inyectó la URL desde Program.cs, usar la de pruebas por defecto.
+                var url = _config.TestUrl;
+                if (!string.IsNullOrEmpty(url))
+                {
+                    if (!url.EndsWith("/")) url += "/";
+                    _httpClient.BaseAddress = new Uri(url);
+                }
             }
             
             if (!_httpClient.DefaultRequestHeaders.Contains("Authorization") && !string.IsNullOrEmpty(_config.Token))
