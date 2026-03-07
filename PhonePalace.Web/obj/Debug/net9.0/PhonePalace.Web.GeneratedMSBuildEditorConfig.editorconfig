@@ -186,20 +186,8 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = QXJlYXNcSWRlbnRpdHlcUGFnZXNcX1ZpZXdTdGFydC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[D:/PhonePalace/PhonePalace.Web/Controllers/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcSW5kZXguY3NodG1s
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/PhonePalace/PhonePalace.Web/Controllers/Pay.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcUGF5LmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
 [D:/PhonePalace/PhonePalace.Web/Controllers/PriceList.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcUHJpY2VMaXN0LmNzaHRtbA==
-build_metadata.AdditionalFiles.CssScope = 
-
-[D:/PhonePalace/PhonePalace.Web/Controllers/SalesByPaymentMethod.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Q29udHJvbGxlcnNcU2FsZXNCeVBheW1lbnRNZXRob2QuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/PhonePalace/PhonePalace.Web/Documents/Details.cshtml]

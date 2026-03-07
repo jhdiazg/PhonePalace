@@ -97,6 +97,7 @@ builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<ICashService, CashService>();
 builder.Services.AddScoped<IBankService, BankService>();
 builder.Services.AddScoped<IBackupService, SqlBackupService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
 
 builder.Services.AddTransient<IEmailSender, EmailService>();
 builder.Services.AddRazorPages();
