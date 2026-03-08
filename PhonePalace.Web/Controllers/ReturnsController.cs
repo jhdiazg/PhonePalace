@@ -82,6 +82,13 @@ namespace PhonePalace.Web.Controllers
                 return View(model);
             }
 
+            // Variables para pasar datos fuera de la transacción
+            Sale? saleForApi = null;
+            Return? returnEntityForApi = null;
+            ElectronicInvoice? electronicInvoiceForApi = null;
+            decimal totalRefundAmount = 0;
+            bool dbOperationSuccess = false;
+
             var strategy = _context.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
             {
@@ -176,7 +183,7 @@ namespace PhonePalace.Web.Controllers
                     await _context.SaveChangesAsync();
                     await _auditService.LogAsync("Devoluciones", $"Registró devolución para Venta #{sale.Invoice.InvoiceID}. Monto abonado a cliente: {totalRefund:C}");
                     
-                    // 4. Emitir Nota Crédito Electrónica Parcial si aplica
+                    // Preparar datos para la llamada a la API (Post-Transacción)
                     if (sale.Invoice != null)
                     {
                         var electronicInvoice = await _context.Set<ElectronicInvoice>()
@@ -184,36 +191,50 @@ namespace PhonePalace.Web.Controllers
 
                         if (electronicInvoice != null)
                         {
-                            try 
-                            {
-                                var ncResponse = await _plemsiService.SendPartialCreditNoteAsync(returnEntity, sale, "Devolución parcial de productos", electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
-                                if (ncResponse.Success)
-                                {
-                                    await _auditService.LogAsync("Facturación", $"Nota Crédito Parcial emitida para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
-                                    TempData["Info"] = $"Se generó la Nota Crédito {ncResponse.Number} en la DIAN.";
-                                }
-                                else
-                                {
-                                    await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito Parcial para {sale.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
-                                }
-                            }
-                            catch (Exception) { /* Loguear error pero no detener la devolución local */ }
+                            saleForApi = sale;
+                            returnEntityForApi = returnEntity;
+                            electronicInvoiceForApi = electronicInvoice;
                         }
                     }
 
+                    totalRefundAmount = totalRefund;
                     await transaction.CommitAsync();
-                    TempData["Success"] = $"Devolución exitosa. Se han abonado {totalRefund:C} al saldo del cliente.";
+                    dbOperationSuccess = true;
                 }
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
                     ModelState.AddModelError("", $"Error al procesar la devolución: {ex.Message}");
+                    dbOperationSuccess = false;
                 }
             });
 
-            if (!ModelState.IsValid) return View(model);
+            if (dbOperationSuccess)
+            {
+                // 4. Emitir Nota Crédito Electrónica Parcial si aplica (Fuera de transacción)
+                if (saleForApi != null && electronicInvoiceForApi != null && returnEntityForApi != null)
+                {
+                    try
+                    {
+                        var ncResponse = await _plemsiService.SendPartialCreditNoteAsync(returnEntityForApi, saleForApi, "Devolución parcial de productos", electronicInvoiceForApi.CUFE, electronicInvoiceForApi.ElectronicInvoiceID);
+                        if (ncResponse.Success)
+                        {
+                            await _auditService.LogAsync("Facturación", $"Nota Crédito Parcial emitida para factura {saleForApi.Invoice.InvoiceID}. Número: {ncResponse.Number}");
+                            TempData["Info"] = $"Se generó la Nota Crédito {ncResponse.Number} en la DIAN.";
+                        }
+                        else
+                        {
+                            await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito Parcial para {saleForApi.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
+                        }
+                    }
+                    catch (Exception) { /* Loguear error pero no detener la devolución local */ }
+                }
 
-            return RedirectToAction("Details", "Sales", new { id = model.SaleID });
+                TempData["Success"] = $"Devolución exitosa. Se han abonado {totalRefundAmount:C} al saldo del cliente.";
+                return RedirectToAction("Details", "Sales", new { id = model.SaleID });
+            }
+
+            return View(model);
         }
 
         [HttpGet]
@@ -243,6 +264,50 @@ namespace PhonePalace.Web.Controllers
             if (returnEntity == null) return NotFound();
 
             return View(returnEntity);
+        }
+
+        [HttpPost("ReintentarNotaCreditoParcial/{returnId}")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> RetryPartialCreditNote(int returnId)
+        {
+            var returnEntity = await _context.Returns
+                .Include(r => r.Details)
+                .Include(r => r.Sale).ThenInclude(s => s.Client)
+                .Include(r => r.Sale).ThenInclude(s => s.Invoice)
+                .Include(r => r.Sale).ThenInclude(s => s.Details).ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(r => r.ReturnID == returnId);
+
+            if (returnEntity == null || returnEntity.Sale == null || returnEntity.Sale.Invoice == null) return NotFound();
+
+            var electronicInvoice = await _context.Set<ElectronicInvoice>()
+                .FirstOrDefaultAsync(e => e.InvoiceID == returnEntity.Sale.Invoice.InvoiceID && e.Status == "Accepted");
+
+            if (electronicInvoice == null)
+            {
+                TempData["Error"] = "No existe una factura electrónica aprobada para la venta asociada.";
+                return RedirectToAction("Details", "Sales", new { id = returnEntity.SaleID });
+            }
+
+            try
+            {
+                var ncResponse = await _plemsiService.SendPartialCreditNoteAsync(returnEntity, returnEntity.Sale, "Devolución parcial (Reintento)", electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
+                if (ncResponse.Success)
+                {
+                    await _auditService.LogAsync("Facturación", $"Nota Crédito Parcial emitida (Reintento) para devolución #{returnId}. Número: {ncResponse.Number}");
+                    TempData["Success"] = $"Nota Crédito Parcial {ncResponse.Number} emitida exitosamente.";
+                }
+                else
+                {
+                    TempData["Error"] = $"Error al emitir Nota Crédito Parcial: {ncResponse.ErrorMessage}";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Excepción al emitir Nota Crédito Parcial: {ex.Message}";
+            }
+
+            return RedirectToAction("Details", "Sales", new { id = returnEntity.SaleID });
         }
     }
 }

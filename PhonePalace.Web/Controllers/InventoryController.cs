@@ -138,39 +138,53 @@ namespace PhonePalace.Web.Controllers
         [Route("Inventario/Ajustar/{id?}")]
         public async Task<IActionResult> Adjust(int id, int adjustment, string reason)
         {
-            // Obtenemos datos actuales para el log (usando proyección para evitar error de PK)
-            var currentData = await _context.Inventories
-                .Where(i => i.ProductID == id)
-                .Select(i => new { Stock = (int)((double)i.Stock), ProductName = i.Product.Name, Cost = i.Product.Cost })
-                .FirstOrDefaultAsync();
-
-            if (currentData == null) return NotFound();
-
-            // Usamos SQL directo para actualizar, evitando problemas de mapeo de Entity Framework
-            await _context.Database.ExecuteSqlRawAsync(
-                "UPDATE Inventories SET Stock = Stock + {0}, LastUpdated = {1} WHERE ProductID = {2}", 
-                adjustment, DateTime.Now, id);
-
-            var newStock = currentData.Stock + adjustment;
-
-            // Registrar Movimiento en Kardex
-            var movement = new InventoryMovement
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                ProductId = id,
-                Date = DateTime.Now,
-                Type = InventoryMovementType.Adjustment,
-                Quantity = adjustment,
-                UnitCost = currentData.Cost,
-                StockBalance = newStock,
-                Reference = reason ?? "Ajuste Manual",
-                UserId = User.Identity?.Name
-            };
-            _context.InventoryMovements.Add(movement);
-            await _context.SaveChangesAsync();
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Obtenemos datos actuales para el log (usando proyección para evitar error de PK)
+                    var currentData = await _context.Inventories
+                        .Where(i => i.ProductID == id)
+                        .Select(i => new { Stock = (int)((double)i.Stock), ProductName = i.Product.Name, Cost = i.Product.Cost })
+                        .FirstOrDefaultAsync();
 
-            await _auditService.LogAsync("Inventario", $"Ajuste manual de stock para '{currentData.ProductName}' (ID: {id}). Anterior: {currentData.Stock}, Ajuste: {adjustment:+0;-0}, Nuevo: {newStock}. Razón: {reason}");
+                    if (currentData == null) return NotFound();
 
-            return RedirectToAction(nameof(Index));
+                    // Usamos SQL directo para actualizar, evitando problemas de mapeo de Entity Framework
+                    await _context.Database.ExecuteSqlRawAsync(
+                        "UPDATE Inventories SET Stock = Stock + {0}, LastUpdated = {1} WHERE ProductID = {2}", 
+                        adjustment, DateTime.Now, id);
+
+                    var newStock = currentData.Stock + adjustment;
+
+                    // Registrar Movimiento en Kardex
+                    var movement = new InventoryMovement
+                    {
+                        ProductId = id,
+                        Date = DateTime.Now,
+                        Type = InventoryMovementType.Adjustment,
+                        Quantity = adjustment,
+                        UnitCost = currentData.Cost,
+                        StockBalance = newStock,
+                        Reference = reason ?? "Ajuste Manual",
+                        UserId = User.Identity?.Name
+                    };
+                    _context.InventoryMovements.Add(movement);
+                    await _context.SaveChangesAsync();
+
+                    await _auditService.LogAsync("Inventario", $"Ajuste manual de stock para '{currentData.ProductName}' (ID: {id}). Anterior: {currentData.Stock}, Ajuste: {adjustment:+0;-0}, Nuevo: {newStock}. Razón: {reason}");
+
+                    await transaction.CommitAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         [HttpGet]

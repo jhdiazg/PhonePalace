@@ -24,9 +24,9 @@
                 <div class="col-md-6 mb-3">
                     <label asp-for="NitNumber" class="form-label">NIT <small class="text-muted">(Opcional)</small></label>
                     <div class="input-group">
-                        <input asp-for="NitNumber" class="form-control" placeholder="Número sin DV" data-val="false" />
+                        <input asp-for="NitNumber" class="form-control" placeholder="Número sin DV" />
                         <span class="input-group-text">-</span>
-                        <input asp-for="VerificationDigit" class="form-control" style="max-width: 50px;" placeholder="DV" data-val="false" />
+                        <input asp-for="VerificationDigit" class="form-control" style="max-width: 50px;" placeholder="DV" />
                     </div>
                     <span asp-validation-for="NitNumber" class="text-danger"></span>
                     <span asp-validation-for="VerificationDigit" class="text-danger"></span>
@@ -37,8 +37,8 @@
             <hr />
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label asp-for="Email" class="form-label">Correo Electrónico <small class="text-muted">(Opcional)</small></label>
-                    <input asp-for="Email" type="text" class="form-control" data-val="false" />
+                    <label asp-for="Email" class="form-label">Correo Electrónico <span class="text-danger">*</span></label>
+                    <input asp-for="Email" type="text" class="form-control" />
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
                 <div class="col-md-6 mb-3">
@@ -110,7 +110,6 @@
             // Forzar la desactivación de la validación del lado del cliente para campos opcionales.
             $('#NitNumber').removeAttr('data-val-required');
             $('#VerificationDigit').removeAttr('data-val-required');
-            $('#Email').removeAttr('data-val-email');
 
             // Re-parsear el formulario para que jquery-validation reconozca los cambios.
             var form = $('form');

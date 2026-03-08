@@ -762,24 +762,103 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id = sale.SaleID });
             }
 
+            // CORRECCIÓN: Usar estrategia de ejecución para soportar reintentos (EnableRetryOnFailure)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                // --- INICIO: Envolver en una transacción para garantizar atomicidad ---
+                // Esto asegura que o todo el proceso es exitoso, o no se deja ningún registro temporal en la base de datos.
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // 3. Crear un registro de factura electrónica para obtener el consecutivo.
+                    var electronicInvoice = new ElectronicInvoice
+                    {
+                        InvoiceID = sale.Invoice.InvoiceID,
+                        Status = "Pending", // Estado inicial
+                        IssueDate = DateTime.Now,
+                        // Asignar valores temporales para campos que podrían ser no nulos en la BD.
+                        // Esto previene un DbUpdateException si las columnas no permiten nulos.
+                        CUFE = "PENDIENTE",
+                        DianNumber = "PENDIENTE",
+                        QRCodeUrl = ""
+                    };
+                    _context.Add(electronicInvoice);
+                    await _context.SaveChangesAsync(); // Guardar para obtener el ID que será el consecutivo.
+
+                    // 4. Lógica de integración con Plemsi, pasando el nuevo consecutivo
+                    // El ID autoincremental de la tabla ElectronicInvoices se usa como número de factura.
+                    var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale, electronicInvoice.ElectronicInvoiceID);
+
+                    if (plemsiResponse.Success)
+                    {
+                        // 5. Actualizar el registro de factura electrónica con los datos de la DIAN
+                        electronicInvoice.CUFE = plemsiResponse.Cufe!;
+                        electronicInvoice.DianNumber = plemsiResponse.Number!;
+                        electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl!;
+                        electronicInvoice.Status = "Accepted";
+
+                        _context.Update(electronicInvoice);
+                        await _context.SaveChangesAsync();
+
+                        // Si todo fue exitoso, confirmar la transacción
+                        await transaction.CommitAsync();
+
+                        await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
+                        TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
+                    }
+                    else
+                    {
+                        // Si la emisión falla, revertir la transacción. El registro 'PENDIENTE' no se guardará.
+                        await transaction.RollbackAsync();
+                        TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Si cualquier parte del proceso falla (ej. conexión a BD), revertir la transacción.
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error durante la emisión de factura electrónica para la venta {SaleID}", id);
+                    TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+                }
+            });
+            // --- FIN: Envolver en una transacción ---
+
+            return RedirectToAction(nameof(Details), new { id = sale.SaleID });
+        }
+
+        [HttpPost("SincronizarElectronica/{electronicInvoiceId}")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SincronizarFacturaElectronica(int electronicInvoiceId)
+        {
+            // 1. Buscar el registro de factura local que falló.
+            var electronicInvoice = await _context.Set<ElectronicInvoice>()
+                .Include(e => e.Invoice)
+                .FirstOrDefaultAsync(e => e.ElectronicInvoiceID == electronicInvoiceId);
+
+            if (electronicInvoice == null || electronicInvoice.Invoice == null)
+            {
+                TempData["Error"] = "No se encontró el registro de factura a sincronizar.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // CORRECCIÓN: Recuperar la venta asociada a la factura para obtener el SaleID
+            // La entidad Invoice no tiene SaleID, por lo que buscamos en la tabla Sales por InvoiceID.
+            var sale = await _context.Sales.AsNoTracking().FirstOrDefaultAsync(s => s.InvoiceID == electronicInvoice.InvoiceID);
+            if (sale == null)
+            {
+                TempData["Error"] = "No se encontró la venta asociada a la factura.";
+                return RedirectToAction(nameof(Index));
+            }
+
             try
             {
-                // 3. Crear un registro de factura electrónica en estado 'Pending' para obtener el consecutivo.
-                var electronicInvoice = new ElectronicInvoice
-                {
-                    InvoiceID = sale.Invoice.InvoiceID,
-                    Status = "Pending", // Estado inicial
-                    IssueDate = DateTime.Now
-                };
-                _context.Add(electronicInvoice);
-                await _context.SaveChangesAsync(); // Guardar para obtener el ID que será el consecutivo.
-
-                // 4. Lógica de integración con Plemsi, pasando el nuevo consecutivo
-                var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale, electronicInvoice.ElectronicInvoiceID);
+                // 2. Llamar al servicio que consulta el estado en Plemsi.
+                var plemsiResponse = await _plemsiService.GetInvoiceStatusAsync(electronicInvoice.ElectronicInvoiceID);
 
                 if (plemsiResponse.Success)
                 {
-                    // 5. Actualizar el registro de factura electrónica con los datos de la DIAN
+                    // 3. Si se recuperan los datos, actualizar el registro local.
                     electronicInvoice.CUFE = plemsiResponse.Cufe!;
                     electronicInvoice.DianNumber = plemsiResponse.Number!;
                     electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl!;
@@ -787,25 +866,68 @@ namespace PhonePalace.Web.Controllers
 
                     _context.Update(electronicInvoice);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
 
-                    TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
+                    await _auditService.LogAsync("Facturación", $"Sincronización exitosa para venta #{sale.SaleID}. DIAN: {electronicInvoice.DianNumber}");
+                    TempData["Success"] = "Factura sincronizada y actualizada exitosamente.";
                 }
                 else
                 {
-                    // Si la emisión falla, eliminamos el registro pendiente para no ocupar un consecutivo.
-                    _context.Remove(electronicInvoice);
-                    await _context.SaveChangesAsync();
-
-                    TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}";
+                    TempData["Error"] = $"Error al sincronizar: {plemsiResponse.ErrorMessage}";
                 }
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+                _logger.LogError(ex, "Error durante la sincronización de factura electrónica {ElectronicInvoiceID}", electronicInvoiceId);
+                TempData["Error"] = $"Error de conexión al sincronizar: {ex.Message}";
             }
 
+            // Devolver al usuario a la página de detalles de la venta usando el ID recuperado.
             return RedirectToAction(nameof(Details), new { id = sale.SaleID });
+        }
+
+        [HttpPost("ReintentarNotaCredito/{id}")]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> RetryCreditNote(int id, string reason)
+        {
+            var sale = await _context.Sales
+                .Include(s => s.Client)
+                .Include(s => s.Invoice)
+                .Include(s => s.Details).ThenInclude(d => d.Product)
+                .FirstOrDefaultAsync(s => s.SaleID == id);
+
+            if (sale == null || sale.Invoice == null) return NotFound();
+
+            var electronicInvoice = await _context.Set<ElectronicInvoice>()
+                .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
+
+            if (electronicInvoice == null)
+            {
+                TempData["Error"] = "No existe una factura electrónica aprobada para esta venta.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            try
+            {
+                string finalReason = string.IsNullOrWhiteSpace(reason) ? "Anulación de venta (Reintento)" : reason;
+                var ncResponse = await _plemsiService.SendCreditNoteAsync(sale, finalReason, electronicInvoice.CUFE, electronicInvoice.ElectronicInvoiceID);
+                
+                if (ncResponse.Success)
+                {
+                    await _auditService.LogAsync("Facturación", $"Nota Crédito emitida (Reintento) para factura {sale.Invoice.InvoiceID}. Número: {ncResponse.Number}");
+                    TempData["Success"] = $"Nota Crédito {ncResponse.Number} emitida exitosamente en la DIAN.";
+                }
+                else
+                {
+                    TempData["Error"] = $"Error al emitir Nota Crédito: {ncResponse.ErrorMessage}";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Excepción al emitir Nota Crédito: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
         }
     }
 }

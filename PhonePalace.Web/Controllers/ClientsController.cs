@@ -106,9 +106,13 @@ namespace PhonePalace.Web.Controllers
             }
 
             // Permitir valores nulos para campos opcionales
-            if (string.IsNullOrWhiteSpace(viewModel.Email))
+            if (viewModel.ClientType == ClientTypeSelection.NaturalPerson && string.IsNullOrWhiteSpace(viewModel.Email))
             {
                 ModelState.Remove("Email");
+            }
+            else if (viewModel.ClientType == ClientTypeSelection.LegalEntity && string.IsNullOrWhiteSpace(viewModel.Email))
+            {
+                ModelState.AddModelError("Email", "El correo electrónico es obligatorio para personas jurídicas.");
             }
             if (viewModel.ClientType == ClientTypeSelection.NaturalPerson && string.IsNullOrWhiteSpace(viewModel.DocumentNumber))
             {
@@ -141,7 +145,7 @@ namespace PhonePalace.Web.Controllers
                     FirstName = viewModel.FirstName!.ToUpper(),
                     LastName = viewModel.LastName!.ToUpper(),
                     DocumentType = viewModel.DocumentType!.Value,
-                    DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null
+                    DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? null : viewModel.DocumentNumber.ToUpper()
                 };
             }
             else if (viewModel.ClientType == ClientTypeSelection.LegalEntity)
@@ -259,7 +263,7 @@ namespace PhonePalace.Web.Controllers
                 clientToUpdate.FirstName = viewModel.FirstName?.ToUpper() ?? string.Empty;
                 clientToUpdate.LastName = viewModel.LastName?.ToUpper() ?? string.Empty;
                 clientToUpdate.DocumentType = viewModel.DocumentType;
-                clientToUpdate.DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? viewModel.DocumentNumber.ToUpper() : null;
+                clientToUpdate.DocumentNumber = string.IsNullOrWhiteSpace(viewModel.DocumentNumber) ? null : viewModel.DocumentNumber.ToUpper();
                 clientToUpdate.Email = viewModel.Email;
                 clientToUpdate.PhoneNumber = viewModel.PhoneNumber;
                 clientToUpdate.DepartmentID = viewModel.DepartmentID;
@@ -298,7 +302,6 @@ namespace PhonePalace.Web.Controllers
                 ModelState.Remove("NitNumber");
                 ModelState.Remove("VerificationDigit");
             }
-            if (string.IsNullOrWhiteSpace(viewModel.Email)) ModelState.Remove("Email");
 
             if (!string.IsNullOrWhiteSpace(viewModel.NitNumber) && !string.IsNullOrWhiteSpace(viewModel.VerificationDigit))
             {

@@ -25,6 +25,7 @@ namespace PhonePalace.Web.ViewModels
         [Display(Name = "Dígito Verificación")]
         public string? VerificationDigit { get; set; }
         
+        [Required(ErrorMessage = "El correo electrónico es obligatorio.")]
         [EmailAddress]
         [Display(Name = "Correo Electrónico")]
         public string? Email { get; set; }
