@@ -33,14 +33,7 @@ namespace PhonePalace.Web.Controllers
         {
             if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
             {
-                TempData["Error"] = "La fecha de inicio no puede ser mayor a la fecha de fin.";
-            }
-
-            // Si no se especifican fechas, mostrar por defecto el último mes.
-            if (!startDate.HasValue && !endDate.HasValue)
-            {
-                startDate = DateTime.Today.AddMonths(-1);
-                endDate = DateTime.Today;
+                TempData["Error"] = "La fecha de inicio no puede ser mayor que la fecha de fin.";
             }
 
             ViewData["PageSize"] = pageSize ?? 10;

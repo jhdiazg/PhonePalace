@@ -163,8 +163,9 @@ namespace PhonePalace.Infrastructure.Services
                     if (friendlyMessage.Contains("already emitted", StringComparison.OrdinalIgnoreCase) || 
                         friendlyMessage.Contains("ya fue emitida", StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogWarning("La factura {InvoiceId} ya existe en Plemsi. Intentando recuperar datos...", sale.Invoice.InvoiceID);
-                        var recovery = await GetInvoiceStatusAsync(sale.Invoice.InvoiceID);
+                        // El número que Plemsi conoce es el que se intentó enviar (el consecutivo de ElectronicInvoice).
+                        _logger.LogWarning("La factura con número {InvoiceNumber} ya existe en Plemsi. Intentando recuperar datos...", electronicInvoiceNumber);
+                        var recovery = await GetInvoiceStatusAsync(electronicInvoiceNumber);
                         if (recovery.Success)
                         {
                             return recovery;
