@@ -410,43 +410,191 @@ namespace PhonePalace.Web.Controllers
                 return View(viewModel);
             }
 
-            // Delegar la lógica compleja al servicio de aplicación
             var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? User?.Identity?.Name;
             
-            // Mapeo de ViewModel a DTO
-            var saleDto = new SaleCreateDto
+            // Lógica transaccional completa para garantizar la creación de CxC
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
             {
-                ClientID = viewModel.ClientID,
-                SaleDate = viewModel.SaleDate,
-                SaleChannel = viewModel.SaleChannel,
-                Details = viewModel.Details?.Select(d => new SaleDetailDto
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    ProductID = d.ProductID,
-                    Quantity = d.Quantity,
-                    UnitPrice = d.UnitPrice,
-                    IMEI = d.IMEI,
-                    Serial = d.Serial
-                }).ToList() ?? new List<SaleDetailDto>(),
-                Payments = viewModel.Payments?.Select(p => new PaymentDto
+                    // Obtener el cliente para asignarlo a las entidades requeridas
+                    var client = await _context.Clients.FindAsync(viewModel.ClientID.GetValueOrDefault());
+                    if (client == null) throw new Exception("Cliente no encontrado.");
+
+                    // 1. Crear Factura (Invoice)
+                    var invoice = new Invoice
+                    {
+                        SaleDate = viewModel.SaleDate,
+                        Status = InvoiceStatus.Completed,
+                        UserId = userId,
+                        // Asumiendo que Invoice tiene relación con Client, si no, se ignora
+                        // ClientID = viewModel.ClientID 
+                    };
+                    _context.Invoices.Add(invoice);
+                    await _context.SaveChangesAsync();
+
+                    // 2. Crear Venta (Sale)
+                    var sale = new Sale
+                    {
+                        Invoice = invoice, // Requerido por EF Core
+                        Client = client, // Requerido por EF Core
+                        InvoiceID = invoice.InvoiceID,
+                        ClientID = viewModel.ClientID!.Value,
+                        SaleDate = viewModel.SaleDate,
+                        Details = new List<SaleDetail>()
+                    };
+
+                    decimal subtotal = 0;
+                    decimal totalTax = 0;
+                    decimal total = 0;
+                    
+                    var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+                    if (taxRate > 1) taxRate /= 100;
+
+                    // 3. Procesar Detalles e Inventario
+                    foreach (var item in viewModel.Details)
+                    {
+                        var product = await _context.Products.FindAsync(item.ProductID);
+                        if (product == null) throw new Exception($"Producto no encontrado: {item.ProductID}");
+                        var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == item.ProductID);
+
+                        if (inventory == null || inventory.Stock < item.Quantity)
+                        {
+                            throw new Exception($"Stock insuficiente para el producto: {product?.Name}");
+                        }
+
+                        // Actualizar Stock
+                        inventory.Stock -= item.Quantity;
+                        inventory.LastUpdated = DateTime.Now;
+                        _context.Update(inventory);
+
+                        // Crear Detalle
+                        var detail = new SaleDetail
+                        {
+                            Sale = sale, // Requerido por EF Core
+                            Product = product, // Requerido por EF Core
+                            ProductID = item.ProductID,
+                            Quantity = item.Quantity,
+                            UnitPrice = item.UnitPrice,
+                            Cost = product.Cost,
+                            IMEI = item.IMEI,
+                            Serial = item.Serial
+                        };
+                        sale.Details.Add(detail);
+
+                        // Cálculos
+                        decimal lineTotal = item.Quantity * item.UnitPrice;
+                        decimal lineBase = lineTotal / (1 + taxRate);
+                        decimal lineTax = lineTotal - lineBase;
+
+                        subtotal += lineBase;
+                        totalTax += lineTax;
+                        total += lineTotal;
+
+                        // Kardex
+                        _context.Set<InventoryMovement>().Add(new InventoryMovement
+                        {
+                            ProductId = item.ProductID,
+                            Date = DateTime.Now,
+                            Type = InventoryMovementType.Sale,
+                            Quantity = -item.Quantity,
+                            UnitCost = product.Cost,
+                            StockBalance = (int)inventory.Stock,
+                            Reference = $"Venta #{invoice.InvoiceID}",
+                            UserId = userId
+                        });
+                    }
+
+                    _context.Sales.Add(sale);
+                    await _context.SaveChangesAsync(); // Guardar para obtener SaleID
+
+                    // Actualizar totales de Factura
+                    invoice.Subtotal = subtotal;
+                    invoice.Tax = totalTax;
+                    invoice.Total = total;
+                    _context.Update(invoice);
+
+                    // 4. Procesar Pagos
+                    foreach (var p in viewModel.Payments!)
+                    {
+                        // Convertir string a Enum PaymentMethod
+                        if (!Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var paymentMethodEnum))
+                        {
+                            throw new Exception($"Método de pago inválido: {p.PaymentMethod}");
+                        }
+
+                        var payment = new Payment
+                        {
+                            InvoiceID = invoice.InvoiceID,
+                            PaymentDate = viewModel.SaleDate,
+                            Amount = p.Amount,
+                            PaymentMethod = paymentMethodEnum,
+                            ReferenceNumber = p.ReferenceNumber,
+                            BankID = p.BankID
+                        };
+                        _context.Payments.Add(payment);
+
+                        if (paymentMethodEnum == PaymentMethod.Cash)
+                        {
+                            await _cashService.RegisterIncomeAsync(p.Amount, $"Venta #{invoice.InvoiceID}", userId!);
+                        }
+                        else if (paymentMethodEnum == PaymentMethod.Credit)
+                        {
+                            // --- CORRECCIÓN: Generar CxC para Crédito ---
+                            var ar = new AccountReceivable
+                            {
+                                Client = client, // Requerido por EF Core
+                                ClientID = sale.ClientID,
+                                SaleID = sale.SaleID,
+                                Date = sale.SaleDate,
+                                TotalAmount = p.Amount,
+                                Balance = p.Amount,
+                                Type = "Venta",
+                                Description = $"Venta #{invoice.InvoiceID} (Crédito)",
+                                IsPaid = false
+                            };
+                            _context.AccountReceivables.Add(ar);
+                        }
+                        else if (paymentMethodEnum == PaymentMethod.CreditCard)
+                        {
+                            // Generar verificación pendiente para TC
+                            if (p.BankID.HasValue)
+                            {
+                                var verification = new CreditCardVerification
+                                {
+                                    SaleID = sale.SaleID,
+                                    BankID = p.BankID.Value,
+                                    Amount = p.Amount,
+                                    CreationDate = DateTime.Now,
+                                    Status = VerificationStatus.Pending,
+                                    Payment = payment
+                                };
+                                _context.CreditCardVerifications.Add(verification);
+                            }
+                        }
+                        else if (p.BankID.HasValue && (paymentMethodEnum == PaymentMethod.Transfer || paymentMethodEnum == PaymentMethod.DebitCard))
+                        {
+                            // Ingreso directo a Banco
+                            await _bankService.RegisterManualMovementAsync(p.BankID.Value, BankTransactionType.TransferIn, p.Amount, $"Venta #{invoice.InvoiceID} ({paymentMethodEnum})");
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    await _auditService.LogAsync("Ventas", $"Creó la venta #{sale.SaleID} por {total:C}.");
+                }
+                catch (Exception ex)
                 {
-                    PaymentMethod = p.PaymentMethod,
-                    Amount = p.Amount,
-                    ReferenceNumber = p.ReferenceNumber,
-                    BankID = p.BankID
-                }).ToList() ?? new List<PaymentDto>()
-            };
+                    await transaction.RollbackAsync();
+                    // Relanzar o manejar error
+                    throw new Exception($"Error procesando venta: {ex.Message}");
+                }
+            });
 
-            var result = await _salesService.ProcessSaleAsync(saleDto, userId!);
-
-            if (result.Success)
-            {
+            // Si llegamos aquí sin excepción, fue exitoso
                 return RedirectToAction(nameof(Index));
-            }
-            else
-            {
-                ModelState.AddModelError("", $"Error al procesar la venta: {result.ErrorMessage}");
-                return View(viewModel);
-            }
         }
 
         [HttpGet]

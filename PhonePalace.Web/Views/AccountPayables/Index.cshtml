@@ -1,120 +1,109 @@
 @model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Domain.Entities.AccountPayable>
+@using PhonePalace.Web.Helpers
 
 @{
     ViewData["Title"] = "Cuentas por Pagar";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Cuentas por Pagar</h1>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Crear Nueva
-    </a>
-</div>
+<h1>@ViewData["Title"]</h1>
 
-<div class="row mb-4">
-    <div class="col-md-4">
-        <div class="card text-white bg-danger shadow-sm">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title mb-0">Total por Pagar</h5>
-                    <small class="text-white-50">Según filtros aplicados</small>
-                    <p class="card-text display-6 fw-bold mt-2">
-                        @(((decimal)(ViewBag.TotalPayable ?? 0)).ToString("C"))
-                    </p>
-                </div>
-                <i class="bi bi-cash-stack display-4 opacity-50"></i>
-            </div>
-        </div>
-    </div>
-</div>
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <form asp-action="Index" method="get" class="row g-3 align-items-end" id="apFilterForm">
-            <div class="col-md-2">
-                <label class="form-label">Fecha Vencimiento (Inicio)</label>
-                <input type="date" name="startDate" value="@ViewData["StartDate"]" class="form-control" />
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Fecha Vencimiento (Fin)</label>
-                <input type="date" name="endDate" value="@ViewData["EndDate"]" class="form-control" />
+        <h5 class="card-title">Filtros</h5>
+        <form asp-action="Index" method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="startDate" class="form-label">Fecha Vencimiento (Desde)</label>
+                <input type="date" name="startDate" id="startDate" value="@ViewData["StartDate"]" class="form-control" />
             </div>
             <div class="col-md-3">
-                <label class="form-label">Estado</label>
-                <select name="status" class="form-select" asp-items="ViewBag.StatusList"></select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Tipo</label>
-                <select name="type" class="form-select" asp-items="ViewBag.TypeList"><option value="">-- Todos --</option></select>
+                <label for="endDate" class="form-label">Fecha Vencimiento (Hasta)</label>
+                <input type="date" name="endDate" id="endDate" value="@ViewData["EndDate"]" class="form-control" />
             </div>
             <div class="col-md-2">
-                <label class="form-label">Mostrar</label>
-                <select name="pageSize" class="form-select" onchange="this.form.submit()">
-                    @{ int pageSize = (int)(ViewData["PageSize"] ?? 10); }
-                    <option value="10" selected="@(pageSize == 10)">10</option>
-                    <option value="20" selected="@(pageSize == 20)">20</option>
-                    <option value="50" selected="@(pageSize == 50)">50</option>
-                    <option value="100" selected="@(pageSize == 100)">100</option>
+                <label for="status" class="form-label">Estado</label>
+                <select name="status" id="status" class="form-select" asp-items="ViewBag.StatusList"></select>
+            </div>
+            <div class="col-md-2">
+                <label for="type" class="form-label">Tipo</label>
+                <select name="type" id="type" class="form-select" asp-items="ViewBag.TypeList">
+                    <option value="">Todos</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-primary flex-grow-1">Filtrar</button>
-                <a asp-action="Index" class="btn btn-secondary">Limpiar</a>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
             </div>
         </form>
     </div>
 </div>
 
 <div class="card shadow-sm">
-    <div class="card-body p-0">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Resultados</span>
+        <a asp-action="Create" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-circle"></i> Crear CxP Manual
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 fw-bold">
+            Total Pendiente (en esta consulta): @(ViewBag.TotalPayable != null ? ((decimal)ViewBag.TotalPayable).ToString("C") : "$0")
+        </div>
         <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
-                <thead class="table-light">
+            <table class="table table-striped table-hover">
+                <thead>
                     <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Proveedor / Beneficiario</th>
+                        <th>ID</th>
+                        <th>Beneficiario / Proveedor</th>
                         <th>Documento</th>
-                        <th>Vencimiento</th>
-                        <th>Saldo Pendiente</th>
-                        <th>Monto Original</th>
-                        <th>Estado</th>
-                        <th class="text-end">Acciones</th>
+                        <th>Tipo</th>
+                        <th>Fecha Vencimiento</th>
+                        <th class="text-end">Monto Total</th>
+                        <th class="text-end">Saldo Pendiente</th>
+                        <th class="text-center">Estado</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var item in Model)
                     {
-                        <tr>
-                            <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
-                            <td>@item.Type</td>
+                        <tr class="@(item.DueDate.Date < DateTime.Today.Date && !item.IsPaid ? "table-danger" : "")">
                             <td>
-                                @if (item.Purchase != null && item.Purchase.Supplier != null)
+                                @if (item.PurchaseId.HasValue)
                                 {
-                                    @item.Purchase.Supplier.DisplayName
+                                    <a asp-controller="Purchases" asp-action="Details" asp-route-id="@item.PurchaseId">Compra #@item.PurchaseId</a>
                                 }
                                 else
                                 {
-                                    @(item.Beneficiary ?? "Manual / Varios")
+                                    @item.Id
                                 }
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark border">@EnumHelper.GetDisplayName(item.DocumentType)</span>
-                                <span class="ms-1">@item.DocumentNumber</span>
+                                @(item.Purchase?.Supplier?.DisplayName ?? item.Beneficiary)
                             </td>
                             <td>
-                                @if (item.DueDate < DateTime.Now && !item.IsPaid)
+                                <small>@item.DocumentType @item.DocumentNumber</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@item.Type</span>
+                            </td>
+                            <td>
+                                @item.DueDate.ToString("dd/MM/yyyy")
+                                @if (item.DueDate.Date < DateTime.Today.Date && !item.IsPaid)
                                 {
-                                    <span class="text-danger fw-bold">@item.DueDate.ToString("dd/MM/yyyy")</span>
-                                }
-                                else
-                                {
-                                    @item.DueDate.ToString("dd/MM/yyyy")
+                                    <span class="badge bg-danger ms-1">Vencida</span>
                                 }
                             </td>
-                            <td class="fw-bold text-danger">@item.Balance.ToString("C")</td>
-                            <td class="text-muted">@item.Amount.ToString("C")</td>
-                            <td>
+                            <td class="text-end">@item.Amount.ToString("C")</td>
+                            <td class="text-end fw-bold">@item.Balance.ToString("C")</td>
+                            <td class="text-center">
                                 @if (item.IsPaid)
                                 {
                                     <span class="badge bg-success">Pagada</span>
@@ -125,68 +114,24 @@
                                 }
                             </td>
                             <td class="text-end">
-                                <div class="btn-group" role="group">
-                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info text-white" title="Detalles">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    @if (!item.IsPaid)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" title="Eliminar">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
-                                    }
-                                </div>
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-info btn-sm" title="Ver Detalles y Pagos"><i class="bi bi-eye"></i></a>
+                                @if (!item.IsPaid)
+                                {
+                                    <a asp-action="Pay" asp-route-id="@item.Id" class="btn btn-success btn-sm" title="Registrar Pago"><i class="bi bi-cash-coin"></i></a>
+                                }
                             </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">No se encontraron cuentas por pagar con los filtros seleccionados.</td>
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-    </div>
-    <div class="card-footer">
-        @{
-            var prevDisabled = !Model.HasPreviousPage ? "disabled" : "";
-            var nextDisabled = !Model.HasNextPage ? "disabled" : "";
-        }
-        <div class="d-flex justify-content-center align-items-center py-3">
-            <a asp-action="Index" 
-               asp-route-pageNumber="@(Model.PageIndex - 1)" 
-               asp-route-startDate="@ViewData["StartDate"]"
-               asp-route-endDate="@ViewData["EndDate"]"
-               asp-route-status="@ViewData["CurrentStatus"]"
-               asp-route-pageSize="@ViewData["PageSize"]"
-               class="btn btn-secondary @prevDisabled">Anterior</a>
-            
-            <span class="mx-3">Página @Model.PageIndex de @Model.TotalPages</span>
-            
-            <a asp-action="Index" 
-               asp-route-pageNumber="@(Model.PageIndex + 1)" 
-               asp-route-startDate="@ViewData["StartDate"]"
-               asp-route-endDate="@ViewData["EndDate"]"
-               asp-route-status="@ViewData["CurrentStatus"]"
-               asp-route-pageSize="@ViewData["PageSize"]"
-               class="btn btn-secondary @nextDisabled">Siguiente</a>
-        </div>
+
+        <partial name="_Pagination" model="Model" />
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        $(document).ready(function () {
-            $('#apFilterForm').on('submit', function (e) {
-                var startDate = $('input[name="startDate"]').val();
-                var endDate = $('input[name="endDate"]').val();
-
-                if (startDate && endDate) {
-                    if (new Date(startDate) > new Date(endDate)) {
-                        e.preventDefault();
-                        alert('La fecha de inicio no puede ser mayor a la fecha de fin.');
-                    }
-                }
-            });
-        });
-    </script>
-}

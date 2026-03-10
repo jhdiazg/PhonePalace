@@ -36,6 +36,13 @@ namespace PhonePalace.Web.Controllers
                 TempData["Error"] = "La fecha de inicio no puede ser mayor a la fecha de fin.";
             }
 
+            // Si no se especifican fechas, mostrar por defecto el último mes.
+            if (!startDate.HasValue && !endDate.HasValue)
+            {
+                startDate = DateTime.Today.AddMonths(-1);
+                endDate = DateTime.Today;
+            }
+
             ViewData["PageSize"] = pageSize ?? 10;
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
@@ -56,11 +63,6 @@ namespace PhonePalace.Web.Controllers
             if (endDate.HasValue)
             {
                 accountPayablesQuery = accountPayablesQuery.Where(a => a.DueDate < endDate.Value.Date.AddDays(1));
-            }
-
-            if (!string.IsNullOrEmpty(type))
-            {
-                accountPayablesQuery = accountPayablesQuery.Where(a => a.Type == type);
             }
 
             if (!string.IsNullOrEmpty(type))
