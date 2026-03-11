@@ -1,4 +1,4 @@
-@model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Domain.Entities.AccountPayable>
+@model PhonePalace.Web.Helpers.PaginatedList<PhonePalace.Web.ViewModels.AccountPayableIndexViewModel>
 @using PhonePalace.Web.Helpers
 
 @{
@@ -86,7 +86,7 @@
                                 }
                             </td>
                             <td>
-                                @(item.Purchase?.Supplier?.DisplayName ?? item.Beneficiary)
+                                @item.Beneficiary
                             </td>
                             <td>
                                 <small>@item.DocumentType @item.DocumentNumber</small>

@@ -6,6 +6,7 @@ using PhonePalace.Domain.Entities;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Web.Helpers;
+using PhonePalace.Web.ViewModels;
 using System.Threading.Tasks;
 using System.Linq;
 using System;
@@ -14,6 +15,7 @@ using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
+    [Authorize(Roles = "Administrador,Cajero")]
     public class AccountPayablesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -91,9 +93,23 @@ namespace PhonePalace.Web.Controllers
             // Calcular totales antes de paginar
             ViewBag.TotalPayable = await accountPayablesQuery.SumAsync(x => x.Balance);
             
+            var viewModelQuery = accountPayablesQuery.Select(a => new AccountPayableIndexViewModel
+            {
+                Id = a.Id,
+                DocumentType = EnumHelper.GetDisplayName(a.DocumentType),
+                DocumentNumber = a.DocumentNumber,
+                Beneficiary = a.Purchase != null ? a.Purchase.Supplier.DisplayName : a.Beneficiary,
+                Amount = a.Amount,
+                Balance = a.Balance,
+                DueDate = a.DueDate,
+                IsPaid = a.IsPaid,
+                PurchaseId = a.PurchaseId,
+                Type = a.Type
+            });
+
             // Ordenamos por fecha de vencimiento para ver primero lo más urgente
-            var accountPayables = await PaginatedList<AccountPayable>.CreateAsync(accountPayablesQuery.OrderBy(a => a.DueDate), pageNumber ?? 1, pageSize ?? 10);
-            return View(accountPayables);
+            var paginatedResult = await PaginatedList<AccountPayableIndexViewModel>.CreateAsync(viewModelQuery.OrderBy(a => a.DueDate), pageNumber ?? 1, pageSize ?? 10);
+            return View(paginatedResult);
         }
 
         public async Task<IActionResult> Details(int? id)
@@ -156,38 +172,47 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,PurchaseId,DocumentType,DocumentNumber,CreatedDate,DueDate,IsPaid")] AccountPayable accountPayable)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,DocumentType,DocumentNumber,DueDate,IsPaid,Beneficiary")] AccountPayable formModel)
         {
-            if (id != accountPayable.Id) return NotFound();
-           
-           
-            // Eliminamos Amount del Bind para no sobrescribirlo con 0 si está disabled en la vista
-            // Recuperamos la entidad original para mantener el saldo y otros datos críticos
-            var originalAp = await _context.AccountPayables.AsNoTracking().FirstOrDefaultAsync(ap => ap.Id == id);
-            if (originalAp == null) return NotFound();
-
-            // Mantenemos el monto original (saldo actual)
-            accountPayable.Amount = originalAp.Amount;
-            accountPayable.Balance = originalAp.Balance;
-            accountPayable.Type = originalAp.Type; // Preservar el tipo original si no se edita en la vista
+            if (id != formModel.Id)
+            {
+                return NotFound();
+            }
 
             if (ModelState.IsValid)
             {
+                var apToUpdate = await _context.AccountPayables.FindAsync(id);
+                if (apToUpdate == null)
+                {
+                    return NotFound();
+                }
+
+                // This is a safer update pattern. We load the entity from the DB
+                // and then update only the properties that should be changed from the form.
+                apToUpdate.DocumentType = formModel.DocumentType;
+                apToUpdate.DocumentNumber = formModel.DocumentNumber?.ToUpper();
+                apToUpdate.DueDate = formModel.DueDate;
+                apToUpdate.IsPaid = formModel.IsPaid;
+
+                // Beneficiary should only be editable for manual accounts payable.
+                if (apToUpdate.PurchaseId == null)
+                {
+                    apToUpdate.Beneficiary = formModel.Beneficiary;
+                }
+
                 try
                 {
-                    accountPayable.DocumentNumber = accountPayable.DocumentNumber?.ToUpper();
-                    _context.Update(accountPayable);
                     await _context.SaveChangesAsync();
-                    await _auditService.LogAsync("Cuentas por Pagar", $"Editó la cuenta por pagar #{accountPayable.Id}.");
+                    await _auditService.LogAsync("Cuentas por Pagar", $"Editó la cuenta por pagar #{apToUpdate.Id}.");
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!AccountPayableExists(accountPayable.Id)) return NotFound();
+                    if (!AccountPayableExists(apToUpdate.Id)) return NotFound();
                     else throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(accountPayable);
+            return View(formModel);
         }
 
         public async Task<IActionResult> Delete(int? id)

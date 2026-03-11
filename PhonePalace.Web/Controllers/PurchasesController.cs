@@ -628,6 +628,7 @@ namespace PhonePalace.Web.Controllers
                                 PurchaseId = purchase.Id,
                                 Purchase = purchase,
                                 Amount = receivedAmount, // Solo el monto de lo recibido en esta transacción
+                                Balance = receivedAmount, // <-- CORRECCIÓN: Inicializar el saldo
                                 DueDate = purchase.PaymentMethod == PurchasePaymentMethod.Credit ? DateTime.Now.AddDays(30) : DateTime.Now,
                                 IsPaid = false,
                                 DocumentType = model.DocumentType, 
