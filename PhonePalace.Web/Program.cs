@@ -106,7 +106,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Identity/Account/Login";
     options.LogoutPath = "/Identity/Account/Logout";
-    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+    options.AccessDeniedPath = "/Home/AccessDenied";
 
     // --- INICIO: Configuración de Expiración de Sesión de Autenticación ---
     // Forzar el cierre de sesión después de un tiempo fijo, sin importar la actividad del usuario.
@@ -183,5 +183,24 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();
+
+// --- Inicialización de Datos (Seeders) ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        // Ejecutar Seeder de Roles y Admin (Crea el rol "Contador" si no existe)
+        await DbSeeder.SeedRolesAndAdminAsync(services);
+        // Ejecutar Seeder de Datos Maestros (Departamentos, Municipios, etc.)
+        await DataSeeder.SeedDaneDataAsync(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocurrió un error al ejecutar la siembra de datos iniciales.");
+    }
+}
 
 app.Run();

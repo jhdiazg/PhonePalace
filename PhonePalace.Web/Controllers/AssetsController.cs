@@ -38,6 +38,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet("Create")]
+        [Authorize(Roles = "Administrador,Cajero")]
         public IActionResult Create()
         {
             ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
@@ -46,6 +47,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Create(Asset asset, PaymentMethod? paymentMethod)
         {
             if (ModelState.IsValid)
@@ -100,6 +102,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("DarDeBaja/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Retire(int id)
         {
             var asset = await _context.Assets.FindAsync(id);

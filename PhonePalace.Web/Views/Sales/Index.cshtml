@@ -22,12 +22,19 @@
                     <label for="endDate" class="form-label">Fecha Fin</label>
                     <input type="date" id="endDate" name="endDate" value="@ViewData["EndDate"]" class="form-control">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="clientName" class="form-label">Nombre del Cliente</label>
                     <input type="text" id="clientName" name="clientName" value="@ViewData["ClientName"]" class="form-control" placeholder="Buscar por nombre...">
                 </div>
-                <div class="col-md-2">
-                    <label for="pageSize" class="form-label"> Mostrar registros</label>
+                @if (!User.IsInRole("Contador"))
+                {
+                    <div class="col-md-2">
+                        <label for="invoiceType" class="form-label">Tipo Factura</label>
+                        @Html.DropDownList("invoiceType", (IEnumerable<SelectListItem>)ViewBag.InvoiceTypes, new { @class = "form-select", onchange = "this.form.submit();" })
+                    </div>
+                }
+                <div class="col-md-1">
+                    <label for="pageSize" class="form-label">Registros</label>
                     <select id="pageSize" name="pageSize" class="form-select" onchange="this.form.submit()">
                         @{ int pSize = (int)(ViewData["PageSize"] ?? 10); }
                         <option value="10" selected="@(pSize == 10)">10</option>

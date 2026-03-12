@@ -13,7 +13,7 @@ using PhonePalace.Domain.Entities;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize] // Requiere que el usuario inicie sesión para ver el dashboard
+    [Authorize(Roles = "Administrador,Vendedor,Almacenista,Cajero,Contador")] // Requiere que el usuario inicie sesión para ver el dashboard
     public class HomeController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -59,11 +59,18 @@ namespace PhonePalace.Web.Controllers
                 })
                 .ToListAsync();
 
-            var currentMonthSales = await _context.Invoices
+            var invoicesQuery = _context.Invoices
                 .Where(i => i.SaleDate.Month == DateTime.Now.Month &&
                             i.SaleDate.Year == DateTime.Now.Year &&
-                            i.Status == InvoiceStatus.Completed)
-                .SumAsync(i => i.Total);
+                            i.Status == InvoiceStatus.Completed);
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo ventas con IVA.
+                invoicesQuery = invoicesQuery.Where(i => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == i.InvoiceID && e.Status == "Accepted"));
+            }
+
+            var currentMonthSales = await invoicesQuery.SumAsync(i => i.Total);
 
             // --- NUEVO: Desglose Facturación Electrónica vs Local ---
             var electronicSales = await _context.Set<ElectronicInvoice>()
@@ -121,18 +128,41 @@ namespace PhonePalace.Web.Controllers
             // Aseguramos que sea la consulta simple
             var banksBalance = await _context.Banks.Where(b => b.IsActive).SumAsync(b => b.Balance);
 
-            var totalReceivables = await _context.AccountReceivables.Where(ar => !ar.IsPaid).SumAsync(ar => ar.Balance);
-            var totalPayables = await _context.AccountPayables.Where(ap => !ap.IsPaid).SumAsync(ap => ap.Balance);
+            var arQuery = _context.AccountReceivables.Where(ar => !ar.IsPaid);
+            if (User.IsInRole("Contador"))
+            {
+                var saleIdsWithVat = _context.Sales
+                    .Where(s => _context.Set<ElectronicInvoice>().Any(ei => ei.InvoiceID == s.InvoiceID && ei.Status == "Accepted"))
+                    .Select(s => s.SaleID);
+                arQuery = arQuery.Where(ar => ar.SaleID.HasValue && saleIdsWithVat.Contains(ar.SaleID.Value));
+            }
+            var totalReceivables = await arQuery.SumAsync(ar => ar.Balance);
+
+            var apQuery = _context.AccountPayables.Where(ap => !ap.IsPaid);
+            if (User.IsInRole("Contador"))
+            {
+                var purchaseIdsWithVat = _context.Purchases
+                    .Where(p => p.PurchaseDetails.Any(pd => pd.TaxRate > 0))
+                    .Select(p => p.Id);
+                apQuery = apQuery.Where(ap => ap.PurchaseId.HasValue && purchaseIdsWithVat.Contains(ap.PurchaseId.Value));
+            }
+            var totalPayables = await apQuery.SumAsync(ap => ap.Balance);
 
             // --- Lógica para Gráfica de Márgenes (Mes Actual) ---
             // Obtenemos los detalles de venta del mes actual
-            var salesDetails = await _context.Set<Domain.Entities.SaleDetail>()
+            var salesDetailsQuery = _context.Set<Domain.Entities.SaleDetail>()
                 .Include(d => d.Product)
                 .Include(d => d.Sale)
                 .Where(d => d.Sale.SaleDate.Month == DateTime.Now.Month && 
                             d.Sale.SaleDate.Year == DateTime.Now.Year &&
-                            !d.Sale.IsDeleted)
-                .ToListAsync();
+                            !d.Sale.IsDeleted);
+
+            if (User.IsInRole("Contador"))
+            {
+                salesDetailsQuery = salesDetailsQuery.Where(d => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == d.Sale.InvoiceID && e.Status == "Accepted"));
+            }
+
+            var salesDetails = await salesDetailsQuery.ToListAsync();
 
             // Obtener devoluciones asociadas a estas ventas para calcular cantidad neta real
             var saleIds = salesDetails.Select(s => s.SaleID).Distinct().ToList();
@@ -197,6 +227,13 @@ namespace PhonePalace.Web.Controllers
             };
 
             return View(viewModel);
+        }
+
+        [AllowAnonymous]
+        public IActionResult AccessDenied()
+        {
+            TempData["Error"] = "No tiene los permisos necesarios para acceder a este recurso.";
+            return RedirectToAction(nameof(Index));
         }
 
         // En HomeController.cs

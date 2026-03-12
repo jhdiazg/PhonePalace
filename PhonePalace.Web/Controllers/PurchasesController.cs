@@ -18,7 +18,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Administrador,Almacenista")]
+    [Authorize(Roles = "Administrador,Almacenista,Contador")]
     public class PurchasesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -113,6 +113,12 @@ namespace PhonePalace.Web.Controllers
                 purchasesQuery = purchasesQuery.Where(p => p.Status == status.Value);
             }
 
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo mostrar compras que tienen IVA.
+                purchasesQuery = purchasesQuery.Where(p => p.PurchaseDetails.Any(d => d.TaxRate > 0));
+            }
+
             purchasesQuery = purchasesQuery.OrderByDescending(p => p.PurchaseDate);
 
             var paginatedPurchases = await PaginatedList<Purchase>.CreateAsync(purchasesQuery.AsNoTracking(), pageNumber ?? 1, pageSize ?? 10);
@@ -121,6 +127,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Compras/Crear")]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Create()
         {
             var viewModel = new PurchaseCreateViewModel
@@ -138,6 +145,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/Crear")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Create(PurchaseCreateViewModel model)
         {
             if (ModelState.IsValid)
@@ -199,10 +207,21 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
+            if (User.IsInRole("Contador"))
+            {
+                // Validar que la compra tenga IVA para ser vista por el contador.
+                if (!purchase.PurchaseDetails.Any(d => d.TaxRate > 0))
+                {
+                    TempData["Error"] = "Los contadores solo pueden ver compras con IVA.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
             return View(purchase);
         }
 
         [Route("Compras/Editar/{id}")]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Edit(int id)
         {
             var purchase = await _context.Purchases
@@ -251,6 +270,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/Editar/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Edit(int id, PurchaseEditViewModel model)
         {
             if (id != model.Id)
@@ -320,6 +340,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/Confirmar/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> ConfirmOrder(int id)
         {
             var purchase = await _context.Purchases.FirstOrDefaultAsync(p => p.Id == id);
@@ -345,6 +366,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/MarcarComoFacturada/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> MarkAsBilled(int id)
         {
             var purchase = await _context.Purchases.FirstOrDefaultAsync(p => p.Id == id);
@@ -370,6 +392,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/MarcarComoPagada/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> MarkAsPaid(int id)
         {
             var purchase = await _context.Purchases.FirstOrDefaultAsync(p => p.Id == id);
@@ -396,6 +419,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [Route("Compras/Eliminar/{id}")]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Delete(int id)
         {
             var purchase = await _context.Purchases
@@ -412,6 +436,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost, ActionName("Delete")]
         [Route("Compras/Eliminar/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var purchase = await _context.Purchases.Include(p => p.PurchaseDetails).FirstOrDefaultAsync(p => p.Id == id);
@@ -481,6 +506,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("Compras/Recibir/{id}")]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Receive(int id)
         {
             var purchase = await _context.Purchases
@@ -520,6 +546,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("Compras/Recibir/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Almacenista")]
         public async Task<IActionResult> Receive(int id, PurchaseReceiveViewModel model)
         {
             if (id != model.PurchaseId) return NotFound();
@@ -678,6 +705,16 @@ namespace PhonePalace.Web.Controllers
             if (purchase == null)
             {
                 return NotFound();
+            }
+
+            if (User.IsInRole("Contador"))
+            {
+                // Validar que la compra tenga IVA para ser vista por el contador.
+                if (!purchase.PurchaseDetails.Any(d => d.TaxRate > 0))
+                {
+                    TempData["Error"] = "Los contadores solo pueden generar PDF de compras con IVA.";
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
             string wwwRootPath = _webHostEnvironment.WebRootPath;

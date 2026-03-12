@@ -22,7 +22,7 @@ using Microsoft.Extensions.Logging;
 namespace PhonePalace.Web.Controllers
 {
     [Route("Ventas")]
-    [Authorize(Roles = "Administrador,Vendedor")]
+    [Authorize]
     public class SalesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -54,7 +54,8 @@ namespace PhonePalace.Web.Controllers
 
     [HttpGet]
     [Route("")]
-    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string clientName, int? pageNumber, int? pageSize)
+    [Authorize(Roles = "Administrador,Vendedor,Contador")]
+    public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string clientName, int? pageNumber, int? pageSize, string invoiceType = "All")
         {
             // Validaciones de fechas
             bool datesAdjusted = false;
@@ -80,7 +81,8 @@ namespace PhonePalace.Web.Controllers
                 {
                     startDate = startDate?.ToString("yyyy-MM-dd"),
                     endDate = endDate?.ToString("yyyy-MM-dd"),
-                    clientName
+                    clientName,
+                    invoiceType
                 });
             }
 
@@ -116,6 +118,26 @@ namespace PhonePalace.Web.Controllers
             if (startDate.HasValue)
             {
                 salesQuery = salesQuery.Where(s => s.SaleDate.Date >= startDate.Value.Date);
+            }
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo mostrar ventas que tienen IVA (factura electrónica).
+                salesQuery = salesQuery.Where(s => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == s.InvoiceID && e.Status == "Accepted"));
+            }
+            else
+            {
+                // Aplicar filtro de tipo de factura para otros roles
+                switch (invoiceType)
+                {
+                    case "Electronic":
+                        salesQuery = salesQuery.Where(s => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == s.InvoiceID && e.Status == "Accepted"));
+                        break;
+                    case "Local": // Remisionado
+                        salesQuery = salesQuery.Where(s => !_context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == s.InvoiceID && e.Status == "Accepted"));
+                        break;
+                    // "All" no requiere filtro adicional
+                }
             }
 
             if (endDate.HasValue)
@@ -156,12 +178,21 @@ namespace PhonePalace.Web.Controllers
             ViewData["ClientName"] = clientName;
             ViewData["Total"] = total;
             ViewData["TotalProfit"] = totalProfit;
+            ViewData["CurrentInvoiceType"] = invoiceType;
+
+            ViewBag.InvoiceTypes = new List<SelectListItem>
+            {
+                new SelectListItem { Text = "Todas", Value = "All", Selected = invoiceType == "All" },
+                new SelectListItem { Text = "Factura Electrónica", Value = "Electronic", Selected = invoiceType == "Electronic" },
+                new SelectListItem { Text = "Remisionado", Value = "Local", Selected = invoiceType == "Local" }
+            };
 
             return View(sales);
         }
 
     [HttpGet]
     [Route("Details/{id?}")]
+    [Authorize(Roles = "Administrador,Vendedor,Contador")]
     public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -181,6 +212,17 @@ namespace PhonePalace.Web.Controllers
             if (sale == null)
             {
                 return NotFound();
+            }
+
+            if (User.IsInRole("Contador"))
+            {
+                // Validar que la venta tenga IVA para ser vista por el contador.
+                var hasVat = await _context.Set<ElectronicInvoice>().AnyAsync(e => e.InvoiceID == sale.InvoiceID && e.Status == "Accepted");
+                if (!hasVat)
+                {
+                    TempData["Error"] = "Los contadores solo pueden ver ventas con factura electrónica (IVA).";
+                    return RedirectToAction(nameof(Index));
+                }
             }
 
             // Obtener información de la cuenta por cobrar (crédito) asociada si existe
@@ -276,6 +318,7 @@ namespace PhonePalace.Web.Controllers
         }
     [HttpGet]
     [Route("Create")]
+    [Authorize(Roles = "Administrador,Vendedor")]
     public async Task<IActionResult> Create()
         {
             // Validar que la caja esté abierta antes de permitir registrar venta
@@ -336,6 +379,7 @@ namespace PhonePalace.Web.Controllers
     [HttpPost]
     [Route("Create")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Administrador,Vendedor")]
     public async Task<IActionResult> Create(ViewModels.SaleCreateViewModel viewModel)
         {
             viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
@@ -599,6 +643,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("Delete/{id}")]
+        [Authorize(Roles = "Administrador,Vendedor")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -620,6 +665,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("GetClientBalance/{clientId}")]
+        [Authorize(Roles = "Administrador,Vendedor,Contador")]
         public async Task<IActionResult> GetClientBalance(int clientId)
         {
             var client = await _context.Clients
@@ -634,6 +680,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost, ActionName("Delete")]
         [Route("Delete/{id}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Vendedor")]
         public async Task<IActionResult> DeleteConfirmed(int id, string? cancellationReason)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -770,6 +817,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("GenerarFactura/{id}")]
+        [Authorize(Roles = "Administrador,Vendedor,Contador")]
         public async Task<IActionResult> GenerateInvoicePdf(int id)
         {
             // 1. Obtener la Venta con todos sus detalles y la Factura asociada
@@ -810,6 +858,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("PlantillaVenta")]
+        [Authorize(Roles = "Administrador,Vendedor")]
         public async Task<IActionResult> GenerateSaleTemplate()
         {
             using (var workbook = new XLWorkbook())
@@ -884,6 +933,7 @@ namespace PhonePalace.Web.Controllers
         [HttpPost]
         [Route("EmitirElectronica/{id}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Vendedor")]
         public async Task<IActionResult> EmitirFacturaElectronica(int id)
         {
             // 1. Obtener la venta y sus detalles
@@ -977,6 +1027,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("SincronizarElectronica/{electronicInvoiceId}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Vendedor")]
         public async Task<IActionResult> SincronizarFacturaElectronica(int electronicInvoiceId)
         {
             // 1. Buscar el registro de factura local que falló.

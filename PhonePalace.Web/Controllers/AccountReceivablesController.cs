@@ -9,10 +9,12 @@ using PhonePalace.Web.Helpers;
 using System.Security.Claims;
 using PhonePalace.Domain.Enums;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PhonePalace.Web.Controllers
 {
     [Route("CuentasPorCobrar")]
+    [Authorize]
     public class AccountReceivablesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -31,6 +33,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Administrador,Cajero,Vendedor,Contador")]
         public async Task<IActionResult> Index(string? clientName, string status = "Pending", string? type = null, DateTime? startDate = null, DateTime? endDate = null, int? pageNumber = null, int? pageSize = null)
         {
             ViewData["PageSize"] = pageSize ?? 10;
@@ -50,6 +53,15 @@ namespace PhonePalace.Web.Controllers
             var query = _context.AccountReceivables
                 .Include(ar => ar.Client)
                 .AsQueryable();
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo mostrar CxC de ventas que tienen IVA (factura electrónica).
+                var saleIdsWithVat = _context.Sales
+                    .Where(s => _context.Set<ElectronicInvoice>().Any(ei => ei.InvoiceID == s.InvoiceID && ei.Status == "Accepted"))
+                    .Select(s => s.SaleID);
+                query = query.Where(ar => ar.SaleID.HasValue && saleIdsWithVat.Contains(ar.SaleID.Value));
+            }
 
             switch (status)
             {
@@ -113,6 +125,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet("Create")]
+        [Authorize(Roles = "Administrador,Cajero")]
         public IActionResult Create()
         {
             ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
@@ -124,6 +137,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Create(LoanCreateViewModel model, PaymentMethod disbursementMethod, int? bankId)
         {
             if (ModelState.IsValid)
@@ -226,6 +240,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet("Details/{id}")]
+        [Authorize(Roles = "Administrador,Cajero,Vendedor,Contador")]
         public async Task<IActionResult> Details(int id)
         {
             var ar = await _context.AccountReceivables
@@ -234,6 +249,21 @@ namespace PhonePalace.Web.Controllers
                 .FirstOrDefaultAsync(x => x.AccountReceivableID == id);
 
             if (ar == null) return NotFound();
+
+            if (User.IsInRole("Contador"))
+            {
+                bool hasVat = false;
+                if (ar.SaleID.HasValue)
+                {
+                    hasVat = await _context.Sales.AnyAsync(s => s.SaleID == ar.SaleID && _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == s.InvoiceID && e.Status == "Accepted"));
+                }
+
+                if (!hasVat)
+                {
+                    TempData["Error"] = "Los contadores solo pueden ver cuentas por cobrar de ventas con IVA.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
 
             ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
                 .Where(x => x.Value == PaymentMethod.Cash.ToString() || 
@@ -248,6 +278,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("AddPayment")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> AddPayment(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -369,6 +400,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("Delete/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Delete(int id)
         {
             var ar = await _context.AccountReceivables

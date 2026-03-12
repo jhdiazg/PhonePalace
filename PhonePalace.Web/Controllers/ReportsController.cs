@@ -18,7 +18,7 @@ using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Administrador,Contador")]
     [Route("Reportes")]
     public class ReportsController : Controller
     {
@@ -77,6 +77,12 @@ namespace PhonePalace.Web.Controllers
                             Client = p.Invoice!.Client ?? null,
                             SaleId = s != null ? s.SaleID : (int?)null
                         };
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo mostrar pagos de ventas que tienen IVA (factura electrónica).
+                query = query.Where(x => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == x.Invoice.InvoiceID && e.Status == "Accepted"));
+            }
 
             if (!string.IsNullOrEmpty(selectedPaymentMethod))
             {
@@ -326,13 +332,19 @@ namespace PhonePalace.Web.Controllers
             }
 
             // 1. Ventas, IVA Ventas y Costo
-            var sales = await _context.Sales
+            var salesQuery = _context.Sales
                 .Include(s => s.Invoice)
                 .Include(s => s.Details)
                 .ThenInclude(d => d.Product)
                 .Where(s => s.SaleDate.Year == reportYear && !s.IsDeleted)
-                .AsNoTracking()
-                .ToListAsync();
+                .AsNoTracking();
+
+            if (User.IsInRole("Contador"))
+            {
+                salesQuery = salesQuery.Where(s => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == s.InvoiceID && e.Status == "Accepted"));
+            }
+
+            var sales = await salesQuery.ToListAsync();
 
             // Obtener IDs de facturas que tienen Factura Electrónica aceptada
             var salesInvoiceIds = sales.Select(s => s.Invoice.InvoiceID).ToList();
@@ -533,11 +545,17 @@ namespace PhonePalace.Web.Controllers
             }
 
             // 4. Compras e IVA Compras
-            var purchases = await _context.Purchases
+            var purchasesQuery = _context.Purchases
                 .Include(p => p.PurchaseDetails)
-                .Where(p => p.PurchaseDate.Year == reportYear && p.Status != PurchaseStatus.Cancelled && p.Status != PurchaseStatus.Draft)
-                .AsNoTracking()
-                .ToListAsync();
+                .Where(p => p.Status != PurchaseStatus.Cancelled && p.Status != PurchaseStatus.Draft)
+                .AsNoTracking();
+
+            if (User.IsInRole("Contador"))
+            {
+                purchasesQuery = purchasesQuery.Where(p => p.PurchaseDetails.Any(d => d.TaxRate > 0));
+            }
+
+            var purchases = await purchasesQuery.Where(p => p.PurchaseDate.Year == reportYear).ToListAsync();
 
             foreach (var p in purchases)
             {
@@ -760,9 +778,18 @@ namespace PhonePalace.Web.Controllers
             var creditTypes = new[] { "CreditoBancario", "Impuestos", "Otros", "Prestamo" };
 
             // Cuentas por Pagar: Todo lo que NO sea explícitamente un crédito (Proveedores, Compras, null, vacíos)
-            model.AccountsPayable = await _context.AccountPayables
-                .Where(ap => !ap.IsPaid && !creditTypes.Contains(ap.Type))
-                .SumAsync(ap => ap.Balance);
+            var apQuery = _context.AccountPayables
+                .Where(ap => !ap.IsPaid && !creditTypes.Contains(ap.Type));
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo CxP de compras con IVA.
+                var purchaseIdsWithVat = _context.Purchases
+                    .Where(p => p.PurchaseDetails.Any(pd => pd.TaxRate > 0))
+                    .Select(p => p.Id);
+                apQuery = apQuery.Where(ap => ap.PurchaseId.HasValue && purchaseIdsWithVat.Contains(ap.PurchaseId.Value));
+            }
+            model.AccountsPayable = await apQuery.SumAsync(ap => ap.Balance);
 
             // Créditos: Solo los tipos específicos
             model.Credits = await _context.AccountPayables

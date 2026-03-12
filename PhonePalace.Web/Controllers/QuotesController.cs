@@ -18,6 +18,7 @@ using System.IO;
 
 namespace PhonePalace.Web.Controllers
 {
+    [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador,Vendedor")]
     public class QuotesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -373,6 +374,7 @@ namespace PhonePalace.Web.Controllers
                 .Include(q => q.Client)
                 .Include(q => q.Details)
                 .ThenInclude(qd => qd.Product)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.QuoteID == id);
 
             if (quote == null)

@@ -15,7 +15,7 @@ using PhonePalace.Domain.Enums;
 
 namespace PhonePalace.Web.Controllers
 {
-    [Authorize(Roles = "Administrador,Cajero")]
+    [Authorize]
     public class AccountPayablesController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -31,6 +31,7 @@ namespace PhonePalace.Web.Controllers
             _bankService = bankService;
         }
 
+        [Authorize(Roles = "Administrador,Cajero,Contador")]
         public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate, string status = "Pending", string? type = null, int? pageNumber = null, int? pageSize = null)
         {
             if (startDate.HasValue && endDate.HasValue && startDate.Value > endDate.Value)
@@ -49,6 +50,12 @@ namespace PhonePalace.Web.Controllers
                 .Include(a => a.Purchase!)
                 .ThenInclude(p => p!.Supplier)
                 .AsQueryable();
+
+            if (User.IsInRole("Contador"))
+            {
+                // Para el contador, solo mostrar CxP de compras que tienen IVA.
+                accountPayablesQuery = accountPayablesQuery.Where(a => a.PurchaseId.HasValue && _context.PurchaseDetails.Any(pd => pd.PurchaseId == a.PurchaseId && pd.TaxRate > 0));
+            }
 
             if (startDate.HasValue)
             {
@@ -112,23 +119,38 @@ namespace PhonePalace.Web.Controllers
             return View(paginatedResult);
         }
 
+        [Authorize(Roles = "Administrador,Cajero,Contador")]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
 
             var accountPayable = await _context.AccountPayables
-                .Include(a => a.Purchase)
+                .Include(a => a.Purchase).ThenInclude(p => p.PurchaseDetails)
                 .Include(a => a.Payments)
                     .ThenInclude(p => p.Bank)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (accountPayable == null) return NotFound();
 
+            if (User.IsInRole("Contador"))
+            {
+                // Si es una CxP manual (sin compra), no se muestra al contador.
+                // Si tiene compra, se valida que la compra tenga IVA.
+                bool hasVat = accountPayable.Purchase != null && accountPayable.Purchase.PurchaseDetails.Any(d => d.TaxRate > 0);
+
+                if (!hasVat)
+                {
+                    TempData["Error"] = "Los contadores solo pueden ver cuentas por pagar de compras con IVA.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
             ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             return View(accountPayable);
         }
 
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Create()
         {
             // Cargamos los proveedores para que el usuario seleccione uno existente
@@ -139,6 +161,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Create([Bind("DocumentType,DocumentNumber,Amount,DueDate,Beneficiary,Type")] AccountPayable accountPayable)
         {
             // Regla de negocio: El estado inicial no puede ser Pagada
@@ -161,6 +184,7 @@ namespace PhonePalace.Web.Controllers
             return View(accountPayable);
         }
 
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -172,6 +196,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Edit(int id, [Bind("Id,DocumentType,DocumentNumber,DueDate,IsPaid,Beneficiary")] AccountPayable formModel)
         {
             if (id != formModel.Id)
@@ -215,6 +240,7 @@ namespace PhonePalace.Web.Controllers
             return View(formModel);
         }
 
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null) return NotFound();
@@ -229,6 +255,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var accountPayable = await _context.AccountPayables.FindAsync(id);
@@ -247,6 +274,7 @@ namespace PhonePalace.Web.Controllers
         }
 
         [HttpGet("Pay/{id}")]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Pay(int? id)
         {
             if (id == null) return NotFound();
@@ -268,6 +296,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpPost("Pay/{id?}")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Cajero")]
         public async Task<IActionResult> Pay(int id, decimal amount, string note, PaymentMethod paymentMethod, int? bankId)
         {
             var strategy = _context.Database.CreateExecutionStrategy();

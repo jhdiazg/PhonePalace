@@ -76,9 +76,16 @@ namespace PhonePalace.Web.Documents
                     row.RelativeItem().Column(c =>
                     {
                         c.Item().Text("Cliente").SemiBold();
-                        c.Item().Text(Model.Client.DisplayName);
-                        c.Item().Text(Model.Client.Email ?? "");
-                        c.Item().Text(Model.Client.PhoneNumber ?? "");
+                        if (Model.Client != null)
+                        {
+                            c.Item().Text(Model.Client.DisplayName);
+                            c.Item().Text(Model.Client.Email ?? "Sin correo");
+                            c.Item().Text(Model.Client.PhoneNumber ?? "Sin teléfono");
+                        }
+                        else
+                        {
+                            c.Item().Text("Cliente no especificado").Italic();
+                        }
                     });
                     row.RelativeItem().Column(companyColumn =>
                     {
@@ -128,19 +135,30 @@ namespace PhonePalace.Web.Documents
                     header.Cell().Element(CellStyle).AlignRight().Text("Cant.");
                     header.Cell().Element(CellStyle).AlignRight().Text("Total");
 
-                    static IContainer CellStyle(IContainer container) => container.DefaultTextStyle(x => x.SemiBold()).PaddingVertical(5).BorderBottom(1).BorderColor(Colors.Black);
+                    static IContainer CellStyle(IContainer c) => c.DefaultTextStyle(x => x.SemiBold()).PaddingVertical(5).BorderBottom(1).BorderColor(Colors.Black);
                 });
+
+                // Estilo para las celdas del cuerpo de la tabla, definido una sola vez para claridad y eficiencia.
+                static IContainer BodyCellStyle(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(5);
+
+                // Verificación para evitar errores si no hay detalles.
+                if (Model.Details == null || !Model.Details.Any())
+                {
+                    table.Cell().ColumnSpan(5).Padding(10).Text("No hay productos en esta cotización.").Italic();
+                    return;
+                }
 
                 var index = 1;
                 foreach (var item in Model.Details)
                 {
-                    table.Cell().Element(CellStyle).Text(index.ToString());
-                    table.Cell().Element(CellStyle).Text(item.Product.Name);
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{item.UnitPrice:C}");
-                    table.Cell().Element(CellStyle).AlignRight().Text(item.Quantity.ToString());
-                    table.Cell().Element(CellStyle).AlignRight().Text($"{(item.UnitPrice * item.Quantity):C}");
+                    // Usamos el BodyCellStyle y agregamos un null-check para el nombre del producto.
+                    // Esto soluciona el error si un producto no se carga correctamente.
+                    table.Cell().Element(BodyCellStyle).Text(index.ToString());
+                    table.Cell().Element(BodyCellStyle).Text(item.Product?.Name ?? "Producto no encontrado");
+                    table.Cell().Element(BodyCellStyle).AlignRight().Text($"{item.UnitPrice:C}");
+                    table.Cell().Element(BodyCellStyle).AlignRight().Text(item.Quantity.ToString());
+                    table.Cell().Element(BodyCellStyle).AlignRight().Text($"{(item.UnitPrice * item.Quantity):C}");
 
-                    static IContainer CellStyle(IContainer container) => container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(5);
                     index++;
                 }
             });

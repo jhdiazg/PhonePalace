@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
-using PhonePalace.Web.ViewModels;
-using System;
+using PhonePalace.Web.ViewModels.UserManagement;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 namespace PhonePalace.Web.Controllers
 {
     [Authorize(Roles = "Administrador")]
+    [Route("UserManagement")]
     public class UserManagementController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -23,77 +24,91 @@ namespace PhonePalace.Web.Controllers
             _roleManager = roleManager;
         }
 
+        [HttpGet]
+        [Route("")] // Maps to /UserManagement
         public async Task<IActionResult> Index()
         {
             var users = await _userManager.Users.ToListAsync();
-            var userRolesViewModel = new List<UserRolesViewModel>();
-            foreach (ApplicationUser user in users)
+            var userViewModels = new List<UserViewModel>();
+            foreach (var user in users)
             {
-                var thisViewModel = new UserRolesViewModel
+                userViewModels.Add(new UserViewModel
                 {
-                    UserId = user.Id,
-                    Email = user.Email!,
-                    UserName = user.UserName!,
-                    Roles = await GetUserRoles(user),
-                    IsLocked = await _userManager.IsLockedOutAsync(user)
-                };
-                userRolesViewModel.Add(thisViewModel);
+                    Id = user.Id,
+                    UserName = user.UserName,
+                    Email = user.Email,
+                    Roles = await _userManager.GetRolesAsync(user)
+                });
             }
-            return View(userRolesViewModel);
+            return View(userViewModels);
         }
 
-        private async Task<List<string>> GetUserRoles(ApplicationUser user)
+        [HttpGet]
+        [Route("Edit/{id}")] // Maps to /UserManagement/Edit/{id}
+        public async Task<IActionResult> Edit(string id)
         {
-            return new List<string>(await _userManager.GetRolesAsync(user));
-        }
+            if (string.IsNullOrEmpty(id))
+            {
+                return NotFound();
+            }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Lock(string id)
-        {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
                 return NotFound();
             }
 
-            // Bloquear al usuario hasta una fecha en el futuro lejano
-            var result = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+            var allRoles = await _roleManager.Roles.ToListAsync();
+            var userRoles = await _userManager.GetRolesAsync(user);
 
-            if (result.Succeeded)
+            var model = new UserEditViewModel
             {
-                TempData["Success"] = $"El usuario {user.UserName} ha sido bloqueado.";
-            }
-            else
-            {
-                TempData["Error"] = "Error al bloquear el usuario.";
-            }
+                Id = user.Id,
+                UserName = user.UserName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                AllRoles = allRoles.Select(r => new SelectListItem
+                {
+                    Text = r.Name,
+                    Value = r.Name
+                }).ToList(),
+                SelectedRoles = userRoles.ToList()
+            };
 
-            return RedirectToAction(nameof(Index));
+            return View(model);
         }
 
         [HttpPost]
+        [Route("Edit/{id}")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Unlock(string id)
+        public async Task<IActionResult> Edit(string id, UserEditViewModel model)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
+            if (id != model.Id)
             {
                 return NotFound();
             }
 
-            // Desbloquear al usuario estableciendo la fecha de bloqueo en el pasado
-            var result = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.Now);
-
-            if (result.Succeeded)
+            if (!ModelState.IsValid)
             {
-                TempData["Success"] = $"El usuario {user.UserName} ha sido desbloqueado.";
-            }
-            else
-            {
-                TempData["Error"] = "Error al desbloquear el usuario.";
+                model.AllRoles = await _roleManager.Roles.Select(r => new SelectListItem { Text = r.Name, Value = r.Name }).ToListAsync();
+                return View(model);
             }
 
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null) return NotFound();
+
+            user.UserName = model.UserName;
+            user.Email = model.Email;
+            user.PhoneNumber = model.PhoneNumber;
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded) return View(model);
+
+            var userRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, userRoles);
+            await _userManager.AddToRolesAsync(user, model.SelectedRoles ?? new List<string>());
+
+            TempData["Success"] = "Usuario actualizado correctamente.";
             return RedirectToAction(nameof(Index));
         }
     }
