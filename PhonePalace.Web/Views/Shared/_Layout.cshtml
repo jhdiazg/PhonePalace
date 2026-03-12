@@ -28,20 +28,17 @@
         }
 
         <div class="content-wrapper flex-grow-1">
-            @if (!SignInManager.IsSignedIn(User))
-            {
-                <header>
-                    <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-                        <div class="container-fluid">
-                            <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                                <img src="~/images/logo_fact.png" alt="PhonePalace" style="height: 40px;" class="me-2" />
-                                PhonePalace
-                            </a>
-                            <partial name="_LoginPartial" />
-                        </div>
-                    </nav>
-                </header>
-            }
+            <header>
+                <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+                    <div class="container-fluid">
+                        <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                            <img src="~/images/logo_fact.png" alt="PhonePalace" style="height: 40px;" class="me-2" />
+                            PhonePalace
+                        </a>
+                        <partial name="_LoginPartial" />
+                    </div>
+                </nav>
+            </header>
             @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Cliente"))
             {
                 @await Component.InvokeAsync("CashRegisterStatus")

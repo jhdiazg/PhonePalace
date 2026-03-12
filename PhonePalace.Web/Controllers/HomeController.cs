@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using PhonePalace.Domain.Entities;
 
 namespace PhonePalace.Web.Controllers
@@ -18,12 +19,14 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<HomeController> _logger;
+        private readonly IEmailSender _emailSender;
         private readonly ICashService _cashService;
 
-        public HomeController(ILogger<HomeController> logger, ApplicationDbContext context, ICashService cashService)
+        public HomeController(ILogger<HomeController> logger, ApplicationDbContext context, ICashService cashService, IEmailSender emailSender)
         {
             _logger = logger;
             _context = context;
+            _emailSender = emailSender;
             _cashService = cashService;
         }
 
