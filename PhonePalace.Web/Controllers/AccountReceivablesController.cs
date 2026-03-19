@@ -43,12 +43,9 @@ namespace PhonePalace.Web.Controllers
                 TempData["Error"] = "La fecha de inicio no puede ser mayor a la fecha de fin.";
             }
 
-            // Si no se especifican fechas, mostrar por defecto el último mes.
-            if (!startDate.HasValue && !endDate.HasValue)
-            {
-                startDate = DateTime.Today.AddMonths(-1);
-                endDate = DateTime.Today;
-            }
+            // SE ELIMINA EL FILTRO POR DEFECTO:
+            // Al no establecer fechas por defecto, se mostrarán todas las CxC históricas.
+            // Esto es crucial para no ocultar deudas antiguas pendientes de pago.
 
             var query = _context.AccountReceivables
                 .Include(ar => ar.Client)
@@ -72,7 +69,8 @@ namespace PhonePalace.Web.Controllers
                     break;
                 case "Pending":
                 default:
-                    query = query.Where(ar => !ar.IsPaid);
+                    // Se asegura que aparezcan si no están pagadas O si tienen saldo positivo (cobertura de integridad)
+                    query = query.Where(ar => !ar.IsPaid || ar.Balance > 0);
                     break;
             }
 

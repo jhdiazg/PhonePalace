@@ -493,7 +493,6 @@ namespace PhonePalace.Web.Controllers
             // 3.1. Gastos Bancarios (Operativos)
             // Sumar a "LocalExpenses" los egresos bancarios manuales que no sean de otras categorías
             var bankExpenses = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == reportYear && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense)) // Egresos son negativos o Gastos Manuales Positivos
                 .Where(bt => bt.Date.Year == reportYear && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense))
                 .AsNoTracking()
                 .ToListAsync();
@@ -552,7 +551,6 @@ namespace PhonePalace.Web.Controllers
 
             // Sumar a "OtherIncome" los ingresos bancarios manuales
             var bankIncomes = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense) // Ingresos positivos (excluyendo gastos positivos)
                 .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense)
                 .AsNoTracking()
                 .ToListAsync();
