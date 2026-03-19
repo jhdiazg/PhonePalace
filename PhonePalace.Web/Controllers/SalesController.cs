@@ -155,8 +155,16 @@ namespace PhonePalace.Web.Controllers
                     (s.Client is LegalEntity && ((LegalEntity)s.Client).CompanyName.Contains(clientName)));
             }
 
-            // Calcular total de la consulta antes de paginar
-            decimal total = await salesQuery.SumAsync(s => s.Invoice.Total);
+            // Calcular total de la consulta antes de paginar, respetando la lógica de negocio (Local=Total, Electrónica=Subtotal)
+            var salesData = await salesQuery.Select(s => new { InvoiceID = s.Invoice.InvoiceID, s.Invoice.Total, s.Invoice.Subtotal }).ToListAsync();
+            var salesIds = salesData.Select(s => s.InvoiceID).ToList();
+            var electronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
+                .Where(e => salesIds.Contains(e.InvoiceID) && e.Status == "Accepted")
+                .Select(e => e.InvoiceID)
+                .ToListAsync());
+
+            decimal total = salesData.Sum(s => electronicIds.Contains(s.InvoiceID) ? s.Subtotal : s.Total);
+
             // Calcular utilidad total (Venta - Costo)
             // Ajuste: Usar costo histórico (d.Cost) si existe, de lo contrario usar costo actual (para compatibilidad con datos antiguos)
             decimal totalProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
@@ -487,6 +495,9 @@ namespace PhonePalace.Web.Controllers
                         InvoiceID = invoice.InvoiceID,
                         ClientID = viewModel.ClientID!.Value,
                         SaleDate = viewModel.SaleDate,
+                        // Si la UI no lo setea, forzar cero
+                        TotalAmount = 0,
+
                         Details = new List<SaleDetail>()
                     };
 
@@ -529,8 +540,10 @@ namespace PhonePalace.Web.Controllers
                         sale.Details.Add(detail);
 
                         // Cálculos
+                        // CORRECCIÓN: El precio unitario INCLUYE IVA. Se desglosa en Subtotal e Impuesto
+                        // para TODAS las ventas (remisiones y facturas) para consistencia en reportes.
                         decimal lineTotal = item.Quantity * item.UnitPrice;
-                        decimal lineBase = lineTotal / (1 + taxRate);
+                        decimal lineBase = Math.Round(lineTotal / (1 + taxRate), 2);
                         decimal lineTax = lineTotal - lineBase;
 
                         subtotal += lineBase;
@@ -555,9 +568,12 @@ namespace PhonePalace.Web.Controllers
                     await _context.SaveChangesAsync(); // Guardar para obtener SaleID
 
                     // Actualizar totales de Factura
-                    invoice.Subtotal = subtotal;
-                    invoice.Tax = totalTax;
-                    invoice.Total = total;
+                    invoice.Subtotal = Math.Round(subtotal, 2);
+                    invoice.Tax = Math.Round(totalTax, 2);
+                    invoice.Total = Math.Round(total, 2);
+                    
+                    // Forzar en Sales el total de la factura (por las dudas)
+                    sale.TotalAmount = invoice.Total;
                     _context.Update(invoice);
 
                     // 4. Procesar Pagos

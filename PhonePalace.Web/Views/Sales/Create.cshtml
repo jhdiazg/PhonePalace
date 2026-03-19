@@ -619,11 +619,11 @@
 
             // --- TOTALS CALCULATION ---
             function updateTotals() {
-                // El precio del producto ya incluye IVA, por lo tanto la suma es el Total
+                // El precio del producto ya incluye IVA.
                 let productsTotal = products.reduce((acc, p) => acc + (p.quantity * p.price), 0);
                 let totalSurcharges = payments.reduce((acc, p) => acc + (p.surcharge || 0), 0);
                 let total = productsTotal + totalSurcharges;
-                
+
                 let subtotal = total / (1 + taxRate);
                 let tax = total - subtotal;
                 

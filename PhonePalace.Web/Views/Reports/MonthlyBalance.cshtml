@@ -57,7 +57,18 @@
                                     }
                                 </td>
                                 <td>@item.FixedExpenses.ToString("C0")</td>
-                                <td>@item.LocalExpenses.ToString("C0")</td>
+                                <td class="text-danger">
+                                    @if (item.LocalExpenses > 0)
+                                    {
+                                        <a href="#" class="text-danger text-decoration-none fw-bold" onclick="showLocalExpenseDetails(@item.Month, @Model.Year); return false;" title="Ver detalle">
+                                            @item.LocalExpenses.ToString("C0")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        @item.LocalExpenses.ToString("C0")
+                                    }
+                                </td>
                                 <td>@item.Purchases.ToString("C0")</td>
                                 <td class="text-muted"><small>@item.PurchaseVAT.ToString("C0")</small></td>
                                 <td>@item.AccountsReceivable.ToString("C0")</td>
@@ -94,7 +105,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-light">
-                <h5 class="modal-title">Detalle de Otros Ingresos</h5>
+                <h5 class="modal-title" id="detailsModalLabel">Detalle</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -122,8 +133,11 @@
     <script>
         function showOtherIncomeDetails(month, year) {
             var modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+            var modalTitle = document.getElementById('detailsModalLabel');
             var tbody = document.getElementById('modalTableBody');
+            
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><br>Cargando detalles...</td></tr>';
+            modalTitle.textContent = 'Detalle de Otros Ingresos';
             modal.show();
 
             fetch(`/Reportes/DetalleOtrosIngresos?month=${month}&year=${year}`)
@@ -141,19 +155,63 @@
                     data.forEach(item => {
                         total += item.Amount;
                         let row = `<tr>
-                            <td>${item.Date}</td>
-                            <td><span class="badge bg-info text-dark">${item.Source}</span></td>
-                            <td>${item.Description || '-'}</td>
-                            <td class="text-end fw-bold text-success">${formatter.format(item.Amount)}</td>
-                        </tr>`;
+                                        <td>${item.Date}</td>
+                                        <td><span class="badge ${item.Amount >= 0 ? 'bg-info text-dark' : 'bg-danger text-white'}">${item.Source}</span></td>
+                                        <td>${item.Description || '-'}</td>
+                                        <td class="text-end fw-bold ${item.Amount >= 0 ? 'text-success' : 'text-danger'}">${formatter.format(item.Amount)}</td>
+                                    </tr>`;
                         tbody.innerHTML += row;
                     });
                     
                     // Fila de Total
                     tbody.innerHTML += `<tr class="table-active border-top border-2">
-                        <td colspan="3" class="text-end fw-bold">TOTAL</td>
-                        <td class="text-end fw-bold text-success fs-6">${formatter.format(total)}</td>
-                    </tr>`;
+                                        <td colspan="3" class="text-end fw-bold">TOTAL</td>
+                                        <td class="text-end fw-bold ${total >= 0 ? 'text-success' : 'text-danger'} fs-6">${formatter.format(total)}</td>
+                                    </tr>`;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error al cargar los datos. Intente nuevamente.</td></tr>';
+                });
+        }
+
+        function showLocalExpenseDetails(month, year) {
+            var modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+            var modalTitle = document.getElementById('detailsModalLabel');
+            var tbody = document.getElementById('modalTableBody');
+
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><br>Cargando detalles...</td></tr>';
+            modalTitle.textContent = 'Detalle de Gastos Local';
+            modal.show();
+
+            fetch(`/Reportes/DetalleGastosLocal?month=${month}&year=${year}`)
+                .then(response => response.json())
+                .then(data => {
+                    tbody.innerHTML = '';
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No se encontraron detalles.</td></tr>';
+                        return;
+                    }
+
+                    let total = 0;
+                    const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+
+                    data.forEach(item => {
+                        total += item.Amount;
+                        let row = `<tr>
+                                        <td>${item.Date}</td>
+                                        <td><span class="badge bg-warning text-dark">${item.Source}</span></td>
+                                        <td>${item.Description || '-'}</td>
+                                        <td class="text-end fw-bold text-danger">${formatter.format(item.Amount)}</td>
+                                    </tr>`;
+                        tbody.innerHTML += row;
+                    });
+
+                    // Fila de Total
+                    tbody.innerHTML += `<tr class="table-active border-top border-2">
+                                        <td colspan="3" class="text-end fw-bold">TOTAL</td>
+                                        <td class="text-end fw-bold text-danger fs-6">${formatter.format(total)}</td>
+                                    </tr>`;
                 })
                 .catch(error => {
                     console.error('Error:', error);

@@ -14,6 +14,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using PhonePalace.Domain.Interfaces;
+using Microsoft.Extensions.Configuration;
 using System.IO;
 
 namespace PhonePalace.Web.Controllers
@@ -25,12 +26,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ICashService _cashService;
+        private readonly IConfiguration _config;
 
-        public ReportsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, ICashService cashService)
+        public ReportsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, ICashService cashService, IConfiguration config)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _cashService = cashService;
+            _config = config;
         }
 
         [HttpGet]
@@ -357,38 +360,67 @@ namespace PhonePalace.Web.Controllers
             foreach (var sale in sales)
             {
                 var item = model.Items.First(m => m.Month == sale.SaleDate.Month);
-                
-                // Solo sumar IVA si tiene factura electrónica (las demás son remisiones)
+
+                // LÓGICA DE VENTAS SEGÚN CONFIGURACIÓN:
+                // - Para Facturas Electrónicas, la venta es el SUBTOTAL (base imponible) y se suma el IVA.
+                // - Para Remisiones (locales), la venta es el TOTAL (no se discrimina IVA en el reporte).
                 if (electronicInvoiceSet.Contains(sale.Invoice.InvoiceID))
                 {
-                    // Para facturas electrónicas, se reporta la venta neta (Subtotal) y el IVA por separado.
                     item.Sales += sale.Invoice.Subtotal;
                     item.SalesVAT += sale.Invoice.Tax;
                 }
                 else
                 {
-                    // Para remisiones (ventas locales), se reporta el valor total de la venta.
                     item.Sales += sale.Invoice.Total;
                 }
 
-                // Usar costo histórico si existe (ventas nuevas), sino usar costo actual (ventas antiguas)
-                item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
+                // Calcular el costo de la venta desde SaleDetails: SUM(Cantidad * Costo)
+                decimal saleCost = sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
+                item.Cost += saleCost;
+
+                //ANTERIOR (Duplicado)
+                //item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
+
+                //item.Cost += item.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
+
             }
 
             // 1.1. Restar Devoluciones de Ventas y Costos
             var returns = await _context.Returns
+                .Include(r => r.Sale) // Incluir la venta original para verificar si fue electrónica
                 .Include(r => r.Details)
                 .ThenInclude(d => d.Product)
                 .Where(r => r.Date.Year == reportYear)
                 .AsNoTracking()
                 .ToListAsync();
 
+            // Obtener tasa de IVA para desglosar el valor de las devoluciones.
+            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+            var taxRateFactor = 1 + taxRate;
+
             foreach (var ret in returns)
             {
                 var item = model.Items.First(m => m.Month == ret.Date.Month);
 
-                // Restar el valor de la devolución de las ventas.
-                item.Sales -= ret.TotalAmount;
+                // LÓGICA DE DEVOLUCIONES:
+                // - Si la venta original fue electrónica, se resta el valor NETO de la venta y se reversa el IVA.
+                // - Si la venta original fue remisión, se resta el valor TOTAL de la venta.
+                bool wasElectronic = ret.Sale != null && ret.Sale.InvoiceID.HasValue && electronicInvoiceSet.Contains(ret.Sale.InvoiceID.Value);
+
+                if (wasElectronic)
+                {
+                    var returnNetValue = Math.Round(ret.TotalAmount / taxRateFactor, 2);
+                    var returnTax = ret.TotalAmount - returnNetValue;
+
+                    item.Sales -= returnNetValue;
+                    item.SalesVAT -= returnTax;
+                }
+                else
+                {
+                    // Para devoluciones de remisiones, se resta el monto total.
+                    item.Sales -= ret.TotalAmount;
+                }
 
                 // Restar el costo de los productos devueltos.
                 // Usar costo histórico si existe, sino usar costo actual del producto (fallback)
@@ -414,7 +446,7 @@ namespace PhonePalace.Web.Controllers
                 .ToListAsync();
             
             // IDs de movimientos de caja que corresponden a gastos fijos para no duplicarlos
-            var feCashIds = fixedExpenses.Where(fe => fe.CashMovementId.HasValue).Select(fe => fe.CashMovementId!.Value).ToHashSet();
+            HashSet<int> feCashIds = new HashSet<int>(fixedExpenses.Where(fe => fe.CashMovementId.HasValue).Select(fe => fe.CashMovementId!.Value));
 
             // Prefijos de descripciones que NO son gastos operativos y deben ser excluidos del reporte de utilidad
             var nonOperationalExpensePrefixes = new[]
@@ -461,7 +493,8 @@ namespace PhonePalace.Web.Controllers
             // 3.1. Gastos Bancarios (Operativos)
             // Sumar a "LocalExpenses" los egresos bancarios manuales que no sean de otras categorías
             var bankExpenses = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == reportYear && bt.Amount < 0) // Egresos son negativos
+                .Where(bt => bt.Date.Year == reportYear && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense)) // Egresos son negativos o Gastos Manuales Positivos
+                .Where(bt => bt.Date.Year == reportYear && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense))
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -471,6 +504,12 @@ namespace PhonePalace.Web.Controllers
                 // Excluir movimientos que ya se cuentan en otras secciones o no son gastos operativos puros
                 if (desc.Contains("GASTO FIJO") || desc.Contains("ANULACIÓN") || desc.Contains("PRÉSTAMO") || 
                     desc.Contains("COMPRA DE ACTIVO") || desc.Contains("PAGO DE CXP") || desc.Contains("RETIRO HACIA CAJA"))
+                {
+                    continue;
+                }
+
+                // Si es transferencia, excluirla SALVO que sea explícitamente un gasto operativo
+                if (desc.Contains("TRANSFERENCIA") && !desc.Contains("GASTO OPERATIVO"))
                 {
                     continue;
                 }
@@ -499,6 +538,7 @@ namespace PhonePalace.Web.Controllers
                 // Excluir abonos a CxC, pagos por venta y aperturas para evitar duplicidad con Sales o CxC
                 if (upperDescription.Contains("ABONO A CXC") || 
                     upperDescription.Contains("POR VENTA") || 
+                    upperDescription.Contains("VENTA") ||
                     upperDescription.Contains("APERTURA") ||
                     upperDescription.Contains("GASTO") || // Excluir pagos de gastos mal clasificados como ingreso
                     upperDescription.Contains("PAGO") ||
@@ -512,7 +552,8 @@ namespace PhonePalace.Web.Controllers
 
             // Sumar a "OtherIncome" los ingresos bancarios manuales
             var bankIncomes = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0) // Ingresos son positivos
+                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense) // Ingresos positivos (excluyendo gastos positivos)
+                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -521,6 +562,7 @@ namespace PhonePalace.Web.Controllers
                 var desc = (bi.Description ?? "").ToUpper();
                 // Excluir ingresos que ya se cuentan en ventas, abonos, o son transferencias internas.
                 if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
+                    desc.Contains("VENTA") ||
                     desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
                     desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
                     desc.Contains("GASTO") || // Excluir devoluciones de gastos o errores
@@ -642,6 +684,7 @@ namespace PhonePalace.Web.Controllers
                 var upperDescription = (ci.Description ?? "").ToUpper();
                 if (upperDescription.Contains("ABONO A CXC") || 
                     upperDescription.Contains("POR VENTA") || 
+                    upperDescription.Contains("VENTA") ||
                     upperDescription.Contains("APERTURA") ||
                     upperDescription.Contains("GASTO") ||
                     upperDescription.Contains("PAGO") ||
@@ -654,14 +697,14 @@ namespace PhonePalace.Web.Controllers
 
             // 2. Bancos: Ingresos manuales que no son ventas, transferencias, etc.
             var bankIncomes = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount > 0)
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense)
                 .AsNoTracking()
                 .ToListAsync();
 
             foreach (var bi in bankIncomes)
             {
                 var desc = (bi.Description ?? "").ToUpper();
-                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
+                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") || desc.Contains("VENTA") ||
                     desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
                     desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
                     desc.Contains("GASTO") ||
@@ -700,7 +743,7 @@ namespace PhonePalace.Web.Controllers
             }
 
             var bankExpenses = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount < 0)
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense))
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -708,8 +751,88 @@ namespace PhonePalace.Web.Controllers
             {
                 if (eventExpenseKeywords.Any(k => (be.Description ?? "").ToUpper().Contains(k)))
                 {
-                    rawDetails.Add((be.Date, "Gasto Evento (Banco)", be.Description, be.Amount)); // Amount ya es negativo
+                    // Normalizar a negativo visualmente si viene positivo
+                    var amount = be.Amount > 0 ? -be.Amount : be.Amount;
+                    rawDetails.Add((be.Date, "Gasto Evento (Banco)", be.Description, amount));
                 }
+            }
+
+            var result = rawDetails.OrderBy(x => x.Date).Select(x => new 
+            {
+                Date = x.Date.ToString("dd/MM/yyyy"),
+                Source = x.Source,
+                Description = x.Description,
+                Amount = x.Amount
+            });
+
+            return Json(result);
+        }
+
+        [HttpGet]
+        [Route("DetalleGastosLocal")]
+        public async Task<IActionResult> GetLocalExpenseDetails(int month, int year)
+        {
+            var rawDetails = new List<(DateTime Date, string Source, string? Description, decimal Amount)>();
+
+            // 1. Obtener pagos de gastos fijos para excluirlos (ya que tienen su propia fila)
+            var fixedExpenses = await _context.FixedExpensePayments
+                .Where(p => p.PaymentDate.Year == year && p.PaymentDate.Month == month)
+                .AsNoTracking()
+                .ToListAsync();
+            
+            HashSet<int> feCashIds = new HashSet<int>(fixedExpenses.Where(fe => fe.CashMovementId.HasValue).Select(fe => fe.CashMovementId!.Value));
+
+            // 2. Definir filtros de exclusión (mismo criterio que BalanceMensual)
+            var nonOperationalExpensePrefixes = new[]
+            {
+                "PAGO DE CXP", "COMPRA DE ACTIVO", "PRÉSTAMO A CLIENTE", "CONSIGNACIÓN A BANCO", "ANULACIÓN VENTA"
+            };
+            var eventExpenseKeywords = new[] { "RIFA", "PREMIO", "SORTEO", "EVENTO", "CONCURSO", "CELEBRACION", "TAPAZO" };
+
+            // 3. Gastos de Caja
+            var cashExpenses = await _context.CashMovements
+                .Where(cm => cm.MovementDate.Year == year && cm.MovementDate.Month == month && cm.MovementType == CashMovementType.Expense)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var ce in cashExpenses)
+            {
+                if (feCashIds.Contains(ce.CashMovementID)) continue;
+
+                var upperDescription = (ce.Description ?? "").ToUpper();
+                
+                // Excluir eventos (se restan de Otros Ingresos)
+                if (eventExpenseKeywords.Any(k => upperDescription.Contains(k))) continue;
+
+                // Excluir no operativos
+                if (nonOperationalExpensePrefixes.Any(prefix => upperDescription.StartsWith(prefix))) continue;
+
+                rawDetails.Add((ce.MovementDate, "Caja", ce.Description, ce.Amount));
+            }
+
+            // 4. Gastos Bancarios
+            var bankExpenses = await _context.BankTransactions
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && (bt.Amount < 0 || bt.Type == BankTransactionType.ManualExpense))
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var be in bankExpenses)
+            {
+                var desc = (be.Description ?? "").ToUpper();
+                if (desc.Contains("GASTO FIJO") || desc.Contains("ANULACIÓN") || desc.Contains("PRÉSTAMO") || 
+                    desc.Contains("COMPRA DE ACTIVO") || desc.Contains("PAGO DE CXP") || desc.Contains("RETIRO HACIA CAJA") || desc.Contains("CONSIGNACIÓN"))
+                {
+                    continue;
+                }
+
+                if (desc.Contains("TRANSFERENCIA") && !desc.Contains("GASTO OPERATIVO"))
+                {
+                    continue;
+                }
+
+                if (eventExpenseKeywords.Any(k => desc.Contains(k))) continue;
+
+                rawDetails.Add((be.Date, "Banco", be.Description, Math.Abs(be.Amount)));
             }
 
             var result = rawDetails.OrderBy(x => x.Date).Select(x => new 

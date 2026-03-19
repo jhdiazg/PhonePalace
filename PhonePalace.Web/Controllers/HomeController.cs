@@ -11,6 +11,7 @@ using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using PhonePalace.Domain.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace PhonePalace.Web.Controllers
 {
@@ -21,13 +22,15 @@ namespace PhonePalace.Web.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly IEmailSender _emailSender;
         private readonly ICashService _cashService;
+        private readonly IConfiguration _config;
 
-        public HomeController(ILogger<HomeController> logger, ApplicationDbContext context, ICashService cashService, IEmailSender emailSender)
+        public HomeController(ILogger<HomeController> logger, ApplicationDbContext context, ICashService cashService, IEmailSender emailSender, IConfiguration config)
         {
             _logger = logger;
             _context = context;
             _emailSender = emailSender;
             _cashService = cashService;
+            _config = config;
         }
 
         public async Task<IActionResult> Index()
@@ -73,7 +76,16 @@ namespace PhonePalace.Web.Controllers
                 invoicesQuery = invoicesQuery.Where(i => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == i.InvoiceID && e.Status == "Accepted"));
             }
 
-            var currentMonthSales = await invoicesQuery.SumAsync(i => i.Total);
+            // Calcular ventas del mes respetando lógica: Local=Total, Electrónica=Subtotal
+            var monthlyInvoices = await invoicesQuery.Select(i => new { i.InvoiceID, i.Total, i.Subtotal }).ToListAsync();
+            var monthlyInvoiceIds = monthlyInvoices.Select(i => i.InvoiceID).ToList();
+            
+            var electronicInvoiceIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
+                .Where(e => monthlyInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
+                .Select(e => e.InvoiceID)
+                .ToListAsync());
+            
+            var currentMonthSales = monthlyInvoices.Sum(i => electronicInvoiceIds.Contains(i.InvoiceID) ? i.Subtotal : i.Total);
 
             // --- NUEVO: Desglose Facturación Electrónica vs Local ---
             var electronicSales = await _context.Set<ElectronicInvoice>()
@@ -88,41 +100,31 @@ namespace PhonePalace.Web.Controllers
             ViewBag.LocalSales = currentMonthSales - electronicSales;
 
             // Restar devoluciones realizadas en el mes actual para obtener Ventas Netas
-            var currentMonthReturns = await _context.Returns
+            // También aplicando la lógica: Si es local se resta Total, si es electrónica se resta Subtotal.
+            var returnsData = await _context.Returns
+                .Include(r => r.Sale)
                 .Where(r => r.Date.Month == DateTime.Now.Month &&
                             r.Date.Year == DateTime.Now.Year)
-                .SumAsync(r => r.TotalAmount);
+                .Select(r => new { r.TotalAmount, InvoiceID = r.Sale != null ? r.Sale.InvoiceID.GetValueOrDefault() : 0 })
+                .ToListAsync();
 
-            // --- INICIO: Añadir Otros Ingresos del mes (que no son ventas) ---
-            var today = DateTime.Now;
-            var startOfMonth = new DateTime(today.Year, today.Month, 1);
-            var endOfMonth = startOfMonth.AddMonths(1).AddTicks(-1);
+            // Verificar cuáles de estas devoluciones corresponden a facturas electrónicas
+            var returnInvoiceIds = returnsData.Select(r => r.InvoiceID).Distinct().ToList();
+            var returnElectronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
+                .Where(e => returnInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
+                .Select(e => e.InvoiceID)
+                .ToListAsync());
 
-            // Ingresos de Caja que no son abonos a cartera
-            var otherCashIncome = await _context.CashMovements
-                .Where(cm => cm.MovementDate >= startOfMonth && cm.MovementDate <= endOfMonth &&
-                             cm.MovementType == CashMovementType.Income &&
-                             cm.Description!.ToUpper().Contains("ABONO A CXC") &&
-                             cm.Description.ToUpper().Contains("POR VENTA"))
-                .SumAsync(cm => cm.Amount);
+            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+            var taxFactor = 1 + taxRate;
 
-            // Ingresos de Banco que no son de ventas, abonos o transferencias
-            var otherBankIncome = await _context.BankTransactions
-                .Where(bt => bt.Date >= startOfMonth && bt.Date <= endOfMonth &&
-                             bt.Amount > 0 && // Ingresos
-                             !bt.Description!.ToUpper().Contains("INGRESO POR VENTA") &&
-                             !bt.Description.ToUpper().Contains("ABONO CXC") &&
-                             !bt.Description.ToUpper().Contains("TRANSFERENCIA") &&
-                             !bt.Description.ToUpper().Contains("RETIRO"))
-                .SumAsync(bt => bt.Amount);
+            var currentMonthReturns = returnsData.Sum(r => returnElectronicIds.Contains(r.InvoiceID) 
+                ? Math.Round(r.TotalAmount / taxFactor, 2) // Restar neto si es electrónica
+                : r.TotalAmount); // Restar total si es local
 
-            // Ingresos devengados (CxC tipo Otro) del mes
-            var otherReceivablesIncome = await _context.AccountReceivables
-                .Where(ar => ar.Date >= startOfMonth && ar.Date <= endOfMonth && ar.Type == "Otro")
-                .SumAsync(ar => ar.TotalAmount);
-
-            currentMonthSales += otherCashIncome + otherBankIncome + otherReceivablesIncome;
-            // --- FIN: Añadir Otros Ingresos del mes ---
+            // Se eliminó la suma de Otros Ingresos para evitar duplicidad y discrepancias con la lista de ventas.
+            // El Dashboard debe reflejar las ventas facturadas (menos devoluciones).
 
             currentMonthSales -= currentMonthReturns;
 
