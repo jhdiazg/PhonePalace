@@ -31,7 +31,8 @@ namespace PhonePalace.Domain.Entities
         public AccountPayableDocumentType DocumentType { get; set; }
 
         [DisplayName("Número de documento")]
-        public string? DocumentNumber { get; set; } // New property
+        [StringLength(20)] 
+        public string? DocumentNumber { get; set; } = null; // New property
 
         [DisplayName("Beneficiario / Proveedor")]
         [StringLength(100)]

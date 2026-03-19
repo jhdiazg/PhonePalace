@@ -15,7 +15,7 @@ namespace PhonePalace.Infrastructure.Services
     public class SalesResult : ISalesResult
     {
         public bool Success { get; set; }
-        public string ErrorMessage { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty; 
         public int? InvoiceId { get; set; }
 
         public static SalesResult Fail(string message) => new SalesResult { Success = false, ErrorMessage = message };

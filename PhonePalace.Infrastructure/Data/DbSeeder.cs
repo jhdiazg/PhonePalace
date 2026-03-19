@@ -21,7 +21,7 @@ namespace PhonePalace.Infrastructure.Data
             var logger = serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
             // --- Crear Roles ---
-            string[] roleNames = { "Administrador", "Vendedor", "Almacenista", "Cajero", "Cliente" };
+            string[] roleNames = { "Administrador", "Vendedor", "Almacenista", "Cajero", "Cliente", "Contador" };
             foreach (var roleName in roleNames)
             {
                 var roleExist = await roleManager.RoleExistsAsync(roleName);
