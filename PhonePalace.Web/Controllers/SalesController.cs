@@ -482,7 +482,8 @@ namespace PhonePalace.Web.Controllers
                         Status = InvoiceStatus.Completed,
                         UserId = userId,
                         // Asumiendo que Invoice tiene relación con Client, si no, se ignora
-                        // ClientID = viewModel.ClientID 
+                        ClientID = viewModel.ClientID.Value, // Asignamos el ID directamente
+                        Client = client // También asignamos la entidad para asegurar la navegación en EF Core
                     };
                     _context.Invoices.Add(invoice);
                     await _context.SaveChangesAsync();
@@ -599,6 +600,16 @@ namespace PhonePalace.Web.Controllers
                         if (paymentMethodEnum == PaymentMethod.Cash)
                         {
                             await _cashService.RegisterIncomeAsync(p.Amount, $"Venta #{invoice.InvoiceID}", userId!);
+                        }
+                        else if (paymentMethodEnum == PaymentMethod.CustomerBalance)
+                        {
+                            // Lógica para descontar del Saldo a Favor del cliente
+                            if (client.Balance < p.Amount)
+                            {
+                                throw new Exception($"El cliente no tiene suficiente saldo a favor. Disponible: {client.Balance:C}, Requerido: {p.Amount:C}");
+                            }
+                            client.Balance -= p.Amount;
+                            _context.Update(client);
                         }
                         else if (paymentMethodEnum == PaymentMethod.Credit)
                         {
