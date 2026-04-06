@@ -35,7 +35,7 @@ namespace PhonePalace.Web.Controllers
                 userViewModels.Add(new UserViewModel
                 {
                     Id = user.Id,
-                    UserName = user.UserName,
+                    UserName = user.UserName?.Trim() ?? string.Empty,
                     Email = user.Email,
                     Roles = await _userManager.GetRolesAsync(user)
                 });
@@ -64,8 +64,8 @@ namespace PhonePalace.Web.Controllers
             var model = new UserEditViewModel
             {
                 Id = user.Id,
-                UserName = user.UserName,
-                Email = user.Email,
+                UserName = user.UserName?.Trim() ?? string.Empty,
+                Email = user.Email?.Trim() ?? string.Empty,
                 PhoneNumber = user.PhoneNumber,
                 AllRoles = allRoles.Select(r => new SelectListItem
                 {

@@ -482,7 +482,7 @@ namespace PhonePalace.Web.Controllers
                         Status = InvoiceStatus.Completed,
                         UserId = userId,
                         // Asumiendo que Invoice tiene relación con Client, si no, se ignora
-                        ClientID = viewModel.ClientID.Value, // Asignamos el ID directamente
+                        ClientID = viewModel.ClientID!.Value, // Asignamos el ID directamente
                         Client = client // También asignamos la entidad para asegurar la navegación en EF Core
                     };
                     _context.Invoices.Add(invoice);

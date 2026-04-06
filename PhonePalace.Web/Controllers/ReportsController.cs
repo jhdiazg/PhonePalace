@@ -768,7 +768,7 @@ namespace PhonePalace.Web.Controllers
 
         [HttpGet]
         [Route("DetalleGastosLocal")]
-        public async Task<IActionResult> GetLocalExpenseDetails(int month, int year)
+        public async Task<IActionResult> GetLocalExpenseDetails(int month, int year, string? searchTerm)
         {
             var rawDetails = new List<(DateTime Date, string Source, string? Description, decimal Amount)>();
 
@@ -833,7 +833,13 @@ namespace PhonePalace.Web.Controllers
                 rawDetails.Add((be.Date, "Banco", be.Description, Math.Abs(be.Amount)));
             }
 
-            var result = rawDetails.OrderBy(x => x.Date).Select(x => new 
+            var query = rawDetails.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(x => (x.Description ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var result = query.OrderBy(x => x.Date).Select(x => new 
             {
                 Date = x.Date.ToString("dd/MM/yyyy"),
                 Source = x.Source,

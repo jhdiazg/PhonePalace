@@ -104,7 +104,7 @@ namespace PhonePalace.Web.Controllers
             {
                 Id = a.Id,
                 DocumentType = EnumHelper.GetDisplayName(a.DocumentType),
-                DocumentNumber = a.DocumentNumber,
+                DocumentNumber = a.DocumentNumber ?? string.Empty,
                 Beneficiary = a.Purchase != null ? a.Purchase.Supplier.DisplayName : a.Beneficiary,
                 Amount = a.Amount,
                 Balance = a.Balance,
