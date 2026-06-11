@@ -343,9 +343,19 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // Asumimos que la entidad Supplier tiene una propiedad Balance (Saldo a favor)
-            // similar a la entidad Client.
             supplier.Balance += amount;
+
+            // Registrar el movimiento estructurado para no perder número ni concepto
+            var movement = new SupplierBalanceMovement
+            {
+                SupplierID = id,
+                Amount = amount,
+                SupportNumber = supportNumber.ToUpper(),
+                Description = reason?.ToUpper() ?? "REGISTRO DE NOTA CRÉDITO",
+                Date = DateTime.Now
+            };
+            _context.Set<SupplierBalanceMovement>().Add(movement);
+
             _context.Update(supplier);
             
             await _context.SaveChangesAsync();

@@ -344,6 +344,18 @@ namespace PhonePalace.Web.Controllers
                         if (supplier.Balance < amount) throw new Exception($"Saldo insuficiente. El proveedor solo tiene {supplier.Balance:C} a favor.");
 
                         supplier.Balance -= amount;
+
+                        // Registrar la salida en el historial del saldo del proveedor
+                        var balanceMovement = new SupplierBalanceMovement
+                        {
+                            SupplierID = supplier.SupplierID,
+                            Amount = -amount, // Valor negativo (salida/cruce)
+                            SupportNumber = note.ToUpper(), // Usamos el número de NC que el usuario pone en la nota
+                            Description = $"CRUCE CON CXP #{ap.Id}",
+                            Date = DateTime.Now
+                        };
+                        _context.Set<SupplierBalanceMovement>().Add(balanceMovement);
+
                         _context.Update(supplier);
                     }
 
