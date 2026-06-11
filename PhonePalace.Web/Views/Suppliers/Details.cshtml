@@ -48,7 +48,65 @@
         </dd>
     </dl>
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model.SupplierID">Edit</a> |
-    <a asp-action="Index" class="btn btn-primary">Volver a la Lista</a>
+<div class="mt-4">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <a asp-action="Edit" asp-route-id="@Model.SupplierID" class="btn btn-warning me-2"><i class="bi bi-pencil-square"></i> Editar</a>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addCreditNoteModal">
+                <i class="bi bi-plus-circle"></i> Adicionar Nota Crédito
+            </button>
+        </div>
+        <a asp-action="Index" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Volver a la Lista</a>
+    </div>
+</div>
+
+<!-- Modal para Adicionar Nota Crédito -->
+<div class="modal fade" id="addCreditNoteModal" tabindex="-1" aria-labelledby="addCreditNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="AddCreditNote" method="post">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="addCreditNoteModalLabel">Adicionar Nota Crédito al Proveedor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" value="@Model.SupplierID" />
+                    
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Monto de la Nota Crédito</label>
+                        <input type="number" id="amount" name="amount" class="form-control" step="0.01" min="0.01" required />
+                        <div class="form-text">Ingrese el valor total de la nota crédito.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="supportNumber" class="form-label">Número de Soporte (Nota Crédito Proveedor)</label>
+                        <input type="text" id="supportNumber" name="supportNumber" class="form-control" required />
+                        <div class="form-text">Número de la nota crédito emitida por el proveedor.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Razón (Opcional)</label>
+                        <textarea id="reason" name="reason" class="form-control" rows="3" placeholder="Ej: Devolución de mercancía, Descuento por volumen..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Guardar Nota Crédito</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Script para limpiar el formulario del modal cada vez que se abre
+    document.addEventListener('DOMContentLoaded', function () {
+        var addCreditNoteModal = document.getElementById('addCreditNoteModal');
+        addCreditNoteModal.addEventListener('show.bs.modal', function (event) {
+            // Limpiar los campos del formulario
+            addCreditNoteModal.querySelector('#amount').value = '';
+            addCreditNoteModal.querySelector('#supportNumber').value = '';
+            addCreditNoteModal.querySelector('#reason').value = '';
+        });
+    });
 </div>

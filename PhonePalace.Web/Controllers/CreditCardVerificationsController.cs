@@ -63,7 +63,7 @@ namespace PhonePalace.Web.Controllers
                     var verification = await _context.CreditCardVerifications
                         .Include(v => v.AccountReceivablePayment)
                             .ThenInclude(arp => arp!.AccountReceivable)
-                        .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id);
+                        .FirstOrDefaultAsync(v => v.CreditCardVerificationID == id && v.Status == VerificationStatus.Pending);
 
                     if (verification == null || verification.Status != VerificationStatus.Pending)
                     {

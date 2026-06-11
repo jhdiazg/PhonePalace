@@ -323,6 +323,40 @@ namespace PhonePalace.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> AddCreditNote(int id, decimal amount, string reason, string supportNumber)
+        {
+            var supplier = await _context.Suppliers.FindAsync(id);
+            if (supplier == null) return NotFound();
+
+            if (amount <= 0)
+            {
+                TempData["error"] = "El monto debe ser mayor a cero.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            if (string.IsNullOrWhiteSpace(supportNumber))
+            {
+                TempData["error"] = "El número de soporte de la Nota Crédito es obligatorio.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Asumimos que la entidad Supplier tiene una propiedad Balance (Saldo a favor)
+            // similar a la entidad Client.
+            supplier.Balance += amount;
+            _context.Update(supplier);
+            
+            await _context.SaveChangesAsync();
+            
+            string supplierName = supplier is NaturalPersonSupplier np ? $"{np.FirstName} {np.LastName}" : (supplier is LegalEntitySupplier le ? le.CompanyName : "Desconocido");
+            await _auditService.LogAsync("Proveedores", $"Registró Nota Crédito #{supportNumber} para '{supplierName}' por {amount:C}. Razón: {reason}");
+            
+            TempData["success"] = "Nota crédito registrada exitosamente.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         [HttpGet]
         public async Task<JsonResult> GetMunicipalities(string departmentId)
         {

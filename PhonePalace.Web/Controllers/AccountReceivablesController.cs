@@ -403,24 +403,47 @@ namespace PhonePalace.Web.Controllers
         {
             var ar = await _context.AccountReceivables
                 .Include(x => x.Client)
+                .Include(x => x.Payments)
                 .FirstOrDefaultAsync(x => x.AccountReceivableID == id);
+
             if (ar == null) return NotFound();
 
-            if (ar.Balance < ar.TotalAmount)
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                TempData["Error"] = "No se puede eliminar una cuenta que ya tiene abonos.";
-                return RedirectToAction(nameof(Index));
-            }
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    decimal totalRefund = ar.Payments?.Sum(p => p.Amount) ?? 0;
+                    string auditDetail = $"Anuló CxC #{id} del cliente {ar.Client.DisplayName}.";
 
-            // Si es préstamo, idealmente deberíamos revertir el egreso de caja, 
-            // pero por simplicidad solo borramos el registro si fue un error de digitación inmediato.
-            
-            _context.AccountReceivables.Remove(ar);
-            await _context.SaveChangesAsync();
-            await _auditService.LogAsync("CuentasPorCobrar", $"Eliminó la cuenta por cobrar #{id} del cliente {ar.Client.DisplayName}.");
-            TempData["Success"] = "Registro eliminado.";
+                    // Si la cuenta tenía abonos, se acreditan al saldo a favor del cliente
+                    if (totalRefund > 0)
+                    {
+                        ar.Client.Balance += totalRefund;
+                        _context.Update(ar.Client);
+                        auditDetail += $" Se generó saldo a favor por {totalRefund:C} debido a abonos previos.";
+                    }
 
-            return RedirectToAction(nameof(Index));
+                    _context.AccountReceivables.Remove(ar);
+                    await _context.SaveChangesAsync();
+                    
+                    await _auditService.LogAsync("CuentasPorCobrar", auditDetail);
+                    await transaction.CommitAsync();
+
+                    TempData["Success"] = totalRefund > 0 
+                        ? $"CxC anulada. Se han acreditado {totalRefund:C} al saldo del cliente." 
+                        : "Registro eliminado correctamente.";
+
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    TempData["Error"] = $"Error al anular la cuenta: {ex.Message}";
+                    return RedirectToAction(nameof(Index));
+                }
+            });
         }
     }
 }

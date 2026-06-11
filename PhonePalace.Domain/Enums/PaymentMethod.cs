@@ -15,6 +15,8 @@ namespace PhonePalace.Domain.Enums
         [Display(Name = "Crédito")]
         Credit,
         [Display(Name = "Saldo a Favor")]
-        CustomerBalance
+        CustomerBalance,
+        [Display(Name = "Nota Crédito Proveedor")]
+        SupplierCreditNote
     }
 }

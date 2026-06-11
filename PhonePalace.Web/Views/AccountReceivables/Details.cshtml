@@ -32,9 +32,20 @@
         @if (!Model.IsPaid)
         {
             <hr />
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal">
+            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#paymentModal">
                 <i class="bi bi-cash-coin"></i> Registrar Abono
             </button>
+
+            @if (User.IsInRole("Administrador"))
+            {
+                <form asp-action="Delete" asp-route-id="@Model.AccountReceivableID" method="post" class="d-inline" 
+                      onsubmit="return confirm('¿Está seguro de anular esta cuenta? Si existen abonos, se devolverán automáticamente al saldo a favor del cliente.');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Anular Cuenta
+                    </button>
+                </form>
+            }
         }
         else
         {

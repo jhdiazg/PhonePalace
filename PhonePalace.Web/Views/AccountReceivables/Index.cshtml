@@ -110,9 +110,21 @@
                         }
                     </td>
                     <td>
-                        <a asp-action="Details" asp-route-id="@item.AccountReceivableID" class="btn btn-sm btn-primary">
-                            <i class="fas fa-eye"></i> Detalles / Abonar
-                        </a>
+                        <div class="btn-group">
+                            <a asp-action="Details" asp-route-id="@item.AccountReceivableID" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye"></i> Detalles
+                            </a>
+                            @if (User.IsInRole("Administrador"))
+                            {
+                                <form asp-action="Delete" asp-route-id="@item.AccountReceivableID" method="post" 
+                                      onsubmit="return confirm('¿Anular cuenta y devolver abonos al saldo del cliente?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-danger rounded-start-0">
+                                        <i class="fas fa-trash"></i> Anular
+                                    </button>
+                                </form>
+                            }
+                        </div>
                     </td>
                 </tr>
             }

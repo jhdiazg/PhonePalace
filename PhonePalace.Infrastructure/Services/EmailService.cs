@@ -23,7 +23,7 @@ public class EmailService : IEmailSender
         var settings = _configuration.GetSection("SmtpSettings");
 
         var email = new MimeMessage();
-        email.From.Add(new MailboxAddress(settings["SenderName"], settings["SenderEmail"]));
+        email.From.Add(new MailboxAddress(settings["SenderName"] ?? "PhonePalace", settings["SenderEmail"] ?? string.Empty));
         email.To.Add(MailboxAddress.Parse(toEmail));
         email.Subject = subject;
 
@@ -39,8 +39,8 @@ public class EmailService : IEmailSender
         {
             port = 587; // Default SMTP port
         }
-        await smtp.ConnectAsync(settings["Server"], port, SecureSocketOptions.StartTls);
-        await smtp.AuthenticateAsync(settings["Username"], settings["Password"]);
+        await smtp.ConnectAsync(settings["Server"] ?? string.Empty, port, SecureSocketOptions.StartTls);
+        await smtp.AuthenticateAsync(settings["Username"] ?? string.Empty, settings["Password"] ?? string.Empty);
         await smtp.SendAsync(email);
         await smtp.DisconnectAsync(true);
     }

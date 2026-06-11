@@ -541,7 +541,10 @@ namespace PhonePalace.Web.Controllers
                     upperDescription.Contains("APERTURA") ||
                     upperDescription.Contains("GASTO") || // Excluir pagos de gastos mal clasificados como ingreso
                     upperDescription.Contains("PAGO") ||
-                    upperDescription.Contains("SALDO PENDIENTE"))
+                    upperDescription.Contains("SALDO PENDIENTE") ||
+                    upperDescription.Contains("RETIRO") ||
+                    upperDescription.Contains("CONSIGNACIÓN") ||
+                    upperDescription.Contains("TRANSFERENCIA"))
                 {
                     continue;
                 }
@@ -610,7 +613,7 @@ namespace PhonePalace.Web.Controllers
             // 4.1. Sumar los abonos reales a proveedores (Flujo de Caja)
             // Ahora sumamos los pagos registrados en AccountPayablePayment en lugar de la causación de la compra.
             var supplierPayments = await _context.Set<AccountPayablePayment>()
-                .Where(p => p.PaymentDate.Year == reportYear)
+                .Where(p => p.PaymentDate.Year == reportYear && p.PaymentMethod != PaymentMethod.SupplierCreditNote)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -686,7 +689,10 @@ namespace PhonePalace.Web.Controllers
                     upperDescription.Contains("APERTURA") ||
                     upperDescription.Contains("GASTO") ||
                     upperDescription.Contains("PAGO") ||
-                    upperDescription.Contains("SALDO PENDIENTE"))
+                    upperDescription.Contains("SALDO PENDIENTE") ||
+                    upperDescription.Contains("RETIRO") ||
+                    upperDescription.Contains("CONSIGNACIÓN") ||
+                    upperDescription.Contains("TRANSFERENCIA"))
                 {
                     continue;
                 }

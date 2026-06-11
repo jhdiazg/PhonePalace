@@ -29,6 +29,8 @@ namespace PhonePalace.Domain.Entities
 
         public virtual Department? Department { get; set; }
         public virtual Municipality? Municipality { get; set; }
+        
+        public decimal Balance { get; set; } = 0m;
 
         // Propiedad de borrado lógico
         public bool IsActive { get; set; } = true;

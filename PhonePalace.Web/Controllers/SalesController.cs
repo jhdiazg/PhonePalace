@@ -348,7 +348,8 @@ namespace PhonePalace.Web.Controllers
             }
 
             // Inicializa dropdowns
-            viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            var filteredMethods = EnumHelper.ToSelectList<PaymentMethod>().Where(x => x.Value != PaymentMethod.SupplierCreditNote.ToString());
+            viewModel.PaymentMethods = new SelectList(filteredMethods, "Value", "Text");
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
@@ -370,7 +371,8 @@ namespace PhonePalace.Web.Controllers
                 if (tempModel != null)
                 {
                     viewModel = tempModel;
-                    viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+                    var filteredMethodsTemp = EnumHelper.ToSelectList<PaymentMethod>().Where(x => x.Value != PaymentMethod.SupplierCreditNote.ToString());
+                    viewModel.PaymentMethods = new SelectList(filteredMethodsTemp, "Value", "Text");
                     viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
                     viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
                     viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
@@ -390,7 +392,8 @@ namespace PhonePalace.Web.Controllers
     [Authorize(Roles = "Administrador,Vendedor")]
     public async Task<IActionResult> Create(ViewModels.SaleCreateViewModel viewModel)
         {
-            viewModel.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            var filteredMethodsPost = EnumHelper.ToSelectList<PaymentMethod>().Where(x => x.Value != PaymentMethod.SupplierCreditNote.ToString());
+            viewModel.PaymentMethods = new SelectList(filteredMethodsPost, "Value", "Text");
             viewModel.SaleChannels = new SelectList(EnumHelper.ToSelectList<SaleChannel>().Where(x => x.Value != "0"), "Value", "Text");
             viewModel.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName");
             viewModel.Products = new SelectList(_context.Products.Where(p => p.IsActive), "ProductID", "Name");
@@ -795,9 +798,28 @@ namespace PhonePalace.Web.Controllers
                         }
 
                         // 3. Eliminar Cuenta por Cobrar asociada (si existe)
-                        var ar = await _context.AccountReceivables.FirstOrDefaultAsync(x => x.SaleID == id);
+                        var ar = await _context.AccountReceivables
+                            .Include(x => x.Payments)
+                            .FirstOrDefaultAsync(x => x.SaleID == id);
+
+                        // Fallback: Si no hay SaleID (ventas antiguas), buscar por referencia de InvoiceID en la descripción
+                        if (ar == null && sale.Invoice != null)
+                        {
+                            string invoiceRef = sale.Invoice.InvoiceID.ToString();
+                            ar = await _context.AccountReceivables
+                                .Include(x => x.Payments)
+                                .FirstOrDefaultAsync(x => x.ClientID == sale.ClientID && x.Description != null && x.Description.Contains(invoiceRef));
+                        }
+
                         if (ar != null)
                         {
+                            // Si el cliente ya había hecho abonos a esta deuda, se los devolvemos como saldo a favor
+                            decimal arAbonos = ar.Payments?.Sum(p => p.Amount) ?? 0;
+                            if (arAbonos > 0 && sale.Client != null)
+                            {
+                                sale.Client.Balance += arAbonos;
+                                _context.Update(sale.Client);
+                            }
                             _context.AccountReceivables.Remove(ar);
                         }
 

@@ -105,7 +105,7 @@ namespace PhonePalace.Web.Controllers
                 Id = a.Id,
                 DocumentType = EnumHelper.GetDisplayName(a.DocumentType),
                 DocumentNumber = a.DocumentNumber ?? string.Empty,
-                Beneficiary = a.Purchase != null ? a.Purchase.Supplier.DisplayName : a.Beneficiary,
+                Beneficiary = a.Purchase != null && a.Purchase.Supplier != null ? a.Purchase.Supplier.DisplayName : (a.Beneficiary ?? string.Empty),
                 Amount = a.Amount,
                 Balance = a.Balance,
                 DueDate = a.DueDate,
@@ -125,18 +125,21 @@ namespace PhonePalace.Web.Controllers
             if (id == null) return NotFound();
 
             var accountPayable = await _context.AccountPayables
-                .Include(a => a.Purchase).ThenInclude(p => p.PurchaseDetails)
+                .Include(a => a.Purchase!).ThenInclude(p => p!.Supplier)
+                .Include(a => a.Purchase!).ThenInclude(p => p!.PurchaseDetails)
                 .Include(a => a.Payments)
                     .ThenInclude(p => p.Bank)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (accountPayable == null) return NotFound();
 
+            ViewBag.SupplierBalance = accountPayable.Purchase?.Supplier?.Balance ?? 0;
+
             if (User.IsInRole("Contador"))
             {
                 // Si es una CxP manual (sin compra), no se muestra al contador.
                 // Si tiene compra, se valida que la compra tenga IVA.
-                bool hasVat = accountPayable.Purchase != null && accountPayable.Purchase.PurchaseDetails.Any(d => d.TaxRate > 0);
+                bool hasVat = accountPayable.Purchase?.PurchaseDetails?.Any(d => d.TaxRate > 0) ?? false;
 
                 if (!hasVat)
                 {
@@ -145,7 +148,9 @@ namespace PhonePalace.Web.Controllers
                 }
             }
 
-            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                .Where(x => x.Value != PaymentMethod.CustomerBalance.ToString() && x.Value != PaymentMethod.Credit.ToString());
+
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
             return View(accountPayable);
         }
@@ -279,8 +284,8 @@ namespace PhonePalace.Web.Controllers
         {
             if (id == null) return NotFound();
 
-            var ap = await _context.AccountPayables.FindAsync(id);
-            if (ap == null) return NotFound();
+            var ap = await _context.AccountPayables.Include(x => x.Purchase!).ThenInclude(p => p!.Supplier).FirstOrDefaultAsync(x => x.Id == id);
+            if (ap == null || ap.Purchase == null) return NotFound();
 
             if (ap.IsPaid)
             {
@@ -288,7 +293,10 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>();
+            ViewBag.SupplierBalance = ap.Purchase?.Supplier?.Balance ?? 0;
+            ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
+                .Where(x => x.Value != PaymentMethod.CustomerBalance.ToString() && x.Value != PaymentMethod.Credit.ToString());
+                
             ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name");
 
             return View(ap);
@@ -324,8 +332,23 @@ namespace PhonePalace.Web.Controllers
                     var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                     if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
+                    // Lógica específica para Nota Crédito (Cruce de Saldo)
+                    if (paymentMethod == PaymentMethod.SupplierCreditNote)
+                    {
+                        if (string.IsNullOrWhiteSpace(note)) throw new Exception("Para este método de pago es obligatorio indicar el número de la Nota Crédito en la observación.");
+
+                        var purchase = await _context.Purchases.Include(p => p.Supplier).FirstOrDefaultAsync(p => p.Id == ap.PurchaseId);
+                        var supplier = purchase?.Supplier;
+                        
+                        if (supplier == null) throw new Exception("No se puede aplicar Nota Crédito a una cuenta manual. Debe estar vinculada a una compra.");
+                        if (supplier.Balance < amount) throw new Exception($"Saldo insuficiente. El proveedor solo tiene {supplier.Balance:C} a favor.");
+
+                        supplier.Balance -= amount;
+                        _context.Update(supplier);
+                    }
+
                     // Validar banco si es necesario
-                    if ((paymentMethod == PaymentMethod.Transfer || paymentMethod == PaymentMethod.DebitCard || paymentMethod == PaymentMethod.CreditCard) && !bankId.HasValue)
+                    else if ((paymentMethod == PaymentMethod.Transfer || paymentMethod == PaymentMethod.DebitCard || paymentMethod == PaymentMethod.CreditCard) && !bankId.HasValue)
                     {
                         TempData["Error"] = "Debe seleccionar un banco para este método de pago.";
                         return RedirectToAction(nameof(Details), new { id });
@@ -341,7 +364,7 @@ namespace PhonePalace.Web.Controllers
                         }
                         await _cashService.RegisterExpenseAsync(amount, $"Pago de CxP #{ap.Id} - {note}", userId);
                     }
-                    else if (bankId.HasValue)
+                    else if (bankId.HasValue && paymentMethod != PaymentMethod.SupplierCreditNote)
                     {
                         // Registrar movimiento bancario de salida (TransferOut)
                         await _bankService.RegisterManualMovementAsync(bankId.Value, BankTransactionType.TransferOut, amount, $"Pago de CxP #{ap.Id} ({EnumHelper.GetDisplayName(paymentMethod)}) - {note}");
