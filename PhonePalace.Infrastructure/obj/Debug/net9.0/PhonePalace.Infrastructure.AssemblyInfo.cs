@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PhonePalace.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2d726445e9d923167a00c691f1ba3134663135da")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+243926afe53c5658c572e7812fc8e74047872ccc")]
 [assembly: System.Reflection.AssemblyProductAttribute("PhonePalace.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PhonePalace.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

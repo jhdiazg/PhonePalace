@@ -285,7 +285,7 @@ namespace PhonePalace.Web.Controllers
             if (id == null) return NotFound();
 
             var ap = await _context.AccountPayables.Include(x => x.Purchase!).ThenInclude(p => p!.Supplier).FirstOrDefaultAsync(x => x.Id == id);
-            if (ap == null || ap.Purchase == null) return NotFound();
+            if (ap == null) return NotFound();
 
             if (ap.IsPaid)
             {

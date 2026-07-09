@@ -543,7 +543,8 @@ namespace PhonePalace.Web.Controllers
                     upperDescription.Contains("PAGO") ||
                     upperDescription.Contains("SALDO PENDIENTE") ||
                     upperDescription.Contains("RETIRO") ||
-                    upperDescription.Contains("CONSIGNACIÓN") ||
+                    upperDescription.Contains("CONSIGNACIÓN") || // Movimiento entre caja y banco
+                    upperDescription.Contains("TRASLADO") || // Movimiento entre caja y banco
                     upperDescription.Contains("TRANSFERENCIA"))
                 {
                     continue;
@@ -563,7 +564,8 @@ namespace PhonePalace.Web.Controllers
                 var desc = (bi.Description ?? "").ToUpper();
                 // Excluir ingresos que ya se cuentan en ventas, abonos, o son transferencias internas.
                 if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
-                    desc.Contains("VENTA") ||
+                    desc.Contains("VENTA") || // Ingresos por ventas ya están en su propia categoría
+                    desc.Contains("TRASLADO") || // Movimiento entre bancos
                     desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
                     desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
                     desc.Contains("GASTO") || // Excluir devoluciones de gastos o errores
@@ -691,7 +693,8 @@ namespace PhonePalace.Web.Controllers
                     upperDescription.Contains("PAGO") ||
                     upperDescription.Contains("SALDO PENDIENTE") ||
                     upperDescription.Contains("RETIRO") ||
-                    upperDescription.Contains("CONSIGNACIÓN") ||
+                    upperDescription.Contains("CONSIGNACIÓN") || // Movimiento entre caja y banco
+                    upperDescription.Contains("TRASLADO") || // Movimiento entre caja y banco
                     upperDescription.Contains("TRANSFERENCIA"))
                 {
                     continue;
@@ -708,7 +711,8 @@ namespace PhonePalace.Web.Controllers
             foreach (var bi in bankIncomes)
             {
                 var desc = (bi.Description ?? "").ToUpper();
-                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") || desc.Contains("VENTA") ||
+                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") || desc.Contains("VENTA") || // Ingresos por ventas ya están en su propia categoría
+                    desc.Contains("TRASLADO") || // Movimiento entre bancos
                     desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
                     desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
                     desc.Contains("GASTO") ||

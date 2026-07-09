@@ -241,10 +241,13 @@ namespace PhonePalace.Web.Controllers
                             using var transaction = await _context.Database.BeginTransactionAsync();
                             try
                             {
+                                // Si la descripción está vacía, usar "TRASLADO" por defecto para consistencia.
+                                var description = string.IsNullOrWhiteSpace(model.Description) ? "TRASALADO" : model.Description;
+
                                 switch (model.TransferType)
                                 {
                                     case BankTransferType.BankToBank:
-                                        await _bankService.RegisterTransferAsync(model.SourceBankId!.Value, model.TargetBankId!.Value, model.Amount, model.Description);
+                                        await _bankService.RegisterTransferAsync(model.SourceBankId!.Value, model.TargetBankId!.Value, model.Amount, description);
                                         await _auditService.LogAsync("Bancos", $"Transferencia entre bancos: {model.Amount:C} de ID {model.SourceBankId} a ID {model.TargetBankId}");
                                         break;
 
@@ -254,9 +257,9 @@ namespace PhonePalace.Web.Controllers
                                         if (cashRegister == null) throw new InvalidOperationException("La caja debe estar abierta para recibir dinero.");
 
                                         // Retiro del banco
-                                        await _bankService.RegisterManualMovementAsync(model.SourceBankId!.Value, Domain.Enums.BankTransactionType.TransferOut, model.Amount, $"Retiro hacia Caja: {model.Description}");
+                                        await _bankService.RegisterManualMovementAsync(model.SourceBankId!.Value, Domain.Enums.BankTransactionType.TransferOut, model.Amount, $"Retiro hacia Caja: {description}");
                                         // Ingreso a caja
-                                        await _cashService.RegisterIncomeAsync(model.Amount, $"Transferencia desde Banco: {model.Description}", userId);
+                                        await _cashService.RegisterIncomeAsync(model.Amount, $"Transferencia desde Banco: {description}", userId);
                                         
                                         await _auditService.LogAsync("Bancos", $"Retiro de banco a caja: {model.Amount:C} del banco ID {model.SourceBankId}");
                                         break;
@@ -267,9 +270,9 @@ namespace PhonePalace.Web.Controllers
                                         if (cashRegister2 == null) throw new InvalidOperationException("La caja debe estar abierta para sacar dinero.");
 
                                         // Egreso de caja
-                                        await _cashService.RegisterExpenseAsync(model.Amount, $"Consignación a Banco: {model.Description}", userId);
+                                        await _cashService.RegisterExpenseAsync(model.Amount, $"Consignación a Banco: {description}", userId);
                                         // Ingreso al banco
-                                        await _bankService.RegisterManualMovementAsync(model.TargetBankId!.Value, Domain.Enums.BankTransactionType.TransferIn, model.Amount, $"Consignación desde Caja: {model.Description}");
+                                        await _bankService.RegisterManualMovementAsync(model.TargetBankId!.Value, Domain.Enums.BankTransactionType.TransferIn, model.Amount, $"Consignación desde Caja: {description}");
 
                                         await _auditService.LogAsync("Bancos", $"Consignación de caja a banco: {model.Amount:C} al banco ID {model.TargetBankId}");
                                         break;

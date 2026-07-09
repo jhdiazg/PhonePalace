@@ -32,6 +32,8 @@ namespace PhonePalace.Domain.Entities
         
         public decimal Balance { get; set; } = 0m;
 
+        public virtual ICollection<SupplierBalanceMovement> BalanceMovements { get; set; } = new List<SupplierBalanceMovement>();
+
         // Propiedad de borrado lógico
         public bool IsActive { get; set; } = true;
 

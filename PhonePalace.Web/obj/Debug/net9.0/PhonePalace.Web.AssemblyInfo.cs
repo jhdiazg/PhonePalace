@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PhonePalace.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+694c57a6cc7f97692f1bde2cb84925f758d86e0f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+243926afe53c5658c572e7812fc8e74047872ccc")]
 [assembly: System.Reflection.AssemblyProductAttribute("PhonePalace.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PhonePalace.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
