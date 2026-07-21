@@ -165,9 +165,44 @@ namespace PhonePalace.Web.Controllers
 
             decimal total = salesData.Sum(s => electronicIds.Contains(s.InvoiceID) ? s.Subtotal : s.Total);
 
-            // Calcular utilidad total (Venta - Costo)
-            // Ajuste: Usar costo histórico (d.Cost) si existe, de lo contrario usar costo actual (para compatibilidad con datos antiguos)
-            decimal totalProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
+            // --- INICIO: CÁLCULO DE DEVOLUCIONES PARA OBTENER VENTAS Y UTILIDAD NETAS ---
+            var returnsQuery = _context.Returns
+                .Include(r => r.Sale)
+                .Include(r => r.Details).ThenInclude(rd => rd.Product)
+                .AsQueryable();
+
+            if (startDate.HasValue)
+            {
+                returnsQuery = returnsQuery.Where(r => r.Date.Date >= startDate.Value.Date);
+            }
+            if (endDate.HasValue)
+            {
+                returnsQuery = returnsQuery.Where(r => r.Date.Date <= endDate.Value.Date);
+            }
+
+            if (User.IsInRole("Contador"))
+            {
+                returnsQuery = returnsQuery.Where(r => r.Sale != null && _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == r.Sale.InvoiceID && e.Status == "Accepted"));
+            }
+
+            var returnsData = await returnsQuery
+                .Select(r => new { r.TotalAmount, InvoiceID = r.Sale != null ? r.Sale.InvoiceID.GetValueOrDefault() : 0 })
+                .ToListAsync();
+
+            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
+            if (taxRate > 1) taxRate /= 100;
+            var taxFactor = 1 + taxRate;
+
+            var returnInvoiceIds = returnsData.Select(r => r.InvoiceID).Distinct().ToList();
+            var returnElectronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>().Where(e => returnInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted").Select(e => e.InvoiceID).ToListAsync());
+
+            var totalReturnsValue = returnsData.Sum(r => returnElectronicIds.Contains(r.InvoiceID) ? Math.Round(r.TotalAmount / taxFactor, 2) : r.TotalAmount);
+            total -= totalReturnsValue;
+
+            decimal grossProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
+            decimal returnedCost = await returnsQuery.SelectMany(r => r.Details).SumAsync(rd => rd.Quantity * (rd.Cost > 0 ? rd.Cost : (rd.Product != null ? rd.Product.Cost : 0)));
+            decimal totalProfit = grossProfit - returnedCost;
+            // --- FIN: CÁLCULO DE DEVOLUCIONES ---
 
             var sales = await PaginatedList<Sale>.CreateAsync(
                 salesQuery.OrderByDescending(s => s.SaleDate).ThenByDescending(s => s.SaleID).AsNoTracking(), 
