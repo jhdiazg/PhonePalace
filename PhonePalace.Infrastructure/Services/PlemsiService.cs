@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
+using PhonePalace.Domain.Helpers;
 using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Configuration;
 
@@ -78,6 +79,16 @@ namespace PhonePalace.Infrastructure.Services
                 _logger.LogWarning("No se pudieron parsear las fechas de inicio/fin de la resolución desde la configuración. Se omitirá la validación de vigencia.");
             }
             // --- FIN: Validación de Vigencia de Resolución ---
+
+            // --- INICIO: Validación de Cliente (Correo y NIT/Documento) ---
+            if (!ValidationHelper.ValidateClientForElectronicInvoice(sale.Client, out var clientErrors))
+            {
+                string clientErrorMessage = $"No se puede emitir la factura electrónica: {string.Join(" ", clientErrors)}";
+                _logger.LogError(clientErrorMessage);
+                return new PlemsiResponse { Success = false, ErrorMessage = clientErrorMessage };
+            }
+            // --- FIN: Validación de Cliente ---
+
             try
             {
                 var payload = BuildPayload(sale, electronicInvoiceNumber);
@@ -384,7 +395,8 @@ namespace PhonePalace.Infrastructure.Services
             string dv = null!;
             if (client is LegalEntity le && !string.IsNullOrEmpty(le.NIT))
             {
-                var nitParts = le.NIT.Split('-');
+                var cleanNit = le.NIT.Replace(".", "").Replace(" ", "").Trim();
+                var nitParts = cleanNit.Split('-');
                 nit = nitParts[0];
                 if (nitParts.Length > 1)
                 {
@@ -393,7 +405,7 @@ namespace PhonePalace.Infrastructure.Services
             }
             else if (client is NaturalPerson np)
             {
-                nit = np.DocumentNumber;
+                nit = (np.DocumentNumber ?? string.Empty).Trim();
             }
             else
             {
@@ -414,12 +426,12 @@ namespace PhonePalace.Infrastructure.Services
             {
                 identification_number = nit,
                 dv, // Dígito verificador
-                name = client.DisplayName,
-                email = string.IsNullOrWhiteSpace(client.Email) ? "consumidorfinal@correo.com" : client.Email,
-                phone = client.PhoneNumber ?? "3000000000",
-                address = client.StreetAddress ?? "Ciudad",
+                name = client?.DisplayName ?? "Cliente",
+                email = !string.IsNullOrWhiteSpace(client?.Email) ? client.Email.Trim() : "consumidorfinal@correo.com",
+                phone = client?.PhoneNumber ?? "3000000000",
+                address = client?.StreetAddress ?? "Ciudad",
                 // Priorizamos el código DANE del municipio si existe.
-                municipality_code = client.MunicipalityID ?? "11001", // El ID de municipio en la BD es el código DANE.
+                municipality_code = client?.MunicipalityID ?? "11001", // El ID de municipio en la BD es el código DANE.
                 merchant_registration = "00000000", // Valor por defecto como en el ejemplo
                 type_document_identification_id = GetDocumentTypeId(client),
                 type_organization_id = client is NaturalPerson ? 2 : 1, // 1: Juridica, 2: Natural
@@ -702,7 +714,7 @@ namespace PhonePalace.Infrastructure.Services
             };
         }
 
-        private int GetDocumentTypeId(Client client)
+        private int GetDocumentTypeId(Client? client)
         {
             if (client is NaturalPerson np)
             {

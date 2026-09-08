@@ -63,6 +63,24 @@ body {
     color: red;
 }
 
+/* Tarjetas de resumen compactas */
+.summary-card .inner {
+    padding: 8px 10px;
+}
+.summary-card .inner h3 {
+    font-size: 1.3rem;
+    margin-bottom: 2px;
+}
+.summary-card .inner p {
+    font-size: 0.8rem;
+    margin-bottom: 0;
+}
+.summary-card .icon {
+    font-size: 1.5rem;
+    right: 10px;
+    top: 8px;
+}
+
 /* Estilos para el Logo Jahudi en el Sidebar */
 .logo-jahudi {
     display: block;

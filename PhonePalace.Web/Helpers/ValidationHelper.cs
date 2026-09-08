@@ -1,4 +1,6 @@
-using System.Linq;
+using System.Collections.Generic;
+using PhonePalace.Domain.Entities;
+using DomainValidationHelper = PhonePalace.Domain.Helpers.ValidationHelper;
 
 namespace PhonePalace.Web.Helpers
 {
@@ -7,33 +9,25 @@ namespace PhonePalace.Web.Helpers
         /// <summary>
         /// Calcula el dígito de verificación para un NIT colombiano.
         /// </summary>
-        /// <param name="nit">El número de NIT sin el dígito de verificación.</param>
-        /// <returns>El dígito de verificación calculado. Retorna -1 si el NIT es inválido (contiene caracteres no numéricos o es demasiado largo).</returns>
-        public static int CalculateNitVerificationDigit(string nit)
-        {
-            if (string.IsNullOrEmpty(nit) || !nit.All(char.IsDigit))
-            {
-                return -1;
-            }
+        public static int CalculateNitVerificationDigit(string nit) =>
+            DomainValidationHelper.CalculateNitVerificationDigit(nit);
 
-            int[] dianWeights = { 3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71 };
+        /// <summary>
+        /// Valida si un NIT colombiano es válido (número, formato y dígito verificador DIAN).
+        /// </summary>
+        public static bool IsValidNit(string? nit, out string? errorMessage) =>
+            DomainValidationHelper.IsValidNit(nit, out errorMessage);
 
-            if (nit.Length > dianWeights.Length)
-            {
-                return -1; // NIT demasiado largo
-            }
+        /// <summary>
+        /// Valida el formato de una dirección de correo electrónico.
+        /// </summary>
+        public static bool IsValidEmail(string? email) =>
+            DomainValidationHelper.IsValidEmail(email);
 
-            int sum = 0;
-            for (int i = 0; i < nit.Length; i++)
-            {
-                // Se itera de derecha a izquierda sobre los dígitos del NIT
-                int digit = int.Parse(nit[nit.Length - 1 - i].ToString());
-                sum += digit * dianWeights[i];
-            }
-
-            int mod = sum % 11;
-
-            return mod < 2 ? mod : 11 - mod;
-        }
+        /// <summary>
+        /// Valida si un cliente cumple los requisitos para emitir Factura Electrónica.
+        /// </summary>
+        public static bool ValidateClientForElectronicInvoice(Client? client, out List<string> errors) =>
+            DomainValidationHelper.ValidateClientForElectronicInvoice(client, out errors);
     }
 }

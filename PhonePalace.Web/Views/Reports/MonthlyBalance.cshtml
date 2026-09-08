@@ -83,7 +83,7 @@
                             <td>@Model.Totals.Sales.ToString("C0")</td>
                             <td>@Model.Totals.SalesVAT.ToString("C0")</td>
                             <td>@Model.Totals.Cost.ToString("C0")</td>
-                            <td>@((Model.Totals.Sales - Model.Totals.Cost).ToString("C0"))</td>
+                            <td class="fw-bold text-primary">@((Model.Totals.Sales - Model.Totals.Cost).ToString("C0"))</td>
                             <td class="text-success">@Model.Totals.OtherIncome.ToString("C0")</td>
                             <td>@Model.Totals.FixedExpenses.ToString("C0")</td>
                             <td>@Model.Totals.LocalExpenses.ToString("C0")</td>

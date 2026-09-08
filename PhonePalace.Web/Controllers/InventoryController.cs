@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -253,6 +253,56 @@ namespace PhonePalace.Web.Controllers
             ViewBag.ProductSKU = product.SKU;
 
             return View(movements);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [Route("Inventario/RecalcularStock")]
+        public async Task<IActionResult> RecalculateStock()
+        {
+            // 1. Obtener todos los stocks actuales de la tabla Inventories
+            var currentStocks = await _context.Inventories
+                .Include(i => i.Product)
+                .ToDictionaryAsync(i => i.ProductID, i => i);
+
+            // 2. Calcular los stocks reales desde el Kardex (InventoryMovement) en una sola consulta
+            var calculatedStocks = await _context.InventoryMovements
+                .GroupBy(m => m.ProductId)
+                .Select(g => new { ProductId = g.Key, Stock = g.Sum(m => m.Quantity) })
+                .ToDictionaryAsync(x => x.ProductId, x => x.Stock);
+
+            int updatedCount = 0;
+            var auditDetails = new System.Text.StringBuilder();
+
+            // 3. Comparar y actualizar
+            foreach (var productId in currentStocks.Keys)
+            {
+                var inventoryItem = currentStocks[productId];
+                calculatedStocks.TryGetValue(productId, out var calculatedStock); // Default to 0 if no movements
+
+                if (inventoryItem.Stock != calculatedStock)
+                {
+                    var oldStock = inventoryItem.Stock;
+                    inventoryItem.Stock = calculatedStock;
+                    _context.Update(inventoryItem);
+                    updatedCount++;
+                    auditDetails.AppendLine($"Producto '{inventoryItem.Product.Name}' (ID: {inventoryItem.ProductID}): Stock corregido de {oldStock} a {calculatedStock}.");
+                }
+            }
+
+            if (updatedCount > 0)
+            {
+                await _context.SaveChangesAsync();
+                await _auditService.LogAsync("Inventario", $"Recálculo de stock completado. {updatedCount} productos corregidos.");
+                TempData["Success"] = $"Se corrigió el stock de {updatedCount} productos para que coincida con su historial de movimientos (Kardex).";
+            }
+            else
+            {
+                TempData["Info"] = "El stock de todos los productos ya está sincronizado con su historial.";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }

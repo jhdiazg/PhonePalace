@@ -1,14 +1,17 @@
-@model PaginatedList<PhonePalace.Domain.Entities.Sale>
+@model PaginatedList<PhonePalace.Web.ViewModels.SalesIndexRowViewModel>
 @using PhonePalace.Web.Helpers
-@using PhonePalace.Domain.Entities
 
 @{
     ViewData["Title"] = "Ventas";
-    var pendingSaleIds = ViewData["PendingSaleIds"] as HashSet<int> ?? new HashSet<int>();
     var currentCashDate = ViewData["CurrentCashDate"] as DateTime?;
 }
 
-<h1>Listado de Ventas</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Listado de Ventas</h1>
+    <div>
+        <a asp-action="Create" class="btn btn-success"><i class="bi bi-plus-circle-fill me-2"></i>Nueva Venta</a>
+    </div>
+</div>
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
@@ -52,15 +55,25 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <a asp-action="Create" class="btn btn-success"><i class="bi bi-plus-circle-fill me-2"></i>Nueva Venta</a>
+<!-- Tarjetas de Resumen -->
+<div class="row">
+    <div class="col-lg-6 col-6">
+        <div class="small-box bg-primary text-white summary-card">
+            <div class="inner">
+                <h3 class="text-white">@(((decimal)(ViewData["TotalFilteredSales"] ?? 0m)).ToString("C0"))</h3>
+                <p class="text-white-50">Total Ventas (Filtro)</p>
+            </div>
+            <div class="icon"><i class="bi bi-file-earmark-text"></i></div>
+        </div>
     </div>
-    <div class="text-end">
-        <span class="fw-bold">Total Consulta:</span>
-        <span class="badge bg-dark fs-6">@(((decimal?)ViewData["Total"] ?? 0).ToString("C"))</span>
-        <span class="fw-bold ms-3">Utilidad Total:</span>
-        <span class="badge bg-success fs-6">@(((decimal?)ViewData["TotalProfit"] ?? 0).ToString("C"))</span>
+    <div class="col-lg-6 col-6">
+        <div class="small-box bg-secondary text-white summary-card">
+            <div class="inner">
+                <h3 class="text-white">@(((decimal)(ViewData["TotalFilteredProfit"] ?? 0m)).ToString("C0"))</h3>
+                <p class="text-white-50">Utilidad (Filtro)</p>
+            </div>
+            <div class="icon"><i class="bi bi-graph-up"></i></div>
+        </div>
     </div>
 </div>
 
@@ -68,7 +81,8 @@
     <table class="table table-striped table-hover">
         <thead class="table-light">
             <tr>
-                <th>Factura</th>
+                <th>Tipo</th>
+                <th>Referencia</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th class="text-end">Total</th>
@@ -79,17 +93,34 @@
         <tbody>
             @foreach (var item in Model)
             {
-                var profit = item.Details.Sum(d => d.Quantity * (d.UnitPrice - (d.Product?.Cost ?? 0)));
-                <tr>
+                var isReturn = item.RowType == "Return";
+                <tr class="@(isReturn ? "table-warning" : "")">
                     <td>
-                        <a asp-action="Details" asp-route-id="@item.SaleID"><strong>@item.Invoice.InvoiceID</strong></a>
+                        @if (isReturn)
+                        {
+                            <span class="badge bg-danger"><i class="bi bi-arrow-return-left me-1"></i>Devolución</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success"><i class="bi bi-receipt me-1"></i>Venta</span>
+                        }
                     </td>
-                    <td>@item.SaleDate.ToString("dd/MM/yyyy HH:mm")</td>
-                    <td>@Html.DisplayFor(modelItem => item.Client.DisplayName)</td>
-                    <td class="text-end">@item.Invoice.Total.ToString("C")</td>
-                    <td class="text-end text-success">@profit.ToString("C")</td>
+                    <td>
+                        @if (isReturn)
+                        {
+                            <strong>@item.ReferenceLabel</strong>
+                        }
+                        else
+                        {
+                            <a asp-action="Details" asp-route-id="@item.ID"><strong>@item.ReferenceLabel</strong></a>
+                        }
+                    </td>
+                    <td>@item.Date.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@item.ClientName</td>
+                    <td class="text-end @(isReturn ? "text-danger" : "")">@item.TotalAmount.ToString("C")</td>
+                    <td class="text-end @(item.Profit >= 0 ? "text-success" : "text-danger")">@item.Profit.ToString("C")</td>
                     <td class="text-center">
-                        @if (pendingSaleIds.Contains(item.SaleID))
+                        @if (!isReturn && item.IsCreditPending)
                         {
                             <span class="badge bg-warning text-dark" title="Venta a crédito con saldo pendiente"><i class="bi bi-hourglass-split"></i> Crédito</span>
                         }

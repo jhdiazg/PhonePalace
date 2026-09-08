@@ -16,3 +16,5 @@ namespace PhonePalace.Web.ViewModels
         public string Type { get; set; } = string.Empty;
     }
 }
+
+

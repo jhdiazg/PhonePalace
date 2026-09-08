@@ -17,6 +17,7 @@ using System.IO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using PhonePalace.Infrastructure.Services;
+using PhonePalace.Web.ViewModels;
 using Microsoft.Extensions.Logging;
 
 namespace PhonePalace.Web.Controllers
@@ -155,72 +156,120 @@ namespace PhonePalace.Web.Controllers
                     (s.Client is LegalEntity && ((LegalEntity)s.Client).CompanyName.Contains(clientName)));
             }
 
-            // Calcular total de la consulta antes de paginar, respetando la lógica de negocio (Local=Total, Electrónica=Subtotal)
-            var salesData = await salesQuery.Select(s => new { InvoiceID = s.Invoice.InvoiceID, s.Invoice.Total, s.Invoice.Subtotal }).ToListAsync();
-            var salesIds = salesData.Select(s => s.InvoiceID).ToList();
-            var electronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
-                .Where(e => salesIds.Contains(e.InvoiceID) && e.Status == "Accepted")
-                .Select(e => e.InvoiceID)
-                .ToListAsync());
-
-            decimal total = salesData.Sum(s => electronicIds.Contains(s.InvoiceID) ? s.Subtotal : s.Total);
-
-            // --- INICIO: CÁLCULO DE DEVOLUCIONES PARA OBTENER VENTAS Y UTILIDAD NETAS ---
+            // --- CONSULTA DE DEVOLUCIONES (mismos filtros por fecha/cliente, sobre Return.Date) ---
             var returnsQuery = _context.Returns
+                .Include(r => r.Client)
                 .Include(r => r.Sale)
-                .Include(r => r.Details).ThenInclude(rd => rd.Product)
+                .Include(r => r.Details).ThenInclude(d => d.Product)
                 .AsQueryable();
 
             if (startDate.HasValue)
-            {
                 returnsQuery = returnsQuery.Where(r => r.Date.Date >= startDate.Value.Date);
-            }
             if (endDate.HasValue)
-            {
                 returnsQuery = returnsQuery.Where(r => r.Date.Date <= endDate.Value.Date);
-            }
+            if (!string.IsNullOrEmpty(clientName))
+                returnsQuery = returnsQuery.Where(r =>
+                    (r.Client is NaturalPerson && (
+                        ((NaturalPerson)r.Client).FirstName.Contains(clientName) ||
+                        ((NaturalPerson)r.Client).LastName.Contains(clientName) ||
+                        (((NaturalPerson)r.Client).FirstName + " " + ((NaturalPerson)r.Client).LastName).Contains(clientName))) ||
+                    (r.Client is LegalEntity && ((LegalEntity)r.Client).CompanyName.Contains(clientName)));
 
-            if (User.IsInRole("Contador"))
-            {
-                returnsQuery = returnsQuery.Where(r => r.Sale != null && _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == r.Sale.InvoiceID && e.Status == "Accepted"));
-            }
+            // --- TOTALES DE TODO EL FILTRO (ventas - devoluciones del mismo período) ---
+            decimal totalFilteredSales = await salesQuery.SumAsync(s => s.Invoice.Total);
 
-            var returnsData = await returnsQuery
-                .Select(r => new { r.TotalAmount, InvoiceID = r.Sale != null ? r.Sale.InvoiceID.GetValueOrDefault() : 0 })
+            decimal totalFilteredProfit = await salesQuery
+                .SelectMany(s => s.Details)
+                .SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
+
+            decimal totalReturnsAmount = await returnsQuery.SumAsync(r => r.TotalAmount);
+
+            decimal totalReturnsCost = await returnsQuery
+                .SelectMany(r => r.Details)
+                .SumAsync(d => d.Quantity * (d.Cost > 0 ? d.Cost : d.Product.Cost));
+
+            totalFilteredSales -= totalReturnsAmount;
+            totalFilteredProfit -= (totalReturnsAmount - totalReturnsCost);
+
+            ViewData["TotalFilteredSales"] = totalFilteredSales;
+            ViewData["TotalFilteredProfit"] = totalFilteredProfit;
+
+            // --- LISTADO UNIFICADO: Ventas + Devoluciones del mismo período ---
+            int currentPage = pageNumber ?? 1;
+            int currentPageSize = pageSize ?? 10;
+
+            // Contar items totales para paginación
+            int totalSalesCount = await salesQuery.CountAsync();
+            int totalReturnsCount = await returnsQuery.CountAsync();
+            int totalItems = totalSalesCount + totalReturnsCount;
+
+            // Tomar página de ventas
+            var salesPage = await salesQuery
+                .OrderByDescending(s => s.SaleDate).ThenByDescending(s => s.SaleID)
+                .AsNoTracking()
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize)
                 .ToListAsync();
 
-            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            if (taxRate > 1) taxRate /= 100;
-            var taxFactor = 1 + taxRate;
+            // Tomar página de devoluciones
+            var returnsPage = await returnsQuery
+                .OrderByDescending(r => r.Date).ThenByDescending(r => r.ReturnID)
+                .AsNoTracking()
+                .Skip((currentPage - 1) * currentPageSize)
+                .Take(currentPageSize)
+                .ToListAsync();
 
-            var returnInvoiceIds = returnsData.Select(r => r.InvoiceID).Distinct().ToList();
-            var returnElectronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>().Where(e => returnInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted").Select(e => e.InvoiceID).ToListAsync());
-
-            var totalReturnsValue = returnsData.Sum(r => returnElectronicIds.Contains(r.InvoiceID) ? Math.Round(r.TotalAmount / taxFactor, 2) : r.TotalAmount);
-            total -= totalReturnsValue;
-
-            decimal grossProfit = await salesQuery.SelectMany(s => s.Details).SumAsync(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : d.Product.Cost)));
-            decimal returnedCost = await returnsQuery.SelectMany(r => r.Details).SumAsync(rd => rd.Quantity * (rd.Cost > 0 ? rd.Cost : (rd.Product != null ? rd.Product.Cost : 0)));
-            decimal totalProfit = grossProfit - returnedCost;
-            // --- FIN: CÁLCULO DE DEVOLUCIONES ---
-
-            var sales = await PaginatedList<Sale>.CreateAsync(
-                salesQuery.OrderByDescending(s => s.SaleDate).ThenByDescending(s => s.SaleID).AsNoTracking(), 
-                pageNumber ?? 1, pageSize ?? 10);
-
-            // Identificar ventas con saldo pendiente (Crédito) para mostrar icono en el Index
-            var saleIds = sales.Select(s => s.SaleID).ToList();
+            // Identificar ventas con saldo pendiente
+            var salesPageIds = salesPage.Select(s => s.SaleID).ToList();
             var pendingSaleIds = await _context.AccountReceivables
-                .Where(ar => ar.SaleID.HasValue && saleIds.Contains(ar.SaleID.Value) && !ar.IsPaid)
+                .Where(ar => ar.SaleID.HasValue && salesPageIds.Contains(ar.SaleID.Value) && !ar.IsPaid)
                 .Select(ar => ar.SaleID!.Value)
                 .ToListAsync();
-            ViewData["PendingSaleIds"] = new HashSet<int>(pendingSaleIds);
+            var pendingSaleSet = new HashSet<int>(pendingSaleIds);
+
+            // Unificar ventas y devoluciones en una sola lista
+            var rows = new List<SalesIndexRowViewModel>();
+
+            foreach (var s in salesPage)
+            {
+                decimal profit = s.Details.Sum(d => d.Quantity * (d.UnitPrice - (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0))));
+                rows.Add(new SalesIndexRowViewModel
+                {
+                    ID = s.SaleID,
+                    RowType = "Sale",
+                    Date = s.SaleDate,
+                    ClientName = s.Client.DisplayName,
+                    ReferenceLabel = s.Invoice.InvoiceID.ToString(),
+                    TotalAmount = s.Invoice.Total,
+                    Profit = profit,
+                    IsCreditPending = pendingSaleSet.Contains(s.SaleID)
+                });
+            }
+
+            foreach (var r in returnsPage)
+            {
+                decimal returnCost = r.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
+                decimal returnProfit = -(r.TotalAmount - returnCost);
+                rows.Add(new SalesIndexRowViewModel
+                {
+                    ID = r.ReturnID,
+                    RowType = "Return",
+                    Date = r.Date,
+                    ClientName = r.Client.DisplayName,
+                    ReferenceLabel = $"Devolución #{r.ReturnID} (Venta #{r.SaleID})",
+                    TotalAmount = -r.TotalAmount,
+                    Profit = returnProfit,
+                    IsCreditPending = false
+                });
+            }
+
+            rows = rows.OrderByDescending(r => r.Date).ThenByDescending(r => r.ID).ToList();
+
+            var pagedList = new PaginatedList<SalesIndexRowViewModel>(rows, totalItems, currentPage, currentPageSize);
 
             ViewData["StartDate"] = startDate?.ToString("yyyy-MM-dd");
             ViewData["EndDate"] = endDate?.ToString("yyyy-MM-dd");
             ViewData["ClientName"] = clientName;
-            ViewData["Total"] = total;
-            ViewData["TotalProfit"] = totalProfit;
             ViewData["CurrentInvoiceType"] = invoiceType;
 
             ViewBag.InvoiceTypes = new List<SelectListItem>
@@ -230,7 +279,7 @@ namespace PhonePalace.Web.Controllers
                 new SelectListItem { Text = "Remisionado", Value = "Local", Selected = invoiceType == "Local" }
             };
 
-            return View(sales);
+            return View(pagedList);
         }
 
     [HttpGet]
@@ -500,6 +549,67 @@ namespace PhonePalace.Web.Controllers
                 return View(viewModel);
             }
 
+            // --- Validaciones de pagos ANTES de cualquier inserción ---
+            // Si una validación falla después de insertar la factura, el ROLLBACK no devuelve los
+            // valores IDENTITY y se genera un salto en la numeración de Invoices/Sales/SaleDetails.
+            if (viewModel.Payments == null || !viewModel.Payments.Any())
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un método de pago.");
+                return View(viewModel);
+            }
+
+            decimal totalCustomerBalanceUsed = 0m;
+            foreach (var p in viewModel.Payments)
+            {
+                if (!Enum.TryParse<PaymentMethod>(p.PaymentMethod, out _))
+                {
+                    ModelState.AddModelError("", $"Método de pago inválido: {p.PaymentMethod}");
+                    continue;
+                }
+
+                if (Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var methodVal) && methodVal == PaymentMethod.CustomerBalance)
+                {
+                    totalCustomerBalanceUsed += p.Amount;
+                }
+            }
+
+            if (totalCustomerBalanceUsed > 0)
+            {
+                var clientBalance = await _context.Clients
+                    .Where(c => c.ClientID == viewModel.ClientID!.Value)
+                    .Select(c => (decimal?)c.Balance)
+                    .FirstOrDefaultAsync();
+
+                if (clientBalance == null)
+                {
+                    ModelState.AddModelError("ClientID", "Cliente no encontrado.");
+                }
+                else if (clientBalance.Value < totalCustomerBalanceUsed)
+                {
+                    ModelState.AddModelError("", $"El cliente no tiene suficiente saldo a favor. Disponible: {clientBalance.Value:C}, Requerido: {totalCustomerBalanceUsed:C}");
+                }
+            }
+
+            // Validar que los bancos referenciados en los pagos existan y estén activos
+            var paymentBankIds = viewModel.Payments
+                .Where(p => p.BankID.HasValue)
+                .Select(p => p.BankID!.Value)
+                .Distinct()
+                .ToList();
+
+            foreach (var bankIdToValidate in paymentBankIds)
+            {
+                if (!await _context.Banks.AnyAsync(b => b.BankID == bankIdToValidate && b.IsActive))
+                {
+                    ModelState.AddModelError("", $"El banco seleccionado (ID {bankIdToValidate}) no existe o está inactivo.");
+                }
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(viewModel);
+            }
+
             var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? User?.Identity?.Name;
             
             // Lógica transaccional completa para garantizar la creación de CxC
@@ -512,6 +622,43 @@ namespace PhonePalace.Web.Controllers
                     // Obtener el cliente para asignarlo a las entidades requeridas
                     var client = await _context.Clients.FindAsync(viewModel.ClientID.GetValueOrDefault());
                     if (client == null) throw new Exception("Cliente no encontrado.");
+
+                    // --- Re-validaciones ANTES del primer INSERT ---
+                    // Todo lo que puede fallar por reglas de negocio se verifica aquí; una excepción
+                    // en esta zona NO quema numeración porque aún no se ha insertado nada.
+                    var totalCustomerBalanceUsed = viewModel.Payments!
+                        .Where(pw => Enum.TryParse<PaymentMethod>(pw.PaymentMethod, out var pmBalance) && pmBalance == PaymentMethod.CustomerBalance)
+                        .Sum(pw => pw.Amount);
+                    if (client.Balance < totalCustomerBalanceUsed)
+                    {
+                        throw new Exception($"El cliente no tiene suficiente saldo a favor. Disponible: {client.Balance:C}, Requerido: {totalCustomerBalanceUsed:C}");
+                    }
+
+                    var detailProductIds = viewModel.Details.Select(d => d.ProductID).Distinct().ToList();
+                    var productsById = await _context.Products
+                        .Where(pr => detailProductIds.Contains(pr.ProductID))
+                        .ToDictionaryAsync(pr => pr.ProductID);
+                    var inventoriesById = await _context.Inventories
+                        .Where(iv => detailProductIds.Contains(iv.ProductID))
+                        .ToDictionaryAsync(iv => iv.ProductID);
+
+                    foreach (var item in viewModel.Details)
+                    {
+                        if (!productsById.TryGetValue(item.ProductID, out var productCheck))
+                            throw new Exception($"Producto no encontrado: {item.ProductID}");
+
+                        if (!inventoriesById.TryGetValue(item.ProductID, out var inventoryCheck) || inventoryCheck.Stock < item.Quantity)
+                            throw new Exception($"Stock insuficiente para el producto: {productCheck.Name}");
+                    }
+
+                    var banksById = await _context.Banks
+                        .Where(bk => paymentBankIds.Contains(bk.BankID))
+                        .ToDictionaryAsync(bk => bk.BankID);
+                    foreach (var bankIdRequired in paymentBankIds)
+                    {
+                        if (!banksById.ContainsKey(bankIdRequired))
+                            throw new Exception($"Banco con ID {bankIdRequired} no encontrado o inactivo.");
+                    }
 
                     // 1. Crear Factura (Invoice)
                     var invoice = new Invoice
@@ -550,14 +697,9 @@ namespace PhonePalace.Web.Controllers
                     // 3. Procesar Detalles e Inventario
                     foreach (var item in viewModel.Details)
                     {
-                        var product = await _context.Products.FindAsync(item.ProductID);
-                        if (product == null) throw new Exception($"Producto no encontrado: {item.ProductID}");
-                        var inventory = await _context.Inventories.FirstOrDefaultAsync(i => i.ProductID == item.ProductID);
-
-                        if (inventory == null || inventory.Stock < item.Quantity)
-                        {
-                            throw new Exception($"Stock insuficiente para el producto: {product?.Name}");
-                        }
+                        // Producto e inventario ya precargados y validados antes de insertar
+                        var product = productsById[item.ProductID];
+                        var inventory = inventoriesById[item.ProductID];
 
                         // Actualizar Stock
                         inventory.Stock -= item.Quantity;
@@ -618,10 +760,11 @@ namespace PhonePalace.Web.Controllers
                     // 4. Procesar Pagos
                     foreach (var p in viewModel.Payments!)
                     {
-                        // Convertir string a Enum PaymentMethod
+                        // Convertir string a Enum PaymentMethod (ya validado antes de insertar;
+                        // se omite en lugar de lanzar excepción para nunca revertir la transacción)
                         if (!Enum.TryParse<PaymentMethod>(p.PaymentMethod, out var paymentMethodEnum))
                         {
-                            throw new Exception($"Método de pago inválido: {p.PaymentMethod}");
+                            continue;
                         }
 
                         var payment = new Payment
@@ -637,15 +780,23 @@ namespace PhonePalace.Web.Controllers
 
                         if (paymentMethodEnum == PaymentMethod.Cash)
                         {
-                            await _cashService.RegisterIncomeAsync(p.Amount, $"Venta #{invoice.InvoiceID}", userId!);
+                            // Movimiento de caja creado directamente con la caja validada al inicio del POST.
+                            // Evita llamar a RegisterIncomeAsync (que puede fallar si la caja se cerró)
+                            // provocando rollback y salto en la numeración.
+                            _context.CashMovements.Add(new CashMovement
+                            {
+                                CashRegisterID = currentCash!.CashRegisterID,
+                                MovementType = CashMovementType.Income,
+                                Amount = p.Amount,
+                                Description = $"Venta #{invoice.InvoiceID}",
+                                UserId = userId,
+                                MovementDate = DateTime.Now,
+                                Payment = payment
+                            });
                         }
                         else if (paymentMethodEnum == PaymentMethod.CustomerBalance)
                         {
-                            // Lógica para descontar del Saldo a Favor del cliente
-                            if (client.Balance < p.Amount)
-                            {
-                                throw new Exception($"El cliente no tiene suficiente saldo a favor. Disponible: {client.Balance:C}, Requerido: {p.Amount:C}");
-                            }
+                            // Lógica para descontar del Saldo a Favor del cliente (ya validado antes de insertar)
                             client.Balance -= p.Amount;
                             _context.Update(client);
                         }
@@ -685,8 +836,20 @@ namespace PhonePalace.Web.Controllers
                         }
                         else if (p.BankID.HasValue && (paymentMethodEnum == PaymentMethod.Transfer || paymentMethodEnum == PaymentMethod.DebitCard))
                         {
-                            // Ingreso directo a Banco
-                            await _bankService.RegisterManualMovementAsync(p.BankID.Value, BankTransactionType.TransferIn, p.Amount, $"Venta #{invoice.InvoiceID} ({paymentMethodEnum})");
+                            // Ingreso directo a Banco (banco precargado y validado antes de insertar;
+                            // se evita RegisterManualMovementAsync que puede lanzar excepción y quemar numeración)
+                            var bank = banksById[p.BankID.Value];
+                            bank.Balance += p.Amount;
+
+                            _context.BankTransactions.Add(new BankTransaction
+                            {
+                                BankID = bank.BankID,
+                                Date = DateTime.Now,
+                                Type = BankTransactionType.TransferIn,
+                                Amount = p.Amount,
+                                Description = $"Venta #{invoice.InvoiceID} ({paymentMethodEnum})",
+                                BalanceAfterTransaction = bank.Balance
+                            });
                         }
                     }
 
@@ -1034,7 +1197,14 @@ namespace PhonePalace.Web.Controllers
                 return NotFound();
             }
 
-            // 2. Validar si ya fue emitida consultando la entidad independiente
+            // 2. Validar que el cliente cuente con correo electrónico y NIT/documento válidos
+            if (!ValidationHelper.ValidateClientForElectronicInvoice(sale.Client, out var clientValidationErrors))
+            {
+                TempData["Warning"] = $"No se puede emitir la factura electrónica: {string.Join(" ", clientValidationErrors)}";
+                return RedirectToAction(nameof(Details), new { id = sale.SaleID });
+            }
+
+            // 3. Validar si ya fue emitida consultando la entidad independiente
             var existingElectronic = await _context.Set<ElectronicInvoice>()
                 .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status == "Accepted");
 
@@ -1044,67 +1214,71 @@ namespace PhonePalace.Web.Controllers
                 return RedirectToAction(nameof(Details), new { id = sale.SaleID });
             }
 
-            // CORRECCIÓN: Usar estrategia de ejecución para soportar reintentos (EnableRetryOnFailure)
-            var strategy = _context.Database.CreateExecutionStrategy();
-            await strategy.ExecuteAsync(async () =>
+            // 3. Buscar un intento previo NO aceptado para esta factura. Si existe, se
+            // REUTILIZA su consecutivo para evitar saltos en la numeración (los rollbacks
+            // de SQL Server no devuelven los valores de identidad ya consumidos).
+            var previousAttempt = await _context.Set<ElectronicInvoice>()
+                .FirstOrDefaultAsync(e => e.InvoiceID == sale.Invoice.InvoiceID && e.Status != "Accepted");
+
+            ElectronicInvoice electronicInvoice;
+            if (previousAttempt != null)
             {
-                // --- INICIO: Envolver en una transacción para garantizar atomicidad ---
-                // Esto asegura que o todo el proceso es exitoso, o no se deja ningún registro temporal en la base de datos.
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
+                electronicInvoice = previousAttempt;
+                electronicInvoice.Status = "Pending";
+                electronicInvoice.IssueDate = DateTime.Now;
+                electronicInvoice.ErrorMessage = null;
+            }
+            else
+            {
+                electronicInvoice = new ElectronicInvoice
                 {
-                    // 3. Crear un registro de factura electrónica para obtener el consecutivo.
-                    var electronicInvoice = new ElectronicInvoice
-                    {
-                        InvoiceID = sale.Invoice.InvoiceID,
-                        Status = "Pending", // Estado inicial
-                        IssueDate = DateTime.Now,
-                        // Asignar valores temporales para campos que podrían ser no nulos en la BD.
-                        // Esto previene un DbUpdateException si las columnas no permiten nulos.
-                        CUFE = "PENDIENTE",
-                        DianNumber = "PENDIENTE",
-                        QRCodeUrl = ""
-                    };
-                    _context.Add(electronicInvoice);
-                    await _context.SaveChangesAsync(); // Guardar para obtener el ID que será el consecutivo.
+                    InvoiceID = sale.Invoice.InvoiceID,
+                    Status = "Pending",
+                    IssueDate = DateTime.Now,
+                    CUFE = "PENDIENTE",
+                    DianNumber = "PENDIENTE",
+                    QRCodeUrl = ""
+                };
+                _context.Add(electronicInvoice);
+            }
+            await _context.SaveChangesAsync();
 
-                    // 4. Lógica de integración con Plemsi, pasando el nuevo consecutivo
-                    // El ID autoincremental de la tabla ElectronicInvoices se usa como número de factura.
-                    var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale, electronicInvoice.ElectronicInvoiceID);
+            try
+            {
+                var plemsiResponse = await _plemsiService.SendInvoiceAsync(sale, electronicInvoice.ElectronicInvoiceID);
 
-                    if (plemsiResponse.Success)
-                    {
-                        // 5. Actualizar el registro de factura electrónica con los datos de la DIAN
-                        electronicInvoice.CUFE = plemsiResponse.Cufe!;
-                        electronicInvoice.DianNumber = plemsiResponse.Number!;
-                        electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl!;
-                        electronicInvoice.Status = "Accepted";
-
-                        _context.Update(electronicInvoice);
-                        await _context.SaveChangesAsync();
-
-                        // Si todo fue exitoso, confirmar la transacción
-                        await transaction.CommitAsync();
-
-                        await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
-                        TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
-                    }
-                    else
-                    {
-                        // Si la emisión falla, revertir la transacción. El registro 'PENDIENTE' no se guardará.
-                        await transaction.RollbackAsync();
-                        TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}";
-                    }
-                }
-                catch (Exception ex)
+                if (plemsiResponse.Success)
                 {
-                    // Si cualquier parte del proceso falla (ej. conexión a BD), revertir la transacción.
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error durante la emisión de factura electrónica para la venta {SaleID}", id);
-                    TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+                    electronicInvoice.CUFE = plemsiResponse.Cufe!;
+                    electronicInvoice.DianNumber = plemsiResponse.Number!;
+                    electronicInvoice.QRCodeUrl = plemsiResponse.QrUrl!;
+                    electronicInvoice.Status = "Accepted";
+                    electronicInvoice.ErrorMessage = null;
+
+                    _context.Update(electronicInvoice);
+                    await _context.SaveChangesAsync();
+
+                    await _auditService.LogAsync("Facturación", $"Emitió factura electrónica para venta #{sale.Invoice.InvoiceID}. DIAN: {electronicInvoice.DianNumber}");
+                    TempData["Success"] = "Factura electrónica emitida y validada por la DIAN exitosamente.";
                 }
-            });
-            // --- FIN: Envolver en una transacción ---
+                else
+                {
+                    // No se revierte el registro: el consecutivo queda reservado para esta
+                    // venta y será reutilizado por "Reintentar Emisión" / sincronización.
+                    electronicInvoice.Status = "Failed";
+                    electronicInvoice.ErrorMessage = plemsiResponse.ErrorMessage;
+
+                    _context.Update(electronicInvoice);
+                    await _context.SaveChangesAsync();
+
+                    TempData["Error"] = $"Error al emitir factura electrónica: {plemsiResponse.ErrorMessage}. El consecutivo #{electronicInvoice.ElectronicInvoiceID} quedó reservado para esta venta.";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error durante la emisión de factura electrónica para la venta {SaleID}", id);
+                TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+            }
 
             return RedirectToAction(nameof(Details), new { id = sale.SaleID });
         }

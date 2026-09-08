@@ -76,16 +76,9 @@ namespace PhonePalace.Web.Controllers
                 invoicesQuery = invoicesQuery.Where(i => _context.Set<ElectronicInvoice>().Any(e => e.InvoiceID == i.InvoiceID && e.Status == "Accepted"));
             }
 
-            // Calcular ventas del mes respetando lógica: Local=Total, Electrónica=Subtotal
-            var monthlyInvoices = await invoicesQuery.Select(i => new { i.InvoiceID, i.Total, i.Subtotal }).ToListAsync();
-            var monthlyInvoiceIds = monthlyInvoices.Select(i => i.InvoiceID).ToList();
-            
-            var electronicInvoiceIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
-                .Where(e => monthlyInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
-                .Select(e => e.InvoiceID)
-                .ToListAsync());
-            
-            var currentMonthSales = monthlyInvoices.Sum(i => electronicInvoiceIds.Contains(i.InvoiceID) ? i.Subtotal : i.Total);
+            // Calcular ventas del mes sin distinción entre factura electrónica y remisión
+            var monthlyInvoices = await invoicesQuery.Select(i => new { i.InvoiceID, i.Total }).ToListAsync();
+            var currentMonthSales = monthlyInvoices.Sum(i => i.Total);
 
             // --- NUEVO: Desglose Facturación Electrónica vs Local ---
             var electronicSales = await _context.Set<ElectronicInvoice>()
@@ -99,29 +92,15 @@ namespace PhonePalace.Web.Controllers
             ViewBag.ElectronicSales = electronicSales;
             ViewBag.LocalSales = currentMonthSales - electronicSales;
 
-            // Restar devoluciones realizadas en el mes actual para obtener Ventas Netas
-            // También aplicando la lógica: Si es local se resta Total, si es electrónica se resta Subtotal.
+            // Restar devoluciones del mes actual para obtener Ventas Netas
             var returnsData = await _context.Returns
                 .Include(r => r.Sale)
                 .Where(r => r.Date.Month == DateTime.Now.Month &&
                             r.Date.Year == DateTime.Now.Year)
-                .Select(r => new { r.TotalAmount, InvoiceID = r.Sale != null ? r.Sale.InvoiceID.GetValueOrDefault() : 0 })
+                .Select(r => new { r.TotalAmount })
                 .ToListAsync();
 
-            // Verificar cuáles de estas devoluciones corresponden a facturas electrónicas
-            var returnInvoiceIds = returnsData.Select(r => r.InvoiceID).Distinct().ToList();
-            var returnElectronicIds = new HashSet<int>(await _context.Set<ElectronicInvoice>()
-                .Where(e => returnInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
-                .Select(e => e.InvoiceID)
-                .ToListAsync());
-
-            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            if (taxRate > 1) taxRate /= 100;
-            var taxFactor = 1 + taxRate;
-
-            var currentMonthReturns = returnsData.Sum(r => returnElectronicIds.Contains(r.InvoiceID) 
-                ? Math.Round(r.TotalAmount / taxFactor, 2) // Restar neto si es electrónica
-                : r.TotalAmount); // Restar total si es local
+            var currentMonthReturns = returnsData.Sum(r => r.TotalAmount);
 
             // Se eliminó la suma de Otros Ingresos para evitar duplicidad y discrepancias con la lista de ventas.
             // El Dashboard debe reflejar las ventas facturadas (menos devoluciones).

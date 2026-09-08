@@ -349,78 +349,36 @@ namespace PhonePalace.Web.Controllers
 
             var sales = await salesQuery.ToListAsync();
 
-            // Obtener IDs de facturas que tienen Factura Electrónica aceptada
-            var salesInvoiceIds = sales.Select(s => s.Invoice.InvoiceID).ToList();
-            var electronicInvoiceIds = await _context.Set<ElectronicInvoice>()
-                .Where(e => salesInvoiceIds.Contains(e.InvoiceID) && e.Status == "Accepted")
-                .Select(e => e.InvoiceID)
-                .ToListAsync();
-            var electronicInvoiceSet = new HashSet<int>(electronicInvoiceIds);
-
             foreach (var sale in sales)
             {
                 var item = model.Items.First(m => m.Month == sale.SaleDate.Month);
 
-                // LÓGICA DE VENTAS SEGÚN CONFIGURACIÓN:
-                // - Para Facturas Electrónicas, la venta es el SUBTOTAL (base imponible) y se suma el IVA.
-                // - Para Remisiones (locales), la venta es el TOTAL (no se discrimina IVA en el reporte).
-                if (electronicInvoiceSet.Contains(sale.Invoice.InvoiceID))
-                {
-                    item.Sales += sale.Invoice.Subtotal;
-                    item.SalesVAT += sale.Invoice.Tax;
-                }
-                else
-                {
-                    item.Sales += sale.Invoice.Total;
-                }
+                // Utilidad = PrecioVenta - Costo, sin distinción entre factura electrónica y remisión.
+                item.Sales += sale.Invoice.Total;
+                item.SalesVAT += sale.Invoice.Tax;
 
                 // Calcular el costo de la venta desde SaleDetails: SUM(Cantidad * Costo)
                 decimal saleCost = sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
                 item.Cost += saleCost;
 
-                //ANTERIOR (Duplicado)
-                //item.Cost += sale.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
-
-                //item.Cost += item.Details.Sum(d => d.Quantity * (d.Cost > 0 ? d.Cost : (d.Product?.Cost ?? 0)));
-
             }
 
             // 1.1. Restar Devoluciones de Ventas y Costos
             var returns = await _context.Returns
-                .Include(r => r.Sale) // Incluir la venta original para verificar si fue electrónica
+                .Include(r => r.Sale)
                 .Include(r => r.Details)
                 .ThenInclude(d => d.Product)
                 .Where(r => r.Date.Year == reportYear)
                 .AsNoTracking()
                 .ToListAsync();
 
-            // Obtener tasa de IVA para desglosar el valor de las devoluciones.
-            var taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
-            if (taxRate > 1) taxRate /= 100;
-            var taxRateFactor = 1 + taxRate;
-
             foreach (var ret in returns)
             {
                 var item = model.Items.First(m => m.Month == ret.Date.Month);
 
-                // LÓGICA DE DEVOLUCIONES:
-                // - Si la venta original fue electrónica, se resta el valor NETO de la venta y se reversa el IVA.
-                // - Si la venta original fue remisión, se resta el valor TOTAL de la venta.
-                bool wasElectronic = ret.Sale != null && ret.Sale.InvoiceID.HasValue && electronicInvoiceSet.Contains(ret.Sale.InvoiceID.Value);
-
-                if (wasElectronic)
-                {
-                    var returnNetValue = Math.Round(ret.TotalAmount / taxRateFactor, 2);
-                    var returnTax = ret.TotalAmount - returnNetValue;
-
-                    item.Sales -= returnNetValue;
-                    item.SalesVAT -= returnTax;
-                }
-                else
-                {
-                    // Para devoluciones de remisiones, se resta el monto total.
-                    item.Sales -= ret.TotalAmount;
-                }
+                // Utilidad = PrecioVenta - Costo, sin distinción de tipo de factura.
+                // Restar devoluciones usando el monto total sin importar si fue electrónica o remisión.
+                item.Sales -= ret.TotalAmount;
 
                 // Restar el costo de los productos devueltos.
                 // Usar costo histórico si existe, sino usar costo actual del producto (fallback)
@@ -525,7 +483,12 @@ namespace PhonePalace.Web.Controllers
             }
 
             // 3.2. Otros Ingresos (que no son ventas de productos)
-            // Sumar a "OtherIncome" los ingresos de caja que no son abonos a CxC ni pagos de ventas
+            // El Tipo de movimiento en caja define la dirección del flujo:
+            //   - Income  -> entra dinero -> SUMA como candidato a "Otros Ingresos"
+            //   - Expense -> sale dinero  -> lo manejan las secciones de gastos (y los gastos de eventos RESTAN de Otros Ingresos)
+            //   - Opening/Closing -> apertura y cierre de caja -> nunca son ingresos/gastos del negocio
+            // De los ingresos (Income) solo se excluyen los que ya están clasificados en otro rubro:
+            // pagos de ventas (Ventas), abonos a CxC y transferencias internas desde bancos.
             var cashIncomes = await _context.CashMovements
                 .Where(cm => cm.MovementDate.Year == reportYear && cm.MovementType == CashMovementType.Income)
                 .AsNoTracking()
@@ -533,46 +496,67 @@ namespace PhonePalace.Web.Controllers
 
             foreach (var ci in cashIncomes)
             {
-                var upperDescription = (ci.Description ?? "").ToUpper();
-                // Excluir abonos a CxC, pagos por venta y aperturas para evitar duplicidad con Sales o CxC
-                if (upperDescription.Contains("ABONO A CXC") || 
-                    upperDescription.Contains("POR VENTA") || 
-                    upperDescription.Contains("VENTA") ||
-                    upperDescription.Contains("APERTURA") ||
-                    upperDescription.Contains("GASTO") || // Excluir pagos de gastos mal clasificados como ingreso
-                    upperDescription.Contains("PAGO") ||
-                    upperDescription.Contains("SALDO PENDIENTE") ||
-                    upperDescription.Contains("RETIRO") ||
-                    upperDescription.Contains("CONSIGNACIÓN") || // Movimiento entre caja y banco
-                    upperDescription.Contains("TRASLADO") || // Movimiento entre caja y banco
-                    upperDescription.Contains("TRANSFERENCIA"))
+                var upperDescription = (ci.Description ?? "").ToUpper().Trim();
+
+                // Pagos de ventas vinculados: ya están clasificados en el rubro "Ventas"
+                if (ci.PaymentID.HasValue ||
+                    upperDescription.StartsWith("PAGO VENTA #") ||
+                    upperDescription.StartsWith("VENTA #"))
                 {
                     continue;
                 }
+
+                // Abonos a CxC registrados en caja: la venta/CxC ya fue registrada en su propio rubro
+                if (upperDescription.StartsWith("ABONO A CXC"))
+                {
+                    continue;
+                }
+
+                // Transferencia interna Banco -> Caja generada por el módulo de bancos
+                if (upperDescription.StartsWith("TRANSFERENCIA DESDE BANCO"))
+                {
+                    continue;
+                }
+
+                // Todo otro ingreso de caja se clasifica como "Otros Ingresos"
                 var item = model.Items.First(m => m.Month == ci.MovementDate.Month);
                 item.OtherIncome += ci.Amount;
             }
 
             // Sumar a "OtherIncome" los ingresos bancarios manuales
+            // El Tipo de transacción define la dirección del flujo (el monto siempre se guarda positivo):
+            //   - SaleIncome   -> ingreso por venta o abono CxC en banco -> pertenecen a los rubros "Ventas"/"Abonos CxC"
+            //   - TransferIn   -> transferencias internas (entre bancos, desde caja) o pagos de venta bancarios -> no son otros ingresos
+            //   - TransferOut  -> salida hacia otra cuenta/caja (se guarda con monto positivo) -> nunca es ingreso
+            //   - ManualExpense-> egreso manual -> lo manejan las secciones de gastos
+            // Solo ManualIncome queda como candidato a "Otros Ingresos".
             var bankIncomes = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense)
+                .Where(bt => bt.Date.Year == reportYear && bt.Amount > 0 &&
+                    bt.Type != BankTransactionType.ManualExpense &&
+                    bt.Type != BankTransactionType.SaleIncome &&
+                    bt.Type != BankTransactionType.TransferIn &&
+                    bt.Type != BankTransactionType.TransferOut)
                 .AsNoTracking()
                 .ToListAsync();
 
             foreach (var bi in bankIncomes)
             {
-                var desc = (bi.Description ?? "").ToUpper();
-                // Excluir ingresos que ya se cuentan en ventas, abonos, o son transferencias internas.
-                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") ||
-                    desc.Contains("VENTA") || // Ingresos por ventas ya están en su propia categoría
-                    desc.Contains("TRASLADO") || // Movimiento entre bancos
-                    desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
-                    desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
-                    desc.Contains("GASTO") || // Excluir devoluciones de gastos o errores
-                    desc.Contains("PAGO"))
+                var desc = (bi.Description ?? "").ToUpper().Trim();
+
+                // Revisión residual: descartar registros que ya estén clasificados dentro de otro rubro
+                // (datos antiguos o digitados con el formato de otro módulo)
+                if (bi.PaymentID.HasValue ||                          // Pago de venta vinculado -> Ventas
+                    desc.StartsWith("INGRESO POR VENTA") ||           // Formato sistema -> Ventas
+                    desc.StartsWith("ABONO CXC") ||                   // Abono a CxC en banco
+                    desc.StartsWith("CONSIGNACIÓN DESDE CAJA") ||     // Traslado caja -> banco
+                    desc.StartsWith("RETIRO HACIA CAJA") ||           // Traslado banco -> caja
+                    desc.Contains("(DE BANCO ID:") ||                 // Transferencia entre bancos
+                    desc.Contains("(A BANCO ID:"))
                 {
                     continue;
                 }
+
+                // Todo otro ingreso bancario se clasifica como "Otros Ingresos"
                 var item = model.Items.First(m => m.Month == bi.Date.Month);
                 item.OtherIncome += bi.Amount;
             }
@@ -652,11 +636,15 @@ namespace PhonePalace.Web.Controllers
             // Calcular Utilidad y Totales Generales
             foreach (var item in model.Items)
             {
-                item.Profit = (item.Sales + item.OtherIncome - item.Cost) - item.FixedExpenses - item.LocalExpenses;
+                // 1. Utilidad Bruta: PrecioVenta - Costo (sin distinción de tipo de factura)
+                decimal grossProfit = item.Sales - item.Cost;
+                // 2. Utilidad Neta (Operativa): Incluye otros ingresos y resta gastos operativos.
+                item.Profit = grossProfit + item.OtherIncome - item.FixedExpenses - item.LocalExpenses;
                 
                 model.Totals.Sales += item.Sales;
                 model.Totals.Cost += item.Cost;
                 model.Totals.OtherIncome += item.OtherIncome;
+                // model.Totals.GrossProfit += grossProfit; // La propiedad no existe en el ViewModel
                 model.Totals.Profit += item.Profit;
                 model.Totals.FixedExpenses += item.FixedExpenses;
                 model.Totals.LocalExpenses += item.LocalExpenses;
@@ -684,39 +672,44 @@ namespace PhonePalace.Web.Controllers
 
             foreach (var ci in cashIncomes)
             {
-                var upperDescription = (ci.Description ?? "").ToUpper();
-                if (upperDescription.Contains("ABONO A CXC") || 
-                    upperDescription.Contains("POR VENTA") || 
-                    upperDescription.Contains("VENTA") ||
-                    upperDescription.Contains("APERTURA") ||
-                    upperDescription.Contains("GASTO") ||
-                    upperDescription.Contains("PAGO") ||
-                    upperDescription.Contains("SALDO PENDIENTE") ||
-                    upperDescription.Contains("RETIRO") ||
-                    upperDescription.Contains("CONSIGNACIÓN") || // Movimiento entre caja y banco
-                    upperDescription.Contains("TRASLADO") || // Movimiento entre caja y banco
-                    upperDescription.Contains("TRANSFERENCIA"))
+                var upperDescription = (ci.Description ?? "").ToUpper().Trim();
+
+                // Mismos criterios que BalanceMensual: solo excluir lo que pertenece a otro rubro
+                if (ci.PaymentID.HasValue ||
+                    upperDescription.StartsWith("PAGO VENTA #") ||
+                    upperDescription.StartsWith("VENTA #") ||
+                    upperDescription.StartsWith("ABONO A CXC") ||
+                    upperDescription.StartsWith("TRANSFERENCIA DESDE BANCO"))
                 {
                     continue;
                 }
                 rawDetails.Add((ci.MovementDate, "Caja", ci.Description, ci.Amount));
             }
 
-            // 2. Bancos: Ingresos manuales que no son ventas, transferencias, etc.
+            // 2. Bancos: ingresos manuales (ManualIncome). El Tipo define la dirección del flujo;
+            // se excluyen por tipo SaleIncome (Ventas/Abonos CxC), TransferIn/TransferOut
+            // (transferencias internas y pagos de venta bancarios) y ManualExpense (egresos).
             var bankIncomes = await _context.BankTransactions
-                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount > 0 && bt.Type != BankTransactionType.ManualExpense)
+                .Where(bt => bt.Date.Year == year && bt.Date.Month == month && bt.Amount > 0 &&
+                    bt.Type != BankTransactionType.ManualExpense &&
+                    bt.Type != BankTransactionType.SaleIncome &&
+                    bt.Type != BankTransactionType.TransferIn &&
+                    bt.Type != BankTransactionType.TransferOut)
                 .AsNoTracking()
                 .ToListAsync();
 
             foreach (var bi in bankIncomes)
             {
-                var desc = (bi.Description ?? "").ToUpper();
-                if (desc.Contains("INGRESO POR VENTA") || desc.Contains("ABONO CXC") || desc.Contains("VENTA") || // Ingresos por ventas ya están en su propia categoría
-                    desc.Contains("TRASLADO") || // Movimiento entre bancos
-                    desc.Contains("TRANSFERENCIA") || desc.Contains("RETIRO") || 
-                    desc.Contains("DEVOLUCIÓN COMPRA") || desc.Contains("CONSIGNACIÓN") ||
-                    desc.Contains("GASTO") ||
-                    desc.Contains("PAGO"))
+                var desc = (bi.Description ?? "").ToUpper().Trim();
+
+                // Mismos criterios que BalanceMensual: descartar lo ya clasificado en otro rubro
+                if (bi.PaymentID.HasValue ||
+                    desc.StartsWith("INGRESO POR VENTA") ||
+                    desc.StartsWith("ABONO CXC") ||
+                    desc.StartsWith("CONSIGNACIÓN DESDE CAJA") ||
+                    desc.StartsWith("RETIRO HACIA CAJA") ||
+                    desc.Contains("(DE BANCO ID:") ||
+                    desc.Contains("(A BANCO ID:"))
                 {
                     continue;
                 }

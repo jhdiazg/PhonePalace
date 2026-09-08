@@ -106,6 +106,29 @@ namespace PhonePalace.Infrastructure.Services
                         _context.Update(client);
                     }
 
+                    // 4b. Validaciones de Caja y Bancos ANTES de insertar.
+                    // Si fallan después del INSERT, el rollback no devuelve los valores IDENTITY
+                    // y se genera salto en la numeración de Invoices/Sales/SaleDetails.
+                    var requiresCashRegister = dto.Payments?.Any(p =>
+                        Enum.TryParse<PaymentMethod>(p.PaymentMethod, true, out var pmCash) && pmCash == PaymentMethod.Cash) == true;
+                    if (requiresCashRegister)
+                    {
+                        var openRegister = await _cashService.GetCurrentCashRegisterAsync();
+                        if (openRegister == null)
+                            return SalesResult.Fail("No hay caja abierta para registrar movimientos.");
+                    }
+
+                    var requiredBankIds = (dto.Payments ?? new List<PaymentDto>())
+                        .Where(p => p.BankID.HasValue)
+                        .Select(p => p.BankID!.Value)
+                        .Distinct()
+                        .ToList();
+                    foreach (var bankIdRequired in requiredBankIds)
+                    {
+                        if (!await _context.Banks.AnyAsync(b => b.BankID == bankIdRequired))
+                            return SalesResult.Fail($"Banco con ID {bankIdRequired} no encontrado.");
+                    }
+
                     // 5. Crear Factura
                     decimal taxRate = _config.GetValue<decimal>("TaxSettings:IVARate");
                     if (taxRate > 1) taxRate /= 100;
@@ -209,7 +232,12 @@ namespace PhonePalace.Infrastructure.Services
                     }
                     await _context.SaveChangesAsync();
 
-                    await _auditService.LogAsync("Ventas", $"Registró venta #{invoice.InvoiceID} por {total:C}.");
+                    // El log de auditoría es informativo: nunca debe revertir la venta ni quemar numeración
+                    try
+                    {
+                        await _auditService.LogAsync("Ventas", $"Registró venta #{invoice.InvoiceID} por {total:C}.");
+                    }
+                    catch { /* Log error silently */ }
                     await transaction.CommitAsync();
 
                     return SalesResult.Ok(invoice.InvoiceID);
