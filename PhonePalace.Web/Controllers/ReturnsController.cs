@@ -19,12 +19,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
         private readonly IPlemsiService _plemsiService;
+        private readonly ILogger<ReturnsController> _logger;
 
-        public ReturnsController(ApplicationDbContext context, IAuditService auditService, IPlemsiService plemsiService)
+        public ReturnsController(ApplicationDbContext context, IAuditService auditService, IPlemsiService plemsiService, ILogger<ReturnsController> logger)
         {
             _context = context;
             _auditService = auditService;
             _plemsiService = plemsiService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -204,7 +206,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    ModelState.AddModelError("", $"Error al procesar la devolución: {ex.Message}");
+                    _logger.LogError(ex, "Error al procesar la devolución de la venta {SaleID}", model.SaleID);
+                    ModelState.AddModelError("", $"Ocurrió un error al procesar la devolución. Código de soporte: {HttpContext.TraceIdentifier}");
                     dbOperationSuccess = false;
                 }
             });
@@ -227,7 +230,11 @@ namespace PhonePalace.Web.Controllers
                             await _auditService.LogAsync("Error Facturación", $"Fallo al emitir Nota Crédito Parcial para {saleForApi.Invoice.InvoiceID}: {ncResponse.ErrorMessage}");
                         }
                     }
-                    catch (Exception) { /* Loguear error pero no detener la devolución local */ }
+                    catch (Exception ex)
+                    {
+                        // No detener la devolución local si la Nota Crédito falla, pero dejar registro.
+                        _logger.LogError(ex, "No se pudo emitir la Nota Crédito Parcial para la venta {SaleID}", model.SaleID);
+                    }
                 }
 
                 TempData["Success"] = $"Devolución exitosa. Se han abonado {totalRefundAmount:C} al saldo del cliente.";
@@ -304,7 +311,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Excepción al emitir Nota Crédito Parcial: {ex.Message}";
+                _logger.LogError(ex, "Error al emitir la Nota Crédito para la devolución de la venta {SaleID}", returnEntity.SaleID);
+                TempData["Error"] = $"No se pudo emitir la Nota Crédito. Código de soporte: {HttpContext.TraceIdentifier}";
             }
 
             return RedirectToAction("Details", "Sales", new { id = returnEntity.SaleID });

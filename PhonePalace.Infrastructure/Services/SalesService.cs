@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PhonePalace.Domain.DTOs;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
@@ -29,14 +30,16 @@ namespace PhonePalace.Infrastructure.Services
         private readonly IBankService _bankService;
         private readonly IConfiguration _config;
         private readonly IAuditService _auditService;
+        private readonly ILogger<SalesService> _logger;
 
-        public SalesService(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IAuditService auditService)
+        public SalesService(ApplicationDbContext context, ICashService cashService, IBankService bankService, IConfiguration config, IAuditService auditService, ILogger<SalesService> logger)
         {
             _context = context;
             _cashService = cashService;
             _bankService = bankService;
             _config = config;
             _auditService = auditService;
+            _logger = logger;
         }
 
         public async Task<ISalesResult> ProcessSaleAsync(SaleCreateDto dto, string userId)
@@ -237,12 +240,17 @@ namespace PhonePalace.Infrastructure.Services
                     {
                         await _auditService.LogAsync("Ventas", $"Registró venta #{invoice.InvoiceID} por {total:C}.");
                     }
-                    catch { /* Log error silently */ }
+                    catch (Exception ex) { _logger.LogWarning(ex, "No se pudo registrar la auditoría de la venta"); }
                     await transaction.CommitAsync();
 
                     return SalesResult.Ok(invoice.InvoiceID);
                 }
-                catch (Exception ex) { await transaction.RollbackAsync(); return SalesResult.Fail(ex.Message); }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error al procesar la venta");
+                    return SalesResult.Fail("Ocurrió un error al procesar la venta.");
+                }
             });
         }
     }

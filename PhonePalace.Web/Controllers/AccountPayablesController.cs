@@ -22,13 +22,15 @@ namespace PhonePalace.Web.Controllers
         private readonly IAuditService _auditService;
         private readonly ICashService _cashService;
         private readonly IBankService _bankService;
+        private readonly ILogger<AccountPayablesController> _logger;
 
-        public AccountPayablesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService)
+        public AccountPayablesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService, ILogger<AccountPayablesController> logger)
         {
             _context = context;
             _auditService = auditService;
             _cashService = cashService;
             _bankService = bankService;
+            _logger = logger;
         }
 
         [Authorize(Roles = "Administrador,Cajero,Contador")]
@@ -423,7 +425,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    TempData["Error"] = ex.Message;
+                    _logger.LogError(ex, "Error al pagar la cuenta por pagar {AccountPayableId}", id);
+                    TempData["Error"] = $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}";
                     return RedirectToAction(nameof(Details), new { id });
                 }
             });

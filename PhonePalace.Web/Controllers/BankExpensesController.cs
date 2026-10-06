@@ -20,12 +20,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBankService _bankService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<BankExpensesController> _logger;
 
-        public BankExpensesController(ApplicationDbContext context, IBankService bankService, IAuditService auditService)
+        public BankExpensesController(ApplicationDbContext context, IBankService bankService, IAuditService auditService, ILogger<BankExpensesController> logger)
         {
             _context = context;
             _bankService = bankService;
             _auditService = auditService;
+            _logger = logger;
         }
 
         // GET: BankExpenses/Create
@@ -71,7 +73,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                ModelState.AddModelError("", ex.Message);
+                _logger.LogError(ex, "Error al registrar el gasto bancario para el banco {BankId}", bankId);
+                ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                 ViewBag.Banks = new SelectList(await _context.Banks.Where(b => b.IsActive).ToListAsync(), "BankID", "Name", bankId);
                 return View();
             }

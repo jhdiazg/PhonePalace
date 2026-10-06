@@ -2,15 +2,18 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MimeKit;
 
 public class EmailService : IEmailSender
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IConfiguration configuration)
+    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task SendEmailAsync(string email, string subject, string htmlMessage)
@@ -34,14 +37,22 @@ public class EmailService : IEmailSender
         }
         email.Body = builder.ToMessageBody();
 
-        using var smtp = new SmtpClient();
-        if (!int.TryParse(settings["Port"], out var port))
+        try
         {
-            port = 587; // Default SMTP port
+            using var smtp = new SmtpClient();
+            if (!int.TryParse(settings["Port"], out var port))
+            {
+                port = 587; // Default SMTP port
+            }
+            await smtp.ConnectAsync(settings["Server"] ?? string.Empty, port, SecureSocketOptions.StartTls);
+            await smtp.AuthenticateAsync(settings["Username"] ?? string.Empty, settings["Password"] ?? string.Empty);
+            await smtp.SendAsync(email);
+            await smtp.DisconnectAsync(true);
         }
-        await smtp.ConnectAsync(settings["Server"] ?? string.Empty, port, SecureSocketOptions.StartTls);
-        await smtp.AuthenticateAsync(settings["Username"] ?? string.Empty, settings["Password"] ?? string.Empty);
-        await smtp.SendAsync(email);
-        await smtp.DisconnectAsync(true);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al enviar correo SMTP a {Email} (asunto: {Subject})", toEmail, subject);
+            throw;
+        }
     }
 }

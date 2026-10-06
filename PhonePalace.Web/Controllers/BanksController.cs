@@ -20,13 +20,15 @@ namespace PhonePalace.Web.Controllers
         private readonly IAuditService _auditService;
         private readonly IBankService _bankService;
         private readonly ICashService _cashService;
+        private readonly ILogger<BanksController> _logger;
 
-        public BanksController(ApplicationDbContext context, IAuditService auditService, IBankService bankService, ICashService cashService)
+        public BanksController(ApplicationDbContext context, IAuditService auditService, IBankService bankService, ICashService cashService, ILogger<BanksController> logger)
         {
             _context = context;
             _auditService = auditService;
             _bankService = bankService;
             _cashService = cashService;
+            _logger = logger;
         }
 
         // GET: Banks
@@ -291,7 +293,8 @@ namespace PhonePalace.Web.Controllers
                     }
                     catch (Exception ex)
                     {
-                         ModelState.AddModelError("", $"Error: {ex.Message}");
+                        _logger.LogError(ex, "Error al realizar el ajuste de banco");
+                        ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                     }
                 }
             }
@@ -345,7 +348,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 catch (Exception ex)
                 {
-                    ModelState.AddModelError("", $"Error al realizar el ajuste: {ex.Message}");
+                    _logger.LogError(ex, "Error al realizar el ajuste de banco");
+                    ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                 }
             }
             return View(model);

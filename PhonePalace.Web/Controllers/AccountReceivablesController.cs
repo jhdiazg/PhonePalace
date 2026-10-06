@@ -22,14 +22,16 @@ namespace PhonePalace.Web.Controllers
         private readonly IAuditService _auditService;
         private readonly IBankService _bankService;
         private readonly IConfiguration _config;
+        private readonly ILogger<AccountReceivablesController> _logger;
 
-        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService, IAuditService auditService, IBankService bankService, IConfiguration config)
+        public AccountReceivablesController(ApplicationDbContext context, ICashService cashService, IAuditService auditService, IBankService bankService, IConfiguration config, ILogger<AccountReceivablesController> logger)
         {
             _context = context;
             _cashService = cashService;
             _auditService = auditService;
             _bankService = bankService;
             _config = config;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -220,7 +222,8 @@ namespace PhonePalace.Web.Controllers
                     catch (Exception ex)
                     {
                         await transaction.RollbackAsync();
-                        ModelState.AddModelError("", ex.Message);
+                        _logger.LogError(ex, "Error al crear la cuenta por cobrar para el cliente {ClientID}", model.ClientID);
+                        ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                         ViewBag.Clients = new SelectList(_context.Clients.Where(c => c.IsActive), "ClientID", "DisplayName", model.ClientID);
                         ViewBag.PaymentMethods = EnumHelper.ToSelectList<PaymentMethod>()
                             .Where(x => x.Value == PaymentMethod.Cash.ToString() || x.Value == PaymentMethod.Transfer.ToString());
@@ -390,7 +393,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    TempData["Error"] = ex.Message;
+                    _logger.LogError(ex, "Error al registrar el pago de la cuenta por cobrar {AccountReceivableId}", id);
+                    TempData["Error"] = $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}";
                     return RedirectToAction(nameof(Details), new { id });
                 }
             });
@@ -440,7 +444,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    TempData["Error"] = $"Error al anular la cuenta: {ex.Message}";
+                    _logger.LogError(ex, "Error al anular la cuenta por cobrar {AccountReceivableId}", id);
+                    TempData["Error"] = $"No se pudo anular la cuenta. Código de soporte: {HttpContext.TraceIdentifier}";
                     return RedirectToAction(nameof(Index));
                 }
             });

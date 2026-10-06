@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PhonePalace.Domain.Interfaces;
 using System;
 using System.IO;
@@ -13,11 +14,13 @@ namespace PhonePalace.Infrastructure.Services
     public class AzureFileStorageService : IFileStorageService
     {
         private readonly string _connectionString;
+        private readonly ILogger<AzureFileStorageService> _logger;
 
-        public AzureFileStorageService(IConfiguration configuration)
+        public AzureFileStorageService(IConfiguration configuration, ILogger<AzureFileStorageService> logger)
         {
             // Asegúrate de tener "AzureStorage" en tu appsettings.json o variables de entorno
             _connectionString = configuration.GetConnectionString("AzureStorage") ?? throw new InvalidOperationException("AzureStorage connection string is not configured.");
+            _logger = logger;
         }
 
         public async Task<string> SaveFileAsync(IFormFile file, string containerName)
@@ -55,9 +58,10 @@ namespace PhonePalace.Infrastructure.Services
                 var blob = client.GetBlobClient(fileName);
                 await blob.DeleteIfExistsAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignorar errores si la URI no es válida o no se puede borrar
+                // No detener la operación principal si el borrado falla, pero dejar registro.
+                _logger.LogWarning(ex, "No se pudo eliminar el archivo de Azure Storage: {Route}", route);
             }
         }
 

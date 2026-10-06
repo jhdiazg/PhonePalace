@@ -19,12 +19,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IBankService _bankService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<CreditCardVerificationsController> _logger;
 
-        public CreditCardVerificationsController(ApplicationDbContext context, IBankService bankService, IAuditService auditService)
+        public CreditCardVerificationsController(ApplicationDbContext context, IBankService bankService, IAuditService auditService, ILogger<CreditCardVerificationsController> logger)
         {
             _context = context;
             _bankService = bankService;
             _auditService = auditService;
+            _logger = logger;
         }
 
         [HttpGet("")]
@@ -149,7 +151,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    TempData["Error"] = $"Error: {ex.Message}";
+                    _logger.LogError(ex, "Error al verificar la tarjeta de crédito {CreditCardVerificationId}", id);
+                    TempData["Error"] = $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}";
                     return RedirectToAction(nameof(Index));
                 }
             });

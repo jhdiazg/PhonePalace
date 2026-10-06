@@ -19,12 +19,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ICashService _cashService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<AssetsController> _logger;
 
-        public AssetsController(ApplicationDbContext context, ICashService cashService, IAuditService auditService)
+        public AssetsController(ApplicationDbContext context, ICashService cashService, IAuditService auditService, ILogger<AssetsController> logger)
         {
             _context = context;
             _cashService = cashService;
             _auditService = auditService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -92,7 +94,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 catch (Exception ex)
                 {
-                    ModelState.AddModelError("", ex.Message);
+                    _logger.LogError(ex, "Error al registrar el activo {AssetName}", asset?.Name);
+                    ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                 }
             }
 

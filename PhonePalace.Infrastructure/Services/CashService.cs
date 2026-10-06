@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PhonePalace.Domain.Entities;
 using PhonePalace.Domain.Enums;
 using PhonePalace.Domain.Interfaces;
@@ -12,11 +13,13 @@ namespace PhonePalace.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
+        private readonly ILogger<CashService> _logger;
 
-        public CashService(ApplicationDbContext context, IAuditService auditService)
+        public CashService(ApplicationDbContext context, IAuditService auditService, ILogger<CashService> logger)
         {
             _context = context;
             _auditService = auditService;
+            _logger = logger;
         }
 
         public async Task<CashRegister?> GetCurrentCashRegisterAsync()
@@ -69,7 +72,7 @@ namespace PhonePalace.Infrastructure.Services
                     {
                         await _auditService.LogAsync("Caja", $"Apertura de caja con monto inicial: {openingAmount:C}");
                     }
-                    catch { /* Log error silently */ }
+                    catch (Exception ex) { _logger.LogWarning(ex, "No se pudo registrar la auditoría de apertura de caja"); }
 
                     await transaction.CommitAsync();
                     return cashRegister;
@@ -115,9 +118,9 @@ namespace PhonePalace.Infrastructure.Services
             {
                 await _auditService.LogAsync("Caja", $"Cierre de caja con monto final: {closingAmount:C}");
             }
-            catch
+            catch (Exception ex)
             {
-                // Log error silently
+                _logger.LogWarning(ex, "No se pudo registrar la auditoría de cierre de caja");
             }
 
             return;
@@ -149,9 +152,9 @@ namespace PhonePalace.Infrastructure.Services
             {
                 await _auditService.LogAsync("Caja", $"Registro de ingreso: {description} - {amount:C}");
             }
-            catch
+            catch (Exception ex)
             {
-                // Log error silently
+                _logger.LogWarning(ex, "No se pudo registrar la auditoría de ingreso de caja");
             }
 
             return movement;
@@ -182,9 +185,9 @@ namespace PhonePalace.Infrastructure.Services
             {
                 await _auditService.LogAsync("Caja", $"Registro de egreso: {description} - {amount:C}");
             }
-            catch
+            catch (Exception ex)
             {
-                // Log error silently
+                _logger.LogWarning(ex, "No se pudo registrar la auditoría de egreso de caja");
             }
 
             return movement;

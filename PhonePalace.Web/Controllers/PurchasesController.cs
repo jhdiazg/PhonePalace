@@ -26,14 +26,16 @@ namespace PhonePalace.Web.Controllers
         private readonly IConfiguration _config;
         private readonly IAuditService _auditService;
         private readonly CompanySettings _companySettings;
+        private readonly ILogger<PurchasesController> _logger;
 
-        public PurchasesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IConfiguration config, IAuditService auditService, IOptions<CompanySettings> companySettings)
+        public PurchasesController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment, IConfiguration config, IAuditService auditService, IOptions<CompanySettings> companySettings, ILogger<PurchasesController> logger)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
             _config = config;
             _auditService = auditService;
             _companySettings = companySettings.Value;
+            _logger = logger;
         }
 
         [Route("Compras")]
@@ -684,7 +686,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Ocurrió un error inesperado al recibir la compra: {ex.Message}";
+                _logger.LogError(ex, "Error al recibir la compra {PurchaseId}", id);
+                TempData["ErrorMessage"] = $"Ocurrió un error al recibir la compra. Código de soporte: {HttpContext.TraceIdentifier}";
                 return RedirectToAction(nameof(Details), new { id });
             }
         }

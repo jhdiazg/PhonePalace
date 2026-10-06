@@ -21,12 +21,14 @@ namespace PhonePalace.Web.Controllers
         private readonly ICashService _cashService;
         private readonly ApplicationDbContext _context;
         private readonly IAuditService _auditService;
+        private readonly ILogger<CashController> _logger;
 
-        public CashController(ICashService cashService, ApplicationDbContext context, IAuditService auditService)
+        public CashController(ICashService cashService, ApplicationDbContext context, IAuditService auditService, ILogger<CashController> logger)
         {
             _cashService = cashService;
             _context = context;
             _auditService = auditService;
+            _logger = logger;
         }
 
         [HttpGet("")]
@@ -156,7 +158,8 @@ namespace PhonePalace.Web.Controllers
                 }
                 catch (Exception ex)
                 {
-                    ModelState.AddModelError("", ex.Message);
+                    _logger.LogError(ex, "Error en la operación de caja");
+                    ModelState.AddModelError("", $"Ocurrió un error inesperado. Código de soporte: {HttpContext.TraceIdentifier}");
                 }
             }
             return View(model);

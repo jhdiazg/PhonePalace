@@ -12,11 +12,13 @@ namespace PhonePalace.Web.Controllers
     {
         private readonly IBackupService _backupService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<BackupController> _logger;
 
-        public BackupController(IBackupService backupService, IAuditService auditService)
+        public BackupController(IBackupService backupService, IAuditService auditService, ILogger<BackupController> logger)
         {
             _backupService = backupService;
             _auditService = auditService;
+            _logger = logger;
         }
 
         [HttpGet("")]
@@ -38,7 +40,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al generar backup: {ex.Message}";
+                _logger.LogError(ex, "Error al generar el backup de base de datos");
+                TempData["Error"] = $"Error al generar el backup. Código de soporte: {HttpContext.TraceIdentifier}";
             }
 
             // Redirigir a donde prefieras, por ejemplo al Dashboard o Configuración

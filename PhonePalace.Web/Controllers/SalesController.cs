@@ -860,8 +860,8 @@ namespace PhonePalace.Web.Controllers
                 catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
-                    // Relanzar o manejar error
-                    throw new Exception($"Error procesando venta: {ex.Message}");
+                    _logger.LogError(ex, "Error procesando la venta");
+                    throw;
                 }
             });
 
@@ -1043,6 +1043,7 @@ namespace PhonePalace.Web.Controllers
                             }
                             catch (Exception ex) 
                             { 
+                                _logger.LogError(ex, "Error al emitir la Nota Crédito para la factura {InvoiceID}", sale.Invoice!.InvoiceID);
                                 await _auditService.LogAsync("Error Facturación", $"Excepción al emitir Nota Crédito para {sale.Invoice!.InvoiceID}: {ex.Message}");
                             }
                         }
@@ -1277,7 +1278,7 @@ namespace PhonePalace.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error durante la emisión de factura electrónica para la venta {SaleID}", id);
-                TempData["Error"] = $"Error al emitir factura electrónica: {ex.Message}";
+                TempData["Error"] = $"Error al emitir factura electrónica. Código de soporte: {HttpContext.TraceIdentifier}";
             }
 
             return RedirectToAction(nameof(Details), new { id = sale.SaleID });
@@ -1335,7 +1336,7 @@ namespace PhonePalace.Web.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error durante la sincronización de factura electrónica {ElectronicInvoiceID}", electronicInvoiceId);
-                TempData["Error"] = $"Error de conexión al sincronizar: {ex.Message}";
+                TempData["Error"] = $"Error de conexión al sincronizar. Código de soporte: {HttpContext.TraceIdentifier}";
             }
 
             // Devolver al usuario a la página de detalles de la venta usando el ID recuperado.
@@ -1381,7 +1382,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Excepción al emitir Nota Crédito: {ex.Message}";
+                _logger.LogError(ex, "Error al emitir la Nota Crédito (reintento) para la venta {SaleID}", id);
+                TempData["Error"] = $"No se pudo emitir la Nota Crédito. Código de soporte: {HttpContext.TraceIdentifier}";
             }
 
             return RedirectToAction(nameof(Details), new { id });

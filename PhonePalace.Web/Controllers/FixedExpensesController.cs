@@ -23,13 +23,15 @@ namespace PhonePalace.Web.Controllers
         private readonly IAuditService _auditService;
         private readonly ICashService _cashService;
         private readonly IBankService _bankService;
+        private readonly ILogger<FixedExpensesController> _logger;
 
-        public FixedExpensesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService)
+        public FixedExpensesController(ApplicationDbContext context, IAuditService auditService, ICashService cashService, IBankService bankService, ILogger<FixedExpensesController> logger)
         {
             _context = context;
             _auditService = auditService;
             _cashService = cashService;
             _bankService = bankService;
+            _logger = logger;
         }
 
         // GET: FixedExpenses
@@ -288,7 +290,8 @@ namespace PhonePalace.Web.Controllers
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Ocurrió un error: {ex.Message}";
+                _logger.LogError(ex, "Error al registrar el pago del gasto fijo");
+                TempData["Error"] = $"No se pudo registrar el pago. Código de soporte: {HttpContext.TraceIdentifier}";
                 return RedirectToAction(nameof(Index));
             }
         }

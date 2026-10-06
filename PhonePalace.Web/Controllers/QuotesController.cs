@@ -26,14 +26,16 @@ namespace PhonePalace.Web.Controllers
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly CompanySettings _companySettings;
+        private readonly ILogger<QuotesController> _logger;
 
-        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings)
+        public QuotesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IConfiguration config, IWebHostEnvironment webHostEnvironment, IOptions<CompanySettings> companySettings, ILogger<QuotesController> logger)
         {
             _context = context;
             _userManager = userManager;
             _config = config;
             _webHostEnvironment = webHostEnvironment;
             _companySettings = companySettings.Value;
+            _logger = logger;
         }
 
         // GET: Quotes
@@ -156,7 +158,7 @@ namespace PhonePalace.Web.Controllers
             {
                 foreach (var error in modelStateEntry.Errors)
                 {
-                    Console.WriteLine($"Error: {error.ErrorMessage}");
+                    _logger.LogWarning("Error de validación al crear cotización: {ErrorMessage}", error.ErrorMessage);
                 }
             }
 
