@@ -162,6 +162,10 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 });
 // --- FIN: Configuración de Cultura para Colombia ---
 
+// Si una respuesta llega con código 4xx/5xx y sin cuerpo (ej. 404 de routing),
+// se re-ejecuta /Home/Error para mostrar la vista de error en lugar de un cuerpo vacío.
+app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

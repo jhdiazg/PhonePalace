@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PhonePalace.Infrastructure.Data;
@@ -228,12 +229,45 @@ namespace PhonePalace.Web.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // En HomeController.cs
-        [AllowAnonymous] // <--- AGREGAR ESTO
+        // Destino de UseExceptionHandler (producción) y de UseStatusCodePagesWithReExecute (404/500 sin cuerpo).
+        [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        public IActionResult Error(int? statusCode = null)
         {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            var requestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+            var exceptionFeature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
+
+            int code;
+            if (statusCode is >= 400 and < 600)
+            {
+                code = statusCode.Value;
+            }
+            else if (exceptionFeature?.Error != null)
+            {
+                code = StatusCodes.Status500InternalServerError;
+            }
+            else
+            {
+                code = HttpContext.Response.StatusCode;
+            }
+
+            if (exceptionFeature?.Error is Exception ex)
+            {
+                _logger.LogError(ex, "Error no controlado en {Path}{QueryString} | RequestId: {RequestId}",
+                    exceptionFeature.Path, Request.QueryString, requestId);
+            }
+            else if (code >= 400)
+            {
+                _logger.LogWarning("Respuesta HTTP {StatusCode} para {Path}{QueryString} | RequestId: {RequestId}",
+                    code, Request.Path, Request.QueryString, requestId);
+            }
+
+            if (code is >= 400 and < 600)
+            {
+                Response.StatusCode = code;
+            }
+
+            return View(new ErrorViewModel { RequestId = requestId, StatusCode = code });
         }
     }
 }
