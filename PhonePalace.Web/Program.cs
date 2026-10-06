@@ -7,9 +7,17 @@ using PhonePalace.Domain.Interfaces;
 using PhonePalace.Infrastructure.Data;
 using PhonePalace.Infrastructure.Services;
 using PhonePalace.Infrastructure.Configuration;
+using Serilog;
 using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- INICIO: Registro de logs con Serilog (archivo + consola) ---
+// La configuración (niveles, sinks, template) vive en la sección "Serilog" de appsettings.json.
+builder.Host.UseSerilog((context, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .Enrich.FromLogContext());
+// --- FIN: Registro de logs con Serilog (archivo + consola) ---
 
 // Add services to the container.
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
@@ -178,6 +186,7 @@ app.UseSession();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<PhonePalace.Web.Middleware.AppLockMiddleware>();
 
 app.MapControllerRoute(
     name: "default",
@@ -203,4 +212,12 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    // Asegura que los buffers de Serilog se vacíen al finalizar la aplicación.
+    Log.CloseAndFlush();
+}

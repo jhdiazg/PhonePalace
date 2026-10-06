@@ -214,6 +214,14 @@ namespace PhonePalace.Web.Controllers
         }
 
         [AllowAnonymous]
+        public IActionResult AppLocked()
+        {
+            ViewBag.FacturaElectronica = _config.GetValue<bool>("AppLock:FacturacionElectronica");
+            ViewBag.HostingSoporte = _config.GetValue<bool>("AppLock:HostingSoporte");
+            return View();
+        }
+
+        [AllowAnonymous]
         public IActionResult AccessDenied()
         {
             TempData["Error"] = "No tiene los permisos necesarios para acceder a este recurso.";
